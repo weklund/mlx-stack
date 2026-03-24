@@ -1,0 +1,26 @@
+{
+  "featureId": "fix-scaffolding-data-home",
+  "reviewedAt": "2026-03-24T01:10:02Z",
+  "commitId": "3b9c104",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly addresses the prior blocking gap: `ensure_data_home()` is now invoked in the top-level `cli()` group callback before subcommand dispatch, and added tests verify clean-home creation for bare CLI invocation, subcommand execution, and idempotent behavior when the directory already exists.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata still points to `cli-feature`, but that skill is not invokable in runtime even though `.factory/skills/cli-feature/SKILL.md` exists.",
+      "evidence": "Fix transcript skeleton for worker session `8319e565-f050-4a59-b110-9d392f1ecb53` shows `Tool: Skill {\"skill\": \"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; the skill file exists at `.factory/skills/cli-feature/SKILL.md`."
+    },
+    {
+      "area": "knowledge",
+      "observation": "A useful Click behavior detail is still undocumented in shared state: eager options (`--help`, `--version`) can exit before the group callback runs, so callback-based setup hooks do not execute for those paths.",
+      "evidence": "Transcript skeleton shows the worker diagnosing failed assumptions around `--help`/`--version` and then narrowing tests to bare invocation and subcommand paths; new tests in `tests/unit/test_cli.py` (lines 116-150) reflect that behavior."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/foundation/scrutiny/reviews/project-scaffolding.json",
+  "summary": "PASS. Compared both diffs (`bfa51a8` and `3b9c104`) and the fix transcript skeleton. The original failure (missing data-home creation in CLI entry flow) is resolved by wiring `ensure_data_home()` into `src/mlx_stack/cli/main.py` and adding targeted regression tests."
+}

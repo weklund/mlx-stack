@@ -33,6 +33,7 @@ Architectural decisions, patterns discovered, and conventions.
 - All state lives in `~/.mlx-stack/` (configurable via `model-dir` for models)
 - Tests use `tmp_path` pytest fixture — NEVER touch real `~/.mlx-stack/`
 - External commands (sysctl, system_profiler, subprocess) are always mocked in unit tests
+- Click eager options (`--help`, `--version`) may exit before the group callback runs, so callback-based setup hooks should not be relied on for those code paths
 - Note: The config module currently sends success output to stderr. Future features should use stdout for successful output and stderr only for errors/warnings.
 
 ## Key Design Decisions

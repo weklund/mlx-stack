@@ -16,6 +16,7 @@ Environment variables, external dependencies, and setup notes.
 - uv 0.10.12 (package manager)
 - vllm-mlx v0.2.6 (installed as uv tool at ~/.local/bin/vllm-mlx)
 - litellm (installed as uv tool at ~/.local/bin/litellm)
+- For robust `uv tool list` parsing, set `NO_COLOR=1` when invoking uv to avoid ANSI escape sequences in output
 
 ## External Dependencies
 - HuggingFace Hub (for model downloads — optional HF_TOKEN for rate limiting)

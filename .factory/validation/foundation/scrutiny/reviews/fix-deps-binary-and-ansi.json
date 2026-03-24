@@ -1,0 +1,26 @@
+{
+  "featureId": "fix-deps-binary-and-ansi",
+  "reviewedAt": "2026-03-24T01:09:41Z",
+  "commitId": "971eeaf",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "This fix directly addresses both blocking defects from the prior dependency-management review: binary lookup now targets the real `vllm-mlx` executable and version parsing is hardened by disabling ANSI formatting in `uv tool list` via `NO_COLOR=1`. Updated tests cover the corrected binary mapping, env propagation, and realistic `uv tool list` output structure.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature requires `cli-feature`, but the worker transcript still shows runtime inability to invoke that skill, indicating a persistent skill discoverability/registration gap.",
+      "evidence": "worker-transcripts.jsonl entry for session `a192a3b5-b62f-48a1-8bf0-518ae882c5cd` includes `## Tool: Skill { \"skill\": \"cli-feature\" }` followed by `## Tool Result Error: Skill \"cli-feature\" not found`; feature metadata still sets `skillName` to `cli-feature` in mission features.json."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared library docs do not currently capture the `uv tool list` ANSI-formatting quirk and the `NO_COLOR=1` mitigation required for robust version parsing.",
+      "evidence": "The mitigation is now implemented at `src/mlx_stack/core/deps.py:108` (`env = {**os.environ, \"NO_COLOR\": \"1\"}`), while `.factory/library/environment.md` does not document this behavior/requirement."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/foundation/scrutiny/reviews/dependency-management.json",
+  "summary": "Pass. After reviewing the fix feature transcript skeleton, handoff, and both commit diffs (`e607176` and `971eeaf`), the implementation adequately resolves the original blocking failures and aligns with the stated expected behavior."
+}

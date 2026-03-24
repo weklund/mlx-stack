@@ -1,7 +1,7 @@
 {
   "milestone": "foundation",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,70 +20,37 @@
     }
   },
   "reviewsSummary": {
-    "total": 5,
-    "passed": 2,
-    "failed": 3,
-    "failedFeatures": [
-      "project-scaffolding",
-      "model-catalog",
-      "dependency-management"
-    ]
+    "total": 3,
+    "passed": 3,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
+  "blockingIssues": [],
+  "appliedUpdates": [
     {
-      "featureId": "project-scaffolding",
-      "severity": "blocking",
-      "description": "CLI command flow does not invoke data-home initialization before state-writing commands, so first-use auto-creation of ~/.mlx-stack/ is not reliably enforced."
+      "target": "library",
+      "description": "Added Click eager-option callback behavior note to architecture knowledge to prevent incorrect assumptions about setup hooks on `--help`/`--version` paths.",
+      "sourceFeature": "fix-scaffolding-data-home"
     },
     {
-      "featureId": "model-catalog",
-      "severity": "blocking",
-      "description": "Catalog nested type corruption paths can raise raw exceptions (e.g., ValueError) instead of CatalogError, violating clear error handling expectations."
-    },
-    {
-      "featureId": "model-catalog",
-      "severity": "blocking",
-      "description": "Catalog data/tests encode six distinct family values while milestone expectation groups into five families, creating a contract mismatch."
-    },
-    {
-      "featureId": "dependency-management",
-      "severity": "blocking",
-      "description": "Dependency binary lookup maps vllm-mlx to `vllm` instead of `vllm-mlx`, causing false missing-tool detection."
-    },
-    {
-      "featureId": "dependency-management",
-      "severity": "blocking",
-      "description": "Installed-version parsing is fragile to ANSI-formatted `uv tool list` output, causing missed version detection/mismatch warnings."
+      "target": "library",
+      "description": "Documented `uv tool list` ANSI-output mitigation (`NO_COLOR=1`) in environment knowledge for dependency/version parsing robustness.",
+      "sourceFeature": "fix-deps-binary-and-ansi"
     }
   ],
-  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
-      "target": "AGENTS.md",
-      "suggestion": "Update canonical CLI structure guidance to match the live codebase (`src/mlx_stack/cli/*.py` with command registration in `src/mlx_stack/cli/main.py`) instead of `commands/` + `cli.py` references.",
-      "evidence": "Multiple reviews (project-scaffolding, hardware-detection, configuration-management, dependency-management) observed stale guidance pointing workers to nonexistent/legacy paths.",
-      "isSystemic": true
-    },
-    {
       "target": "skills",
-      "suggestion": "Ensure the required `cli-feature` skill is registered/invokable in worker sessions and align procedural steps with current repository wiring expectations.",
-      "evidence": "Repeated reviewer evidence shows feature metadata requiring `cli-feature` while worker transcripts report `Skill \"cli-feature\" not found`; one review also noted procedure mismatch for command registration location.",
+      "suggestion": "Ensure `cli-feature` is registered and invokable in worker runtime whenever mission features specify `skillName: cli-feature`.",
+      "evidence": "All three fix reviews (`fix-scaffolding-data-home`, `fix-catalog-errors-and-families`, `fix-deps-binary-and-ansi`) observed transcript evidence of `Skill \"cli-feature\" not found` despite `.factory/skills/cli-feature/SKILL.md` being present.",
       "isSystemic": true
     }
   ],
   "rejectedObservations": [
     {
-      "observation": "Stale library catalog path note (`src/mlx_stack/catalog/` vs `src/mlx_stack/data/catalog/`).",
+      "observation": "Repeated `cli-feature` skill discoverability findings from multiple fix reviews.",
       "reason": "duplicate"
-    },
-    {
-      "observation": "Validation contract wording ambiguity around '5 families' grouping.",
-      "reason": "ambiguous"
-    },
-    {
-      "observation": "Document ANSI quirks of `uv tool list` in shared library now.",
-      "reason": "already-captured-as-blocking-implementation-issue"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/foundation/scrutiny/synthesis.round1.json"
 }

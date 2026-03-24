@@ -1,0 +1,89 @@
+{
+  "milestone": "foundation",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 5,
+    "passed": 2,
+    "failed": 3,
+    "failedFeatures": [
+      "project-scaffolding",
+      "model-catalog",
+      "dependency-management"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "project-scaffolding",
+      "severity": "blocking",
+      "description": "CLI command flow does not invoke data-home initialization before state-writing commands, so first-use auto-creation of ~/.mlx-stack/ is not reliably enforced."
+    },
+    {
+      "featureId": "model-catalog",
+      "severity": "blocking",
+      "description": "Catalog nested type corruption paths can raise raw exceptions (e.g., ValueError) instead of CatalogError, violating clear error handling expectations."
+    },
+    {
+      "featureId": "model-catalog",
+      "severity": "blocking",
+      "description": "Catalog data/tests encode six distinct family values while milestone expectation groups into five families, creating a contract mismatch."
+    },
+    {
+      "featureId": "dependency-management",
+      "severity": "blocking",
+      "description": "Dependency binary lookup maps vllm-mlx to `vllm` instead of `vllm-mlx`, causing false missing-tool detection."
+    },
+    {
+      "featureId": "dependency-management",
+      "severity": "blocking",
+      "description": "Installed-version parsing is fragile to ANSI-formatted `uv tool list` output, causing missed version detection/mismatch warnings."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Update canonical CLI structure guidance to match the live codebase (`src/mlx_stack/cli/*.py` with command registration in `src/mlx_stack/cli/main.py`) instead of `commands/` + `cli.py` references.",
+      "evidence": "Multiple reviews (project-scaffolding, hardware-detection, configuration-management, dependency-management) observed stale guidance pointing workers to nonexistent/legacy paths.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Ensure the required `cli-feature` skill is registered/invokable in worker sessions and align procedural steps with current repository wiring expectations.",
+      "evidence": "Repeated reviewer evidence shows feature metadata requiring `cli-feature` while worker transcripts report `Skill \"cli-feature\" not found`; one review also noted procedure mismatch for command registration location.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Stale library catalog path note (`src/mlx_stack/catalog/` vs `src/mlx_stack/data/catalog/`).",
+      "reason": "duplicate"
+    },
+    {
+      "observation": "Validation contract wording ambiguity around '5 families' grouping.",
+      "reason": "ambiguous"
+    },
+    {
+      "observation": "Document ANSI quirks of `uv tool list` in shared library now.",
+      "reason": "already-captured-as-blocking-implementation-issue"
+    }
+  ],
+  "previousRound": null
+}
