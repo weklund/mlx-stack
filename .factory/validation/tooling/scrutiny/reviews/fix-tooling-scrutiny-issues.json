@@ -1,0 +1,56 @@
+{
+  "featureId": "fix-tooling-scrutiny-issues",
+  "reviewedAt": "2026-03-24T12:22:41Z",
+  "commitId": "ee395a8b96ace7e5dde5dda1083cb743222ed210",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Pass. The fix commit resolves all three prior blocking findings from round 1: (1) `pull --bench` now executes `run_benchmark(..., save=True)`, (2) pull download output is streamed in real time via `subprocess.Popen` + line forwarding, and (3) benchmark TPS now uses separate timing phases (request start→first token and first token→end), so `prompt_tps` and `gen_tps` are no longer mathematically forced equal. Prior blocking issue status: pull-command#1 resolved, pull-command#2 resolved, bench-command#1 resolved.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/pull.py",
+        "line": 41,
+        "severity": "non_blocking",
+        "description": "User-facing text still says \"quick benchmark\" (`--help` text/docstring), but `_run_post_download_bench` calls `run_benchmark()` which uses `NUM_ITERATIONS = 3` in core benchmark flow. This wording/runtime mismatch was previously noted and remains."
+      }
+    ]
+  },
+  "priorBlockingIssueResolution": [
+    {
+      "fromFeatureId": "pull-command",
+      "priorReview": ".factory/validation/tooling/scrutiny/reviews/pull-command.json",
+      "issue": "`pull --bench` placeholder did not execute benchmark",
+      "status": "resolved",
+      "evidence": "src/mlx_stack/cli/pull.py:74 now always invokes post-download benchmark when `bench` is set; src/mlx_stack/cli/pull.py:113 calls `run_benchmark(target=model_id, save=True)`."
+    },
+    {
+      "fromFeatureId": "pull-command",
+      "priorReview": ".factory/validation/tooling/scrutiny/reviews/pull-command.json",
+      "issue": "Pull download progress was suppressed by `subprocess.run(..., capture_output=True)`",
+      "status": "resolved",
+      "evidence": "src/mlx_stack/core/pull.py:331-334 uses `subprocess.Popen(..., stdout=PIPE, stderr=PIPE, text=True)` and src/mlx_stack/core/pull.py:352 streams each stdout line to the console."
+    },
+    {
+      "fromFeatureId": "bench-command",
+      "priorReview": ".factory/validation/tooling/scrutiny/reviews/bench-command.json",
+      "issue": "TPS math collapsed prompt_tps/gen_tps to same value",
+      "status": "resolved",
+      "evidence": "src/mlx_stack/core/benchmark.py:428-433 computes `prompt_time` and `gen_time` from distinct timing phases (`first_token_time`) and derives TPS separately; tests assert divergence in tests/unit/test_benchmark.py:602-646."
+    }
+  ],
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Target suggestion: orchestrator/feature-planning should preflight-check skill invokability for assigned `skillName` before worker execution. Rationale: this fix session again attempted to invoke `cli-feature` and got `Error: Skill \"cli-feature\" not found`, forcing ad-hoc execution.",
+      "evidence": "Transcript skeleton for worker session 0d9911bc-52eb-431e-8e21-2ee010f532bd includes `Tool: Skill {\"skill\":\"cli-feature\"}` followed by `Tool Result Error: Skill \"cli-feature\" not found`."
+    },
+    {
+      "area": "skills",
+      "observation": "Target suggestion: skill-procedure compliance reporting should require explicit deviation logging when tests-first is not followed. Rationale: handoff marks `followedProcedure=true` while transcript shows source edits before test updates.",
+      "evidence": "Transcript skeleton shows edits to `src/mlx_stack/cli/pull.py`, `src/mlx_stack/core/pull.py`, and `src/mlx_stack/core/benchmark.py` before test edits, while handoff `skillFeedback.followedProcedure` is true."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/tooling/scrutiny/synthesis.json",
+  "summary": "Reviewed fix feature `fix-tooling-scrutiny-issues` (commit ee395a8). All prior blocking scrutiny findings from pull-command and bench-command are resolved; no new blocking defects were found, so this re-run review passes."
+}

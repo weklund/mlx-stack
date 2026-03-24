@@ -1,0 +1,76 @@
+{
+  "milestone": "tooling",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 2,
+    "passed": 0,
+    "failed": 2,
+    "failedFeatures": [
+      "pull-command",
+      "bench-command"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "pull-command",
+      "severity": "blocking",
+      "description": "`pull --bench` is still a placeholder and does not execute the required post-download benchmark with reported metrics."
+    },
+    {
+      "featureId": "pull-command",
+      "severity": "blocking",
+      "description": "Download subprocess execution captures output, suppressing live progress updates required for pull progress visibility."
+    },
+    {
+      "featureId": "bench-command",
+      "severity": "blocking",
+      "description": "Benchmark TPS math collapses prompt_tps and gen_tps to the same value, invalidating per-metric comparison and PASS/WARN/FAIL behavior."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skill:cli-feature",
+      "suggestion": "Update command-registration guidance to match this repository's convention (`src/mlx_stack/cli/main.py`) or make the instruction repo-convention aware instead of hardcoding `cli/__init__.py`.",
+      "evidence": "Reviewer noted mismatch between `.factory/skills/cli-feature/SKILL.md` command wiring guidance and actual command registration location in `src/mlx_stack/cli/main.py`.",
+      "isSystemic": true
+    },
+    {
+      "target": "orchestrator/feature-planning",
+      "suggestion": "Enforce preflight validation that each feature `skillName` points to an invokable skill in the runtime environment before assigning worker sessions.",
+      "evidence": "Bench feature metadata referenced `cli-feature`, but worker transcript recorded `Skill \"cli-feature\" not found`, forcing ad-hoc execution outside the intended procedure.",
+      "isSystemic": true
+    },
+    {
+      "target": "skill:cli-feature",
+      "suggestion": "Clarify and enforce procedure-deviation reporting: if tests-first order is not followed, workers should mark `followedProcedure=false` with explicit deviations in handoff.",
+      "evidence": "Two tooling feature transcripts show production-file creation before tests while handoff still reported strict procedure compliance.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Separate duplicate observations about tests-first ordering from both tooling reviews.",
+      "reason": "duplicate"
+    }
+  ],
+  "previousRound": null
+}
