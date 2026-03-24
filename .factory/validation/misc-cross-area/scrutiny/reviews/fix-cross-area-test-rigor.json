@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-cross-area-test-rigor",
+  "reviewedAt": "2026-03-24T14:23:49.359785+00:00",
+  "commitId": "931baa7afdf44b6b158f8887fcdbbb5ac8d7e00a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit directly addresses the prior blocking findings for VAL-CROSS-001/007/012/013 by replacing weak assertions with concrete checks, removing conditional pass logic, invoking the CLI models surface, and adding explicit estimated-label and schema-version validations.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata still references `cli-feature`, but that skill is unavailable at runtime in this environment, causing repeated procedural deviations during worker execution.",
+      "evidence": "Feature `fix-cross-area-test-rigor` sets `skillName: cli-feature` in mission features.json; transcript skeleton for worker session c12f5a6a-100d-4fb0-ac40-40e135ff0058 includes `Error: Skill \"cli-feature\" not found`; repository still contains `.factory/skills/cli-feature/SKILL.md`, indicating registration/discovery mismatch rather than missing project guidance."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/misc-cross-area/scrutiny/reviews/misc-cross-area-validation.json",
+  "summary": "Pass. Comparing original commit 0d0847c and fix commit 931baa7 shows the previously flagged weaknesses were corrected: full lifecycle now includes mocked pull and /v1/models 200 checks, config/quant tests use concrete assertions without conditional skips, saved benchmark tests verify measured values and estimated-label removal, and models consistency now exercises the CLI models command."
+}
