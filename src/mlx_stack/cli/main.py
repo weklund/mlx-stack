@@ -19,6 +19,7 @@ from mlx_stack.cli.init import init as init_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.recommend import recommend as recommend_command
+from mlx_stack.cli.up import up as up_command
 from mlx_stack.core.paths import ensure_data_home
 
 console = Console(stderr=True)
@@ -171,15 +172,7 @@ def pull(model: str | None, quant: str | None, bench: bool, force: bool) -> None
 
 
 cli.add_command(models_command, "models")
-
-
-@cli.command()
-@click.option("--dry-run", is_flag=True, help="Show commands without executing.")
-@click.option("--tier", type=str, help="Start only the specified tier.")
-def up(dry_run: bool, tier: str | None) -> None:
-    """Start all services in the active stack."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the up-command feature.")
-    raise SystemExit(1)
+cli.add_command(up_command, "up")
 
 
 @cli.command()
