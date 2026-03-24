@@ -1,0 +1,44 @@
+{
+  "featureId": "model-catalog",
+  "reviewedAt": "2026-03-24T00:50:26Z",
+  "commitId": "20ce76c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature delivers the core catalog loader/query module and 15 YAML entries, but it does not fully satisfy the error-handling/schema contract and it diverges from the specified family coverage expectation.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/catalog.py",
+        "line": 245,
+        "severity": "blocking",
+        "description": "Nested schema type errors are not validated and can escape as raw Python exceptions instead of CatalogError. `_validate_entry()` only checks presence for nested fields (e.g., sources/capabilities), then `_parse_entry()` performs unchecked coercions (`float(...)`, `bool(...)`). Example: non-numeric `disk_size_gb` raises `ValueError`, violating the requirement for clear catalog errors without traceback leakage."
+      },
+      {
+        "file": "tests/unit/test_catalog.py",
+        "line": 243,
+        "severity": "blocking",
+        "description": "Expected behavior specifies coverage across 5 families (`Qwen 3.5`, `Nemotron`, `Gemma 3`, `DeepSeek R1`, `Qwen 3/Llama 3.3`), but the committed dataset/test assert six distinct family values (`Qwen 3` and `Llama 3.3` split), creating a requirement mismatch likely to fail validation expecting five families/groups."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The assigned feature skill (`cli-feature`) was not invokable through the Skill tool during execution, despite the feature requiring that skill and a SKILL.md being present in the repository.",
+      "evidence": "worker-transcripts.jsonl entry for session `33efe22e-3674-4035-b24d-18790be83117` includes `Error: Skill \"cli-feature\" not found`; skill file exists at `.factory/skills/cli-feature/SKILL.md`."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Library architecture docs contain a stale catalog path that conflicts with the implemented/project structure, which can misdirect future workers.",
+      "evidence": ".factory/library/architecture.md:14 states `src/mlx_stack/catalog/`, while feature and codebase use `src/mlx_stack/data/catalog/` (e.g., commit adds files under `src/mlx_stack/data/catalog/`)."
+    },
+    {
+      "area": "conventions",
+      "observation": "The family-count requirement wording is ambiguous in shared contract text and caused implementation drift.",
+      "evidence": "validation-contract.md:63 says `15 catalog models across 5 families ... Qwen 3 / Llama 3.3`; this was implemented/tested as six distinct family values (tests/unit/test_catalog.py:243)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed transcript skeleton, handoff, and commit 20ce76c for model-catalog. Result is FAIL due to two blocking issues: raw non-CatalogError failure paths on nested type corruption, and mismatch against the specified five-family coverage expectation."
+}

@@ -1,0 +1,50 @@
+{
+  "featureId": "dependency-management",
+  "reviewedAt": "2026-03-24T00:50:27Z",
+  "commitId": "e607176",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature introduces the expected module and broad unit coverage, but two implementation defects break core dependency detection behavior on real `uv tool list` output and prevent correct detection of installed `vllm-mlx`.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/deps.py",
+        "line": 34,
+        "severity": "blocking",
+        "description": "Incorrect binary mapping: `vllm-mlx` is mapped to `vllm`, but the installed uv tool executable is `vllm-mlx`. This causes false `installed=False` results and can trigger unnecessary installs/post-install failures. Evidence: `which vllm-mlx` resolves to `/Users/weae1504/.local/bin/vllm-mlx`, while `which vllm` is absent."
+      },
+      {
+        "file": "src/mlx_stack/core/deps.py",
+        "line": 122,
+        "severity": "blocking",
+        "description": "Version parsing assumes plain lines like `<tool> v<version>`, but actual captured `uv tool list` output includes ANSI escape sequences and executable bullet lines. As a result, `_get_installed_version` returns `None` for installed tools and version-mismatch warnings are skipped. Evidence: captured stdout lines include `\\u001b[1mlitellm v1.82.6\\u001b[0m`, and `check_dependency('litellm')` returned `installed_version=None`."
+      },
+      {
+        "file": "tests/unit/test_deps.py",
+        "line": 71,
+        "severity": "non_blocking",
+        "description": "Tests encode incorrect assumptions about real environment behavior (`vllm` binary name and unformatted `uv tool list` output), so they do not catch the above production defects."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata requires `cli-feature`, and the repo contains `.factory/skills/cli-feature/SKILL.md`, but the worker could not invoke that skill in runtime.",
+      "evidence": "Transcript skeleton for worker session `b001445d-222c-4684-934e-b1b39be237ad` shows `Tool: Skill {\"skill\":\"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; skill file exists at `/Users/weae1504/Projects/mlx-stack/.factory/skills/cli-feature/SKILL.md`."
+    },
+    {
+      "area": "conventions",
+      "observation": "Mission AGENTS conventions describe a `commands/` CLI layout, but the repository and skill documentation use `cli/`. This mismatch can mislead workers about file placement and registration patterns.",
+      "evidence": "Mission AGENTS.md lines 16-17 specify `src/mlx_stack/` with `commands/` and one command per module in `commands/`; actual repo uses `src/mlx_stack/cli/` and SKILL.md project structure also documents `cli/`."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared state does not document `uv tool list` output quirks (ANSI formatting and executable sub-lines), which directly affects reliable parser implementation.",
+      "evidence": "Captured `subprocess.run([uv, 'tool', 'list'], capture_output=True, text=True)` output begins with `\\u001b[1mlitellm v1.82.6\\u001b[0m` then `- litellm` style lines; current parser expects plain `tool version` text."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed: dependency detection has two blocking runtime issues (wrong `vllm-mlx` binary lookup and fragile `uv tool list` parsing), so required behavior is not reliable despite passing unit tests."
+}

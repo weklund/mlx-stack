@@ -1,0 +1,26 @@
+{
+  "featureId": "hardware-detection",
+  "reviewedAt": "2026-03-24T00:50:33Z",
+  "commitId": "941e0dc",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation in core/hardware.py and cli/profile.py covers the required behavior: known-chip lookup for 17 variants, unknown-chip estimation with bench guidance, non-Apple-Silicon rejection, profile JSON persistence, Rich table output, and graceful system-command error handling.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill procedure is partially out of sync with the repository architecture and observed worker flow, which can make procedure compliance reporting unreliable.",
+      "evidence": ".factory/skills/cli-feature/SKILL.md:189 instructs registering commands in src/mlx_stack/cli/__init__.py, while the feature commit wires the command in src/mlx_stack/cli/main.py (git show 941e0dc -- src/mlx_stack/cli/main.py). SKILL.md:65-67 requires tests before production code, but /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/worker-transcripts.jsonl (workerSessionId 1eb150c3-211a-4614-8454-e7ed9f712d13) shows creation of src/mlx_stack/core/hardware.py before tests/unit/test_hardware.py."
+    },
+    {
+      "area": "conventions",
+      "observation": "Shared mission/library docs still describe an outdated source layout (`commands/` and `cli.py`) that does not match the live codebase (`cli/main.py` and `cli/*.py`).",
+      "evidence": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/AGENTS.md:16-17 and /Users/weae1504/Projects/mlx-stack/.factory/library/architecture.md:11-12 reference `commands/` and `src/mlx_stack/cli.py`; current feature files are src/mlx_stack/cli/main.py and src/mlx_stack/cli/profile.py."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, and commit 941e0dc for feature hardware-detection. Implementation satisfies the feature contract with no blocking code defects identified (pass). Documented shared-state alignment gaps in skill/procedure and architecture conventions."
+}

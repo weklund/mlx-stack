@@ -1,0 +1,33 @@
+{
+  "featureId": "project-scaffolding",
+  "reviewedAt": "2026-03-24T00:50:08Z",
+  "commitId": "bfa51a8",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The scaffold establishes the package layout, CLI entrypoint, tests, and packaging baseline, but it does not wire data-home auto-creation into command execution, so the feature does not fully satisfy the required first-use behavior.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/main.py",
+        "line": 140,
+        "severity": "blocking",
+        "description": "The top-level CLI handler never calls `ensure_data_home()` (or equivalent) before running state-writing commands. As implemented, invoking scaffolded state-writing commands on a clean machine (e.g., `init`, `pull`, `config set`) exits as not implemented without creating `~/.mlx-stack/`, which violates the feature's expectedBehavior for auto-creation on first use."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `cli-feature` skill exists as `.factory/skills/cli-feature/SKILL.md` but was not invokable through the Skill tool in the worker session, causing a documented procedure deviation.",
+      "evidence": "Transcript skeleton shows `Tool: Skill {\"skill\": \"cli-feature\"}` followed by assistant note that the skill was not found; handoff.skillFeedback.followedProcedure=false with a deviation citing missing registered droid."
+    },
+    {
+      "area": "conventions",
+      "observation": "Shared convention docs are inconsistent with the implemented scaffold structure, which can mislead workers on canonical module locations.",
+      "evidence": "Mission `AGENTS.md` and `.factory/library/architecture.md` describe `src/mlx_stack/commands/` and `src/mlx_stack/cli.py`, while this feature and the contract use `src/mlx_stack/cli/` package with `src/mlx_stack/cli/main.py` and `src/mlx_stack/data/catalog/`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit `bfa51a8` (handoff session `7ff0894b-db88-49e1-86c5-02aaf0fe33a8`), including transcript skeleton and diff. Result is FAIL due to a blocking gap: first-use auto-creation of `~/.mlx-stack/` is implemented only as a helper, not integrated into CLI command flow for state-writing commands."
+}
