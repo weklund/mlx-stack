@@ -178,6 +178,14 @@ def _validate_entry(data: dict[str, Any], filename: str) -> None:
                     f"required field '{req_field}'"
                 )
                 raise CatalogError(msg)
+        # Validate disk_size_gb is numeric
+        disk_size = source_data["disk_size_gb"]
+        if not isinstance(disk_size, (int, float)):
+            msg = (
+                f"Catalog file '{filename}': source '{quant}' field 'disk_size_gb' "
+                f"must be numeric, got {type(disk_size).__name__}"
+            )
+            raise CatalogError(msg)
 
     # Validate capabilities
     caps = data["capabilities"]
@@ -198,6 +206,13 @@ def _validate_entry(data: dict[str, Any], filename: str) -> None:
                 f"required field '{q_field}'"
             )
             raise CatalogError(msg)
+        q_value = quality[q_field]
+        if not isinstance(q_value, (int, float)):
+            msg = (
+                f"Catalog file '{filename}': quality field '{q_field}' "
+                f"must be numeric, got {type(q_value).__name__}"
+            )
+            raise CatalogError(msg)
 
     # Validate benchmarks — each entry must have prompt_tps, gen_tps, memory_gb
     benchmarks = data["benchmarks"]
@@ -213,6 +228,13 @@ def _validate_entry(data: dict[str, Any], filename: str) -> None:
                 msg = (
                     f"Catalog file '{filename}': benchmark '{hw_key}' missing "
                     f"required field '{req_field}'"
+                )
+                raise CatalogError(msg)
+            bench_value = bench_data[req_field]
+            if not isinstance(bench_value, (int, float)):
+                msg = (
+                    f"Catalog file '{filename}': benchmark '{hw_key}' field "
+                    f"'{req_field}' must be numeric, got {type(bench_value).__name__}"
                 )
                 raise CatalogError(msg)
 
@@ -236,57 +258,87 @@ def _parse_entry(data: dict[str, Any]) -> CatalogEntry:
 
     Returns:
         A CatalogEntry instance.
+
+    Raises:
+        CatalogError: If type coercion fails for any nested field value.
     """
+    model_id = data.get("id", "<unknown>")
+
     # Parse sources
     sources: dict[str, QuantSource] = {}
     for quant, source_data in data["sources"].items():
-        sources[quant] = QuantSource(
-            hf_repo=source_data["hf_repo"],
-            disk_size_gb=float(source_data["disk_size_gb"]),
-            convert_from=bool(source_data.get("convert_from", False)),
-        )
+        try:
+            sources[quant] = QuantSource(
+                hf_repo=source_data["hf_repo"],
+                disk_size_gb=float(source_data["disk_size_gb"]),
+                convert_from=bool(source_data.get("convert_from", False)),
+            )
+        except (ValueError, TypeError) as exc:
+            msg = (
+                f"Catalog entry '{model_id}': invalid value in source '{quant}': {exc}"
+            )
+            raise CatalogError(msg) from None
 
     # Parse capabilities
     caps_data = data["capabilities"]
-    capabilities = Capabilities(
-        tool_calling=bool(caps_data["tool_calling"]),
-        tool_call_parser=caps_data.get("tool_call_parser") or None,
-        thinking=bool(caps_data["thinking"]),
-        reasoning_parser=caps_data.get("reasoning_parser") or None,
-        vision=bool(caps_data["vision"]),
-    )
+    try:
+        capabilities = Capabilities(
+            tool_calling=bool(caps_data["tool_calling"]),
+            tool_call_parser=caps_data.get("tool_call_parser") or None,
+            thinking=bool(caps_data["thinking"]),
+            reasoning_parser=caps_data.get("reasoning_parser") or None,
+            vision=bool(caps_data["vision"]),
+        )
+    except (ValueError, TypeError) as exc:
+        msg = f"Catalog entry '{model_id}': invalid value in capabilities: {exc}"
+        raise CatalogError(msg) from None
 
     # Parse quality scores
     q_data = data["quality"]
-    quality = QualityScores(
-        overall=int(q_data["overall"]),
-        coding=int(q_data["coding"]),
-        reasoning=int(q_data["reasoning"]),
-        instruction_following=int(q_data["instruction_following"]),
-    )
+    try:
+        quality = QualityScores(
+            overall=int(q_data["overall"]),
+            coding=int(q_data["coding"]),
+            reasoning=int(q_data["reasoning"]),
+            instruction_following=int(q_data["instruction_following"]),
+        )
+    except (ValueError, TypeError) as exc:
+        msg = f"Catalog entry '{model_id}': invalid value in quality scores: {exc}"
+        raise CatalogError(msg) from None
 
     # Parse benchmarks
     benchmarks: dict[str, BenchmarkResult] = {}
     for hw_key, bench_data in data["benchmarks"].items():
-        benchmarks[hw_key] = BenchmarkResult(
-            prompt_tps=float(bench_data["prompt_tps"]),
-            gen_tps=float(bench_data["gen_tps"]),
-            memory_gb=float(bench_data["memory_gb"]),
-        )
+        try:
+            benchmarks[hw_key] = BenchmarkResult(
+                prompt_tps=float(bench_data["prompt_tps"]),
+                gen_tps=float(bench_data["gen_tps"]),
+                memory_gb=float(bench_data["memory_gb"]),
+            )
+        except (ValueError, TypeError) as exc:
+            msg = (
+                f"Catalog entry '{model_id}': invalid value in "
+                f"benchmark '{hw_key}': {exc}"
+            )
+            raise CatalogError(msg) from None
 
-    return CatalogEntry(
-        id=str(data["id"]),
-        name=str(data["name"]),
-        family=str(data["family"]),
-        params_b=float(data["params_b"]),
-        architecture=str(data["architecture"]),
-        min_mlx_lm_version=str(data["min_mlx_lm_version"]),
-        sources=sources,
-        capabilities=capabilities,
-        quality=quality,
-        benchmarks=benchmarks,
-        tags=list(data.get("tags", [])),
-    )
+    try:
+        return CatalogEntry(
+            id=str(data["id"]),
+            name=str(data["name"]),
+            family=str(data["family"]),
+            params_b=float(data["params_b"]),
+            architecture=str(data["architecture"]),
+            min_mlx_lm_version=str(data["min_mlx_lm_version"]),
+            sources=sources,
+            capabilities=capabilities,
+            quality=quality,
+            benchmarks=benchmarks,
+            tags=list(data.get("tags", [])),
+        )
+    except (ValueError, TypeError) as exc:
+        msg = f"Catalog entry '{model_id}': invalid top-level field value: {exc}"
+        raise CatalogError(msg) from None
 
 
 # --------------------------------------------------------------------------- #

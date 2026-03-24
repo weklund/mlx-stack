@@ -236,13 +236,49 @@ class TestLoadCatalog:
         """All 15 catalog YAML files load successfully."""
         assert len(catalog) == 15
 
-    def test_five_family_groups_present(self, catalog: list[CatalogEntry]) -> None:
-        """Catalog covers 5 family groups (Qwen 3 and Llama 3.3 are grouped)."""
+    def test_six_distinct_family_values_in_yaml(self, catalog: list[CatalogEntry]) -> None:
+        """Catalog YAML files use 6 distinct family values."""
         families = {e.family for e in catalog}
         expected_families = {
             "Qwen 3.5", "Nemotron", "Gemma 3", "DeepSeek R1", "Qwen 3", "Llama 3.3",
         }
         assert families == expected_families
+
+    def test_five_family_groups(self, catalog: list[CatalogEntry]) -> None:
+        """Catalog covers 5 family groups (Qwen 3 and Llama 3.3 counted as one group).
+
+        The grouping reflects that Qwen 3 (1 model) and Llama 3.3 (1 model) are
+        grouped together as a single "agent-ready alternatives" group, yielding 5
+        logical family groups: Qwen 3.5, Nemotron, Gemma 3, DeepSeek R1,
+        and Qwen 3 / Llama 3.3.
+        """
+        # Define the 5 family groups: the last group combines Qwen 3 + Llama 3.3
+        family_groups: dict[str, set[str]] = {
+            "Qwen 3.5": {"Qwen 3.5"},
+            "Nemotron": {"Nemotron"},
+            "Gemma 3": {"Gemma 3"},
+            "DeepSeek R1": {"DeepSeek R1"},
+            "Qwen 3 / Llama 3.3": {"Qwen 3", "Llama 3.3"},
+        }
+
+        # Verify we have exactly 5 groups
+        assert len(family_groups) == 5
+
+        # Verify every catalog entry maps to exactly one group
+        all_group_families = set()
+        for group_families in family_groups.values():
+            all_group_families.update(group_families)
+
+        for entry in catalog:
+            assert entry.family in all_group_families, (
+                f"Model '{entry.id}' has family '{entry.family}' that is not "
+                f"mapped to any family group"
+            )
+
+        # Verify each group has at least one model
+        for group_name, group_families in family_groups.items():
+            group_models = [e for e in catalog if e.family in group_families]
+            assert len(group_models) > 0, f"Family group '{group_name}' has no models"
 
     def test_all_entries_have_required_fields(self, catalog: list[CatalogEntry]) -> None:
         """Every entry has all required fields populated."""
@@ -494,6 +530,73 @@ class TestCatalogErrors:
         catalog_dir.mkdir()
         (catalog_dir / "specific-file.yaml").write_text(yaml.dump({"id": "x"}))
         with pytest.raises(CatalogError, match="specific-file.yaml"):
+            load_catalog_from_directory(str(catalog_dir))
+
+    def test_non_numeric_disk_size_gb(self, tmp_path: Path) -> None:
+        """Non-numeric disk_size_gb raises CatalogError, not raw ValueError."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["sources"]["int4"]["disk_size_gb"] = "abc"
+        (catalog_dir / "bad_disk_size.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError, match="disk_size_gb.*must be numeric"):
+            load_catalog_from_directory(str(catalog_dir))
+
+    def test_non_numeric_quality_score(self, tmp_path: Path) -> None:
+        """Non-numeric quality score raises CatalogError, not raw ValueError."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["quality"]["overall"] = "high"
+        (catalog_dir / "bad_quality.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError, match="quality.*overall.*must be numeric"):
+            load_catalog_from_directory(str(catalog_dir))
+
+    def test_non_numeric_benchmark_value(self, tmp_path: Path) -> None:
+        """Non-numeric benchmark value raises CatalogError, not raw ValueError."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["benchmarks"]["m4-pro-48"]["gen_tps"] = "fast"
+        (catalog_dir / "bad_bench.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError, match="benchmark.*gen_tps.*must be numeric"):
+            load_catalog_from_directory(str(catalog_dir))
+
+    def test_corrupted_disk_size_no_raw_valueerror(self, tmp_path: Path) -> None:
+        """Ensure corrupted disk_size_gb does not leak a raw ValueError to user."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["sources"]["int4"]["disk_size_gb"] = "not-a-number"
+        (catalog_dir / "corrupt.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError):
+            load_catalog_from_directory(str(catalog_dir))
+        # Confirm it's NOT a raw ValueError
+        try:
+            load_catalog_from_directory(str(catalog_dir))
+        except CatalogError:
+            pass  # Expected
+        except (ValueError, TypeError):
+            pytest.fail("Raw ValueError/TypeError leaked instead of CatalogError")
+
+    def test_corrupted_quality_no_raw_valueerror(self, tmp_path: Path) -> None:
+        """Ensure corrupted quality score does not leak a raw ValueError to user."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["quality"]["coding"] = "excellent"
+        (catalog_dir / "corrupt_quality.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError):
+            load_catalog_from_directory(str(catalog_dir))
+
+    def test_corrupted_benchmark_no_raw_valueerror(self, tmp_path: Path) -> None:
+        """Ensure corrupted benchmark value does not leak a raw ValueError to user."""
+        catalog_dir = tmp_path / "catalog"
+        catalog_dir.mkdir()
+        data = _make_valid_entry()
+        data["benchmarks"]["m4-pro-48"]["memory_gb"] = "lots"
+        (catalog_dir / "corrupt_bench.yaml").write_text(yaml.dump(data))
+        with pytest.raises(CatalogError):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_no_python_traceback_in_message(self, tmp_path: Path) -> None:
