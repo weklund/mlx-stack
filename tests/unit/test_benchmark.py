@@ -768,6 +768,65 @@ class TestToolCallBenchmark:
 
 
 # --------------------------------------------------------------------------- #
+# Test: Temp instance vllm command construction
+# --------------------------------------------------------------------------- #
+
+
+class TestTempInstanceCommand:
+    """Tests for vllm-mlx command construction in _start_temp_instance."""
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_uses_serve_subcommand(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+        sample_entry: CatalogEntry,
+    ) -> None:
+        """vllm-mlx temp instance uses 'serve' subcommand with model as positional arg."""
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        _start_temp_instance("mlx-community/Qwen3.5-8B-4bit", 8100, sample_entry, "int4")
+
+        # Verify start_service was called with correct command
+        mock_start.assert_called_once()
+        call_kwargs = mock_start.call_args
+        cmd = call_kwargs[1]["cmd"] if "cmd" in call_kwargs[1] else call_kwargs[0][1]
+        assert cmd[0] == "/usr/local/bin/vllm-mlx"
+        assert cmd[1] == "serve"
+        assert cmd[2] == "mlx-community/Qwen3.5-8B-4bit"
+        assert "--model" not in cmd
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_tool_calling_flags_added(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+        sample_entry: CatalogEntry,
+    ) -> None:
+        """Tool-calling model gets --enable-auto-tool-choice and --tool-call-parser."""
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        _start_temp_instance("mlx-community/Qwen3.5-8B-4bit", 8100, sample_entry, "int4")
+
+        call_kwargs = mock_start.call_args
+        cmd = call_kwargs[1]["cmd"] if "cmd" in call_kwargs[1] else call_kwargs[0][1]
+        assert "--enable-auto-tool-choice" in cmd
+        assert "--tool-call-parser" in cmd
+        idx = cmd.index("--tool-call-parser")
+        assert cmd[idx + 1] == "hermes"
+
+
+# --------------------------------------------------------------------------- #
 # Test: Temp instance cleanup
 # --------------------------------------------------------------------------- #
 

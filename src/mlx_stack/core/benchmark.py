@@ -812,7 +812,7 @@ def _start_temp_instance(
 
     cmd = [
         vllm_binary,
-        "--model", model_source,
+        "serve", model_source,
         "--port", str(port),
         "--host", "127.0.0.1",
     ]

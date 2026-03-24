@@ -297,6 +297,59 @@ def is_model_downloaded(model_path: Path) -> bool:
 # --------------------------------------------------------------------------- #
 
 
+def _filter_traceback(output: str) -> str:
+    """Filter Python traceback lines from output, returning clean error message.
+
+    Extracts the meaningful error message from output that may contain
+    a full Python traceback. Removes traceback header, frame lines, and
+    code context lines, keeping only pre-traceback content and the final
+    exception line.
+
+    Args:
+        output: Raw output that may contain traceback lines.
+
+    Returns:
+        The filtered, human-readable error message.
+    """
+    lines = output.strip().splitlines()
+    if not lines:
+        return output
+
+    # Check if the output contains a traceback
+    has_traceback = any(
+        line.strip().startswith("Traceback (most recent call last)")
+        for line in lines
+    )
+
+    if not has_traceback:
+        return output.strip()
+
+    # Walk through lines:
+    # - Keep lines before the traceback
+    # - Skip the traceback header and all indented frame/code lines
+    # - Keep the final exception line (first non-indented line after frames)
+    meaningful_lines: list[str] = []
+    in_traceback = False
+    for line in lines:
+        stripped = line.strip()
+        if stripped.startswith("Traceback (most recent call last)"):
+            in_traceback = True
+            continue
+        if in_traceback:
+            # Inside traceback: skip lines that start with whitespace
+            # (frame references like '  File "..."' and code context lines)
+            if line.startswith((" ", "\t")) or stripped == "":
+                continue
+            # First non-indented, non-empty line is the exception message
+            meaningful_lines.append(stripped)
+            in_traceback = False
+            continue
+        if stripped:
+            meaningful_lines.append(stripped)
+
+    return "\n".join(meaningful_lines) if meaningful_lines else output.strip()
+
+
 def _run_download(
     hf_repo: str,
     local_dir: Path,
@@ -304,9 +357,10 @@ def _run_download(
 ) -> None:
     """Run the huggingface-cli download command with real-time output.
 
-    Uses subprocess.Popen to stream stdout line-by-line so the user can
-    see download progress in real-time, while still capturing stderr for
-    error reporting on failure.
+    Uses subprocess.Popen with stderr=subprocess.STDOUT so that HF CLI
+    tqdm progress bars (written to stderr) are merged into stdout and
+    streamed to the user in real-time. Captures output lines for error
+    extraction on failure.
 
     Args:
         hf_repo: The HuggingFace repo to download.
@@ -331,7 +385,7 @@ def _run_download(
         proc = subprocess.Popen(
             cmd,
             stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
             text=True,
         )
     except FileNotFoundError:
@@ -345,18 +399,19 @@ def _run_download(
         msg = f"Failed to start download: {exc}"
         raise DownloadError(msg) from None
 
-    # Stream stdout line-by-line to show download progress to the user
+    # Stream stdout (merged with stderr) line-by-line to show download
+    # progress bars in real-time. Capture lines for error extraction.
     assert proc.stdout is not None
-    assert proc.stderr is not None
+    captured_lines: list[str] = []
     try:
         for line in proc.stdout:
             stripped = line.rstrip("\n")
             if stripped:
                 console.print(f"  {stripped}")
+                captured_lines.append(stripped)
 
-        # Wait for process to complete and capture stderr
+        # Wait for process to complete
         proc.wait(timeout=3600)
-        stderr_output = proc.stderr.read()
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait()
@@ -364,8 +419,9 @@ def _run_download(
         raise DownloadError(msg) from None
 
     if proc.returncode != 0:
-        stderr = stderr_output.strip() if stderr_output else ""
-        msg = f"Download failed for {hf_repo}:\n{stderr}"
+        raw_output = "\n".join(captured_lines)
+        clean_error = _filter_traceback(raw_output)
+        msg = f"Download failed for {hf_repo}:\n{clean_error}"
         raise DownloadError(msg)
 
 

@@ -716,6 +716,70 @@ class TestDownloadModel:
 
 
 # =========================================================================== #
+# Traceback filtering tests
+# =========================================================================== #
+
+
+class TestFilterTraceback:
+    """Tests for _filter_traceback — VAL-PULL-008."""
+
+    def test_no_traceback_passes_through(self) -> None:
+        """Output without traceback is returned as-is."""
+        from mlx_stack.core.pull import _filter_traceback
+
+        output = "Error: Repository not found"
+        assert _filter_traceback(output) == "Error: Repository not found"
+
+    def test_filters_full_traceback(self) -> None:
+        """Full Python traceback is filtered to just the error message."""
+        from mlx_stack.core.pull import _filter_traceback
+
+        output = (
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/python3.13/site-packages/requests/adapters.py", line 667\n'
+            "    resp = conn.urlopen(...)\n"
+            '  File "/usr/lib/python3.13/urllib3/connectionpool.py", line 843\n'
+            "    retries = retries.increment(...)\n"
+            "requests.exceptions.ConnectionError: Connection refused\n"
+        )
+        result = _filter_traceback(output)
+        assert "Traceback" not in result
+        assert "File " not in result
+        assert "Connection refused" in result
+
+    def test_empty_string(self) -> None:
+        """Empty string returns empty string."""
+        from mlx_stack.core.pull import _filter_traceback
+
+        assert _filter_traceback("") == ""
+
+    def test_multiline_without_traceback(self) -> None:
+        """Multiple lines without traceback are preserved."""
+        from mlx_stack.core.pull import _filter_traceback
+
+        output = "Downloading file 1...\nDownloading file 2...\nError: timeout"
+        result = _filter_traceback(output)
+        assert "Downloading file 1..." in result
+        assert "Error: timeout" in result
+
+    def test_traceback_with_preamble(self) -> None:
+        """Output with text before traceback preserves pre-traceback content."""
+        from mlx_stack.core.pull import _filter_traceback
+
+        output = (
+            "Downloading model.safetensors\n"
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/python3.13/site-packages/something.py", line 10\n'
+            "    do_stuff()\n"
+            "OSError: Network error\n"
+        )
+        result = _filter_traceback(output)
+        assert "Downloading model.safetensors" in result
+        assert "Network error" in result
+        assert "Traceback" not in result
+
+
+# =========================================================================== #
 # Download progress visibility tests
 # =========================================================================== #
 
@@ -729,17 +793,16 @@ class TestDownloadProgress:
         mock_popen: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """_run_download streams stdout line-by-line to console."""
+        """_run_download streams stdout (merged with stderr) to console."""
         from io import StringIO
 
         from rich.console import Console
 
         from mlx_stack.core.pull import _run_download
 
-        # Mock Popen to simulate line-by-line output
+        # Mock Popen to simulate line-by-line output (stderr merged via STDOUT)
         mock_proc = MagicMock()
         mock_proc.stdout = StringIO("Downloading model.safetensors: 50%\nDownloading: 100%\n")
-        mock_proc.stderr = StringIO("")
         mock_proc.returncode = 0
         mock_proc.wait.return_value = 0
         mock_popen.return_value = mock_proc
@@ -754,12 +817,13 @@ class TestDownloadProgress:
         assert "Downloading" in printed
 
     @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_uses_popen_not_run(
+    def test_run_download_uses_stderr_stdout_for_progress(
         self,
         mock_popen: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """Verifies Popen is used (not subprocess.run) for real-time output."""
+        """Verifies Popen uses stderr=STDOUT to merge tqdm progress bars."""
+        import subprocess as sp
         from io import StringIO
 
         from rich.console import Console
@@ -768,7 +832,6 @@ class TestDownloadProgress:
 
         mock_proc = MagicMock()
         mock_proc.stdout = StringIO("")
-        mock_proc.stderr = StringIO("")
         mock_proc.returncode = 0
         mock_proc.wait.return_value = 0
         mock_popen.return_value = mock_proc
@@ -780,17 +843,18 @@ class TestDownloadProgress:
 
         mock_popen.assert_called_once()
         call_kwargs = mock_popen.call_args
+        # Verify stderr=subprocess.STDOUT to merge progress bars into stdout
+        assert call_kwargs[1].get("stderr") == sp.STDOUT
         # Verify stdout is PIPE for streaming
-        assert call_kwargs[1].get("stdout") is not None or \
-            (len(call_kwargs[0]) > 0 if call_kwargs[0] else True)
+        assert call_kwargs[1].get("stdout") == sp.PIPE
 
     @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_failure_reports_stderr(
+    def test_run_download_failure_reports_captured_output(
         self,
         mock_popen: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """Failed download reports stderr content in error."""
+        """Failed download reports captured output in error."""
         from io import StringIO
 
         import pytest
@@ -798,9 +862,9 @@ class TestDownloadProgress:
 
         from mlx_stack.core.pull import _run_download
 
+        # With stderr=STDOUT, error messages come through stdout
         mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("")
-        mock_proc.stderr = StringIO("Error: Repository not found")
+        mock_proc.stdout = StringIO("Error: Repository not found\n")
         mock_proc.returncode = 1
         mock_proc.wait.return_value = 1
         mock_popen.return_value = mock_proc
@@ -811,6 +875,46 @@ class TestDownloadProgress:
 
         with pytest.raises(DownloadError, match="Repository not found"):
             _run_download("test/repo", local_dir, console)
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_run_download_filters_traceback_on_failure(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Failed download filters Python traceback, shows clean error."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        # Simulate output with full Python traceback
+        traceback_output = (
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/python3.13/site-packages/huggingface_hub/utils.py", line 100\n'
+            "    response.raise_for_status()\n"
+            "requests.exceptions.ConnectionError: Connection refused\n"
+        )
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO(traceback_output)
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+
+        with pytest.raises(DownloadError) as exc_info:
+            _run_download("test/repo", local_dir, console)
+
+        error_msg = str(exc_info.value)
+        # Should contain the clean error, not the traceback
+        assert "Connection refused" in error_msg
+        assert "Traceback (most recent call last)" not in error_msg
+        assert '  File "' not in error_msg
 
 
 # =========================================================================== #

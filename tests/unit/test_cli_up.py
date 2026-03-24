@@ -258,7 +258,7 @@ class TestBuildVllmCommand:
         }
         cmd = build_vllm_command(tier, "/usr/local/bin/vllm-mlx")
         assert cmd[0] == "/usr/local/bin/vllm-mlx"
-        assert "--model" in cmd
+        assert cmd[1] == "serve"
         assert "mlx-community/fast-model-4bit" in cmd
         assert "--port" in cmd
         assert "8001" in cmd
@@ -266,6 +266,23 @@ class TestBuildVllmCommand:
         assert "127.0.0.1" in cmd
         assert "--continuous-batching" in cmd
         assert "--use-paged-cache" in cmd
+
+    def test_serve_subcommand_with_model_positional(self) -> None:
+        """vllm-mlx uses 'serve' subcommand with model as positional arg."""
+        tier = {
+            "name": "fast",
+            "model": "test-model",
+            "source": "mlx-community/test-model-4bit",
+            "port": 8001,
+            "vllm_flags": {},
+        }
+        cmd = build_vllm_command(tier, "vllm-mlx")
+        # Command format: vllm-mlx serve <model> --port N --host 127.0.0.1
+        assert cmd[0] == "vllm-mlx"
+        assert cmd[1] == "serve"
+        assert cmd[2] == "mlx-community/test-model-4bit"
+        # --model flag should NOT be present
+        assert "--model" not in cmd
 
     def test_tool_calling_flags(self) -> None:
         """VAL-CROSS-013: vllm_flags translate correctly to CLI flags."""
