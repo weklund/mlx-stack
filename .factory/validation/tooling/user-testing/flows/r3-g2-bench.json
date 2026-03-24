@@ -1,0 +1,55 @@
+{
+  "groupId": "r3-g2-bench",
+  "testedAt": "2026-03-24T13:30:38Z",
+  "isolation": {
+    "MLX_STACK_HOME": "/private/tmp/mlx-stack-user-testing/tooling-r3-g2-bench",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/r3-g2-bench",
+    "notes": "Used isolated MLX_STACK_HOME only; did not touch ~/.mlx-stack."
+  },
+  "toolsUsed": [
+    "terminal",
+    "uv",
+    "mlx-stack CLI"
+  ],
+  "commands": [
+    {
+      "command": "MLX_STACK_HOME=/private/tmp/mlx-stack-user-testing/tooling-r3-g2-bench PATH=/private/tmp:$PATH uv run mlx-stack pull qwen3-8b --quant int4 --force",
+      "exitCode": 0,
+      "evidence": "tooling/r3-g2-bench/commands.log"
+    },
+    {
+      "command": "MLX_STACK_HOME=/private/tmp/mlx-stack-user-testing/tooling-r3-g2-bench uv run mlx-stack bench qwen3-8b",
+      "exitCode": 0,
+      "evidence": "tooling/r3-g2-bench/commands.log"
+    },
+    {
+      "command": "cp /private/tmp/mlx-stack-user-testing/tooling-r3-g2-bench/logs/bench-temp-qwen3-8b.log <mission evidence dir>/bench-temp-qwen3-8b.log",
+      "exitCode": 0,
+      "evidence": "tooling/r3-g2-bench/bench-temp-qwen3-8b.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-BENCH-008",
+      "title": "Tool-calling benchmark for capable models",
+      "status": "fail",
+      "reason": "Bench output still reports \"Tool call failed — No tool calls in response\" for qwen3-8b instead of a successful tool-call round-trip.",
+      "evidence": [
+        "tooling/r3-g2-bench/commands.log",
+        "tooling/r3-g2-bench/bench-temp-qwen3-8b.log"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "During pull, Hugging Face cache lock contention messages appeared briefly (\"Still waiting to acquire lock ... .gitignore.lock\").",
+      "resolved": true,
+      "resolution": "Waited; pull completed successfully without retry.",
+      "affectedAssertions": [
+        "VAL-BENCH-008"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "VAL-BENCH-008 failed on current HEAD: qwen3-8b benchmark completed, but tool-calling validation reported no tool calls in response."
+}

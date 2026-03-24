@@ -1,0 +1,219 @@
+{
+  "groupId": "r1-g6-cross",
+  "testedAt": "2026-03-24T07:12:52.255148+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r1-g6-cross",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r1-g6-cross",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "curl",
+    "python3"
+  ],
+  "commands": [
+    {
+      "name": "cross006_init_and_dry_run",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g6-cross uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack init --accept-defaults && mlx-stack up --dry-run",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/01-init-accept-defaults.txt"
+    },
+    {
+      "name": "cross007_config_propagation_checks",
+      "command": "Set litellm-port/memory-budget-pct/default-quant/model-dir and re-run init/recommend/up/models/pull checks in same isolation home",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/04-config-set-litellm-port-5000.txt"
+    },
+    {
+      "name": "cross009_partial_failure_recovery",
+      "command": "MLX_SHIM_FAIL_PORTS=8001 mlx-stack up; mlx-stack status --json; mlx-stack down; remove failure and rerun up/status",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/22-cross009-up-partial-failure.txt"
+    },
+    {
+      "name": "cross010_stale_pid_recovery_without_down",
+      "command": "Kill fast tier process externally, run status, then rerun mlx-stack up without down",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/32-cross010-up-rerun-without-down.txt"
+    },
+    {
+      "name": "cross011_auto_install_first_vs_second_up",
+      "command": "Use isolated auto-install UV/tool shim path; run first up (install expected), down, second up (no reinstall expected)",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/73-cross011-rerun-first-up.txt"
+    },
+    {
+      "name": "cross013_data_consistency_checks",
+      "command": "Run profile/recommend/init/bench --save/pull/up --dry-run and unsupported schema_version check",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/43-cross013-profile.txt"
+    },
+    {
+      "name": "cross015_selective_tier_restart_and_fallback",
+      "command": "Run full up, chat request through LiteLLM, down --tier fast, status/check fallback chat, up --tier fast, status",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/61-cross015-up-full-rerun.txt"
+    },
+    {
+      "name": "cross016_interrupted_startup_recovery",
+      "command": "Interrupt mlx-stack up with SIGINT, rerun mlx-stack up, verify stale cleanup + already-running handling + healthy status",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g6-cross/70a-cross016-interrupted-up.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-CROSS-006",
+      "status": "pass",
+      "reason": "Init produced stack and LiteLLM configs with matching tier ports (8000/8001/8002), and `up --dry-run` used the same tier ports plus LiteLLM port 4000 exactly as configured.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/01-init-accept-defaults.txt",
+        "lifecycle/r1-g6-cross/02-up-dry-run.txt",
+        "lifecycle/r1-g6-cross/03-cross-006-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "status": "blocked",
+      "reason": "Config propagation was confirmed for `litellm-port` (up/status on 5000), `memory-budget-pct` (recommend/init budget 76.8 GB), and `model-dir` (models command used custom directory), but validation of `default-quant -> pull` and `model-dir -> pull` could not be completed because `mlx-stack pull` is currently a placeholder (`Not yet implemented`).",
+      "evidence": [
+        "lifecycle/r1-g6-cross/04-config-set-litellm-port-5000.txt",
+        "lifecycle/r1-g6-cross/05-init-force-after-port-5000.txt",
+        "lifecycle/r1-g6-cross/07-up-after-port-5000.txt",
+        "lifecycle/r1-g6-cross/08-status-after-up-port5000.json",
+        "lifecycle/r1-g6-cross/10-config-set-memory-budget-60.txt",
+        "lifecycle/r1-g6-cross/11-recommend-after-budget60.txt",
+        "lifecycle/r1-g6-cross/12-init-after-budget60.txt",
+        "lifecycle/r1-g6-cross/13-config-set-default-quant-int8.txt",
+        "lifecycle/r1-g6-cross/14-pull-after-default-quant-int8.txt",
+        "lifecycle/r1-g6-cross/15-config-set-model-dir-custom.txt",
+        "lifecycle/r1-g6-cross/17-models-after-custom-model-dir.txt",
+        "lifecycle/r1-g6-cross/18-pull-after-custom-model-dir.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-009",
+      "status": "pass",
+      "reason": "With an induced fast-tier failure, up completed with mixed states (fast failed/down, other tiers + LiteLLM healthy), `down` cleaned all PID files including stale orphan PID, and a subsequent clean up run restored all tiers to healthy.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/22-cross009-up-partial-failure.txt",
+        "lifecycle/r1-g6-cross/23-cross009-status-after-partial-failure.json",
+        "lifecycle/r1-g6-cross/25-cross009-down-after-partial-failure.txt",
+        "lifecycle/r1-g6-cross/26-cross009-post-down-pid-check.json",
+        "lifecycle/r1-g6-cross/27-cross009-up-recovery.txt",
+        "lifecycle/r1-g6-cross/28-cross009-status-after-recovery.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "pass",
+      "reason": "After externally crashing fast tier, status reported fast as crashed; rerunning `up` without `down` cleaned stale PID state and restarted only fast (new PID), while standard/longctx/LiteLLM remained already-running and unchanged.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/29-cross010-pids-before-kill.json",
+        "lifecycle/r1-g6-cross/31-cross010-status-after-kill.json",
+        "lifecycle/r1-g6-cross/32-cross010-up-rerun-without-down.txt",
+        "lifecycle/r1-g6-cross/33-cross010-pids-after-rerun.json",
+        "lifecycle/r1-g6-cross/34-cross010-status-after-rerun.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "status": "pass",
+      "reason": "In isolated auto-install mode, first `up` installed both dependencies (`Installing vllm-mlx...`, `Installing litellm...`) then started healthy services; after `down`, second `up` started services without reinstall messages.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/71-cross011-fix-template-and-reset.json",
+        "lifecycle/r1-g6-cross/73-cross011-rerun-first-up.txt",
+        "lifecycle/r1-g6-cross/74-cross011-rerun-status-first-up.json",
+        "lifecycle/r1-g6-cross/75-cross011-rerun-down-after-first-up.txt",
+        "lifecycle/r1-g6-cross/76-cross011-rerun-second-up.txt",
+        "lifecycle/r1-g6-cross/77-cross011-rerun-status-second-up.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "blocked",
+      "reason": "Profile/recommend/init flow, schema_version rejection, and `vllm_flags -> up --dry-run` translation were validated, but full cross-command data consistency could not be completed because `bench --save` and `pull` are placeholder commands and do not create benchmark/models inventory artifacts required by the assertion.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/43-cross013-profile.txt",
+        "lifecycle/r1-g6-cross/44-cross013-recommend.txt",
+        "lifecycle/r1-g6-cross/45-cross013-init-force.txt",
+        "lifecycle/r1-g6-cross/46-cross013-bench-save.txt",
+        "lifecycle/r1-g6-cross/47-cross013-pull.txt",
+        "lifecycle/r1-g6-cross/48a-cross013-models-and-flags.json",
+        "lifecycle/r1-g6-cross/48b-cross013-up-dry-run.txt",
+        "lifecycle/r1-g6-cross/48c-cross013-vllm-flag-analysis.json",
+        "lifecycle/r1-g6-cross/49b-cross013-up-unsupported-schema.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-015",
+      "status": "pass",
+      "reason": "With full stack healthy, `down --tier fast` stopped only fast and status showed fast=stopped while others stayed healthy; LiteLLM chat request still returned 200 via fallback (`x_selected_model: longctx`), and `up --tier fast` restored fast to healthy.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/61-cross015-up-full-rerun.txt",
+        "lifecycle/r1-g6-cross/62-cross015-status-after-full-up-rerun.json",
+        "lifecycle/r1-g6-cross/63-cross015-litellm-request-before-down-rerun.httpcode",
+        "lifecycle/r1-g6-cross/63-cross015-litellm-request-before-down-rerun.json",
+        "lifecycle/r1-g6-cross/64-cross015-down-tier-fast-rerun.txt",
+        "lifecycle/r1-g6-cross/65-cross015-status-after-down-tier-rerun.json",
+        "lifecycle/r1-g6-cross/66-cross015-litellm-request-after-fast-down-rerun.httpcode",
+        "lifecycle/r1-g6-cross/66-cross015-litellm-request-after-fast-down-rerun.json",
+        "lifecycle/r1-g6-cross/67-cross015-up-tier-fast-rerun.txt",
+        "lifecycle/r1-g6-cross/68-cross015-status-after-up-tier-rerun.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-016",
+      "status": "pass",
+      "reason": "Interrupted `up` exited on SIGINT, then a rerun proceeded without lock conflict, reported stale PID cleanup, treated surviving services as already-running, restarted missing fast tier, and ended with all services healthy.",
+      "evidence": [
+        "lifecycle/r1-g6-cross/70a-cross016-interrupted-up.txt",
+        "lifecycle/r1-g6-cross/70b-cross016-pids-after-interrupt.json",
+        "lifecycle/r1-g6-cross/70c-cross016-rerun-up.txt",
+        "lifecycle/r1-g6-cross/70d-cross016-status-after-rerun.json",
+        "lifecycle/r1-g6-cross/70e-cross016-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "litellm version mismatch warning (`installed v1.82.6, expected v1.67.2`) appears on lifecycle runs and adds noise to startup output.",
+      "resolved": true,
+      "resolution": "Treated as non-blocking because assertions are cross-flow behavior checks and startup still completed successfully.",
+      "affectedAssertions": [
+        "VAL-CROSS-007",
+        "VAL-CROSS-009",
+        "VAL-CROSS-010",
+        "VAL-CROSS-015",
+        "VAL-CROSS-016"
+      ],
+      "evidence": [
+        "lifecycle/r1-g6-cross/07-up-after-port-5000.txt",
+        "lifecycle/r1-g6-cross/22-cross009-up-partial-failure.txt",
+        "lifecycle/r1-g6-cross/61-cross015-up-full-rerun.txt",
+        "lifecycle/r1-g6-cross/70a-cross016-interrupted-up.txt"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "`mlx-stack pull` is not implemented in this build, blocking end-to-end validation of default-quant/model-dir propagation into actual downloads.",
+      "affectedAssertions": [
+        "VAL-CROSS-007",
+        "VAL-CROSS-013"
+      ],
+      "quickFixAttempted": "Ran `mlx-stack pull qwen3.5-0.8b` and `mlx-stack pull qwen3.5-0.8b --quant int8`; both returned `Not yet implemented. Coming in the pull-command feature.`"
+    },
+    {
+      "description": "`mlx-stack bench --save` is not implemented in this build, blocking validation that benchmark artifacts are consumed across commands for data consistency.",
+      "affectedAssertions": [
+        "VAL-CROSS-013"
+      ],
+      "quickFixAttempted": "Ran `mlx-stack bench fast --save`; command returned `Not yet implemented. Coming in the bench-command feature.`"
+    }
+  ],
+  "summary": "Tested 8 assigned assertions for lifecycle cross flows in isolated CLI environment: 6 passed, 0 failed, 2 blocked (VAL-CROSS-007 and VAL-CROSS-013 blocked by unimplemented pull/bench commands)."
+}

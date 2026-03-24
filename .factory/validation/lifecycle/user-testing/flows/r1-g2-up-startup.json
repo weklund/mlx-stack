@@ -1,0 +1,142 @@
+{
+  "groupId": "r1-g2-up-startup",
+  "testedAt": "2026-03-24T05:42:21.115182+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r1-g2-up-startup"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "curl"
+  ],
+  "commands": [
+    {
+      "name": "up_success_two_tiers",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup/shims/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/01-up-success.txt"
+    },
+    {
+      "name": "post_up_endpoint_checks",
+      "command": "curl http://127.0.0.1:{8000,8001}/v1/models and http://127.0.0.1:4000/health/liveliness",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/03-endpoint-check-success.txt"
+    },
+    {
+      "name": "down_after_success",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/04-down-after-success.txt"
+    },
+    {
+      "name": "up_partial_failure_timeout_continue",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup MLX_SHIM_FAIL_PORTS=8000 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt"
+    },
+    {
+      "name": "down_after_timeout_run",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/08-down-after-timeout.txt"
+    },
+    {
+      "name": "up_all_model_servers_fail",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup MLX_SHIM_FAIL_PORTS=8001 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g2-up-startup/09-up-all-fail.txt"
+    },
+    {
+      "name": "down_after_all_fail",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g2-up-startup uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g2-up-startup/11-down-after-all-fail.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-UP-001",
+      "status": "pass",
+      "reason": "`mlx-stack up` loaded the stack definition and started one vllm-mlx process per tier plus LiteLLM; launch order was standard(8000) then fast(8001), and all processes remained reachable after CLI exit.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/01-up-success.txt",
+        "lifecycle/r1-g2-up-startup/01-launch-success.jsonl",
+        "lifecycle/r1-g2-up-startup/02-success-postcheck.json",
+        "lifecycle/r1-g2-up-startup/03-endpoint-check-success.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-002",
+      "status": "pass",
+      "reason": "Per-service log files (`standard.log`, `fast.log`, `litellm.log`) were created under isolated `logs/` and contain subprocess startup output, confirming stdout/stderr redirection.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/02-success-postcheck.json",
+        "lifecycle/r1-g2-up-startup/01-up-success.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-003",
+      "status": "pass",
+      "reason": "When tier `standard` health checks never returned 200, startup waited until timeout with explicit `120s` message, request intervals showed exponential backoff (about 1s\u21922s\u21924s\u21928s\u219210s), and startup continued to healthy `fast` + LiteLLM.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt",
+        "lifecycle/r1-g2-up-startup/06-requests-timeout.jsonl",
+        "lifecycle/r1-g2-up-startup/07-timeout-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-004",
+      "status": "pass",
+      "reason": "PID files for `standard`, `fast`, and `litellm` existed with digits-only content and no trailing whitespace, and mapped to live processes during startup validation.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/02-success-postcheck.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-005",
+      "status": "pass",
+      "reason": "In healthy/partial-failure runs, LiteLLM launched after model-tier checks; in all-fail run, LiteLLM was skipped with `All model servers failed` and no litellm launch entry.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/01-launch-success.jsonl",
+        "lifecycle/r1-g2-up-startup/06-launch-timeout.jsonl",
+        "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt",
+        "lifecycle/r1-g2-up-startup/09-up-all-fail.txt",
+        "lifecycle/r1-g2-up-startup/09-launch-all-fail.jsonl",
+        "lifecycle/r1-g2-up-startup/10-all-fail-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-006",
+      "status": "pass",
+      "reason": "Completion output included a formatted Service Summary table with service/tier, model, port, and status rows across success, partial-failure, and all-fail runs.",
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/01-up-success.txt",
+        "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt",
+        "lifecycle/r1-g2-up-startup/09-up-all-fail.txt"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Environment had litellm version mismatch warning (installed v1.82.6 vs pinned v1.67.2) printed on each up run.",
+      "resolved": true,
+      "resolution": "Warning was non-blocking for assigned startup-flow assertions; proceeded with isolated shim-backed startup checks.",
+      "affectedAssertions": [
+        "VAL-UP-001",
+        "VAL-UP-003",
+        "VAL-UP-005",
+        "VAL-UP-006"
+      ],
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/01-up-success.txt",
+        "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt",
+        "lifecycle/r1-g2-up-startup/09-up-all-fail.txt"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 6 assertions (VAL-UP-001..006): 6 passed, 0 failed, 0 blocked."
+}

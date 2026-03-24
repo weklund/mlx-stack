@@ -1,0 +1,184 @@
+{
+  "groupId": "r1-g1-deps-up-basics",
+  "testedAt": "2026-03-24T05:28:39.446370+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r1-g1-deps-up-basics"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "commands": [
+    {
+      "name": "up_missing_stack",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/01-up-missing-stack.txt"
+    },
+    {
+      "name": "init_accept_defaults",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack init --accept-defaults",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/02-init-accept-defaults.txt"
+    },
+    {
+      "name": "up_dry_run",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --dry-run",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/03-up-dry-run.txt"
+    },
+    {
+      "name": "dry_run_filesystem_check",
+      "command": "python3 filesystem check for pids/logs/lock under isolation home",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/04-post-dry-run-filesystem-check.txt"
+    },
+    {
+      "name": "up_tier_fast_auto_install_success",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics UV_TOOL_DIR=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/uv-tools-success UV_TOOL_BIN_DIR=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/uv-tools-success/bin PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/uv-tools-success/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier fast",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt"
+    },
+    {
+      "name": "isolated_tool_bin_check",
+      "command": "PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/uv-tools-success/bin:/opt/homebrew/bin:/usr/bin:/bin command -v vllm-mlx && command -v litellm",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/05b-isolated-tool-bin-check.txt"
+    },
+    {
+      "name": "up_tier_fast_auto_install_failure",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/shims-install-fail:/usr/bin:/bin /opt/homebrew/bin/uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier fast",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/06b-up-tier-fast-auto-install-failure-via-shim.txt"
+    },
+    {
+      "name": "up_tier_fast_version_mismatch",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics/shims-version-mismatch:/usr/bin:/bin /opt/homebrew/bin/uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier fast",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/07-up-tier-fast-version-mismatch-warning.txt"
+    },
+    {
+      "name": "up_invalid_tier",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier nope",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/08-up-invalid-tier.txt"
+    },
+    {
+      "name": "up_tier_fast_dry_run",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g1-deps-up-basics uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier fast --dry-run",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g1-deps-up-basics/09-up-tier-fast-dry-run.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-DEPS-001",
+      "status": "pass",
+      "reason": "With dependencies hidden from PATH and isolated UV tool dirs, 'mlx-stack up --tier fast' auto-installed vllm-mlx and litellm at pinned versions and verified availability in isolated tool bin.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt",
+        "lifecycle/r1-g1-deps-up-basics/05b-isolated-tool-bin-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-DEPS-002",
+      "status": "pass",
+      "reason": "When uv tool install was forced to fail via shim, CLI returned a clear dependency installation error including the failed command and manual install instruction; no traceback observed.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/06b-up-tier-fast-auto-install-failure-via-shim.txt"
+      ]
+    },
+    {
+      "id": "VAL-DEPS-004",
+      "status": "pass",
+      "reason": "With mismatched versions reported by uv tool list, CLI emitted version mismatch warnings for both dependencies and suggested exact upgrade/downgrade commands.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/07-up-tier-fast-version-mismatch-warning.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-008",
+      "status": "pass",
+      "reason": "'up --dry-run' printed explicit vllm-mlx and litellm commands, and no pids/logs/lock artifacts were created in isolation home.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/03-up-dry-run.txt",
+        "lifecycle/r1-g1-deps-up-basics/04-post-dry-run-filesystem-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-009",
+      "status": "blocked",
+      "reason": "Tier-start behavior requiring running services could not be validated because no local model files exist in isolated MLX_STACK_HOME; command consistently skipped fast tier with pull instruction. Invalid-tier error path was validated.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt",
+        "lifecycle/r1-g1-deps-up-basics/08-up-invalid-tier.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-010",
+      "status": "pass",
+      "reason": "For 'up', missing dependencies triggered auto-install at pinned versions before startup logic; failure path also produced clear instruction with no partial tier start.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt",
+        "lifecycle/r1-g1-deps-up-basics/06b-up-tier-fast-auto-install-failure-via-shim.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-011",
+      "status": "pass",
+      "reason": "With no stack definition present, 'up' exited non-zero and suggested running 'mlx-stack init'.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/01-up-missing-stack.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-015",
+      "status": "pass",
+      "reason": "Dry-run command lines for both vllm-mlx and litellm include '--host 127.0.0.1', confirming localhost-only binding intent.",
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/03-up-dry-run.txt",
+        "lifecycle/r1-g1-deps-up-basics/09-up-tier-fast-dry-run.txt"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Using UV_INDEX_URL to force dependency-install failure broke outer 'uv run' resolution before mlx-stack executed.",
+      "resolved": true,
+      "resolution": "Switched to a local uv shim for inner dependency-install failure simulation while keeping outer '/opt/homebrew/bin/uv run' intact.",
+      "affectedAssertions": [
+        "VAL-DEPS-002",
+        "VAL-UP-010"
+      ],
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/06-up-tier-fast-auto-install-failure.txt",
+        "lifecycle/r1-g1-deps-up-basics/06b-up-tier-fast-auto-install-failure-via-shim.txt"
+      ]
+    },
+    {
+      "description": "uv emitted a non-fatal warning about malformed tool 'bin' when using a nested UV_TOOL_DIR path.",
+      "resolved": true,
+      "resolution": "Warning did not affect installs; proceeded and verified binaries in isolated tool bin.",
+      "affectedAssertions": [
+        "VAL-DEPS-001",
+        "VAL-UP-010"
+      ],
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "No local model artifacts were present in isolated MLX_STACK_HOME, so 'up --tier fast' skipped service startup and LiteLLM never started.",
+      "affectedAssertions": [
+        "VAL-UP-009"
+      ],
+      "quickFixAttempted": "Ran init to generate stack and retried up --tier fast; CLI consistently requested 'mlx-stack pull qwen3.5-0.8b'."
+    }
+  ],
+  "summary": "Tested 8 assertions: 7 passed, 0 failed, 1 blocked (VAL-UP-009 blocked by missing local model prerequisite in isolated home)."
+}

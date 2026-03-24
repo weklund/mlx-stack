@@ -1,0 +1,112 @@
+{
+  "milestone": "foundation",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 27,
+    "passed": 21,
+    "failed": 2,
+    "blocked": 4
+  },
+  "passedAssertions": [
+    "VAL-CONFIG-001",
+    "VAL-CONFIG-002",
+    "VAL-CONFIG-003",
+    "VAL-CONFIG-004",
+    "VAL-CONFIG-005",
+    "VAL-CONFIG-006",
+    "VAL-CONFIG-007",
+    "VAL-CONFIG-008",
+    "VAL-CONFIG-009",
+    "VAL-DEPS-003",
+    "VAL-PROFILE-001",
+    "VAL-PROFILE-002",
+    "VAL-PROFILE-003",
+    "VAL-PROFILE-004",
+    "VAL-PROFILE-005",
+    "VAL-PROFILE-006",
+    "VAL-PROFILE-007",
+    "VAL-SETUP-001",
+    "VAL-SETUP-002",
+    "VAL-SETUP-003",
+    "VAL-SETUP-004"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-CATALOG-001",
+      "reason": "CLI catalog listing surface is not implemented, so required catalog table is not produced."
+    },
+    {
+      "id": "VAL-CATALOG-002",
+      "reason": "Required catalog filtering options are absent on current CLI surface."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "blockedBy": "Blocked by unimplemented CLI catalog command; corrupt/missing catalog behavior cannot be reached from real CLI surface.",
+      "id": "VAL-CATALOG-003"
+    },
+    {
+      "blockedBy": "Cannot validate auto-install flow because `up` and `bench` user-surface commands are not implemented in this milestone build.",
+      "id": "VAL-DEPS-001"
+    },
+    {
+      "blockedBy": "Dependency install failure path is unreachable from CLI because dependency-triggering commands are not implemented.",
+      "id": "VAL-DEPS-002"
+    },
+    {
+      "blockedBy": "Mismatch warning behavior cannot be exercised via CLI until dependency-checking lifecycle commands are implemented.",
+      "id": "VAL-DEPS-004"
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added \"Flow Validator Guidance: CLI\" section with explicit isolation boundaries and MLX_STACK_HOME usage per validator group.",
+      "source": "setup"
+    },
+    {
+      "target": "synthesis",
+      "description": "Captured deduplicated user-testing frictions/blockers from flow reports for orchestrator fix planning.",
+      "source": "flow-report"
+    }
+  ],
+  "flowReports": [
+    ".factory/validation/foundation/user-testing/flows/foundation-config-basic.json",
+    ".factory/validation/foundation/user-testing/flows/foundation-config-deps.json",
+    ".factory/validation/foundation/user-testing/flows/foundation-profile-catalog.json",
+    ".factory/validation/foundation/user-testing/flows/foundation-setup-profile-core.json"
+  ],
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "frictions": [
+    "Assigned catalog assertions require `models --catalog` behavior and filter flags that are not currently implemented on the CLI surface."
+  ],
+  "dedupedBlockers": [
+    "Dependency-management assertions requiring `up`/`bench` are not testable through the real CLI surface because those commands are placeholders in this build.",
+    "Catalog error-path validation (corrupt/missing catalog) is not reachable because `mlx-stack models --catalog` is not implemented."
+  ],
+  "generatedAt": "2026-03-24T01:36:55.046043+00:00",
+  "previousRound": null,
+  "orchestratorOverride": {
+    "reason": "6 assertions (VAL-CATALOG-001/002/003, VAL-DEPS-001/002/004) were incorrectly assigned to foundation features. These require CLI surfaces (models --catalog, up, bench) built in later milestones. Assertions reassigned to models-command (recommendation) and up-command (lifecycle). 21/27 assertions passed. The 6 pending assertions are reset and will be tested in their correct milestone.",
+    "assertionsDeferred": [
+      "VAL-CATALOG-001",
+      "VAL-CATALOG-002",
+      "VAL-CATALOG-003",
+      "VAL-DEPS-001",
+      "VAL-DEPS-002",
+      "VAL-DEPS-004"
+    ],
+    "deferredTo": {
+      "VAL-CATALOG-001": "models-command (recommendation)",
+      "VAL-CATALOG-002": "models-command (recommendation)",
+      "VAL-CATALOG-003": "models-command (recommendation)",
+      "VAL-DEPS-001": "up-command (lifecycle)",
+      "VAL-DEPS-002": "up-command (lifecycle)",
+      "VAL-DEPS-004": "up-command (lifecycle)"
+    }
+  }
+}

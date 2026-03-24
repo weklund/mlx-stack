@@ -1,0 +1,51 @@
+{
+  "groupId": "r3-g1-pull",
+  "testedAt": "2026-03-24T13:31:18.538884+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/private/tmp/mlx-stack-user-testing/tooling-r3-g1-pull",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/r3-g1-pull"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "Grep",
+    "Glob",
+    "LS"
+  ],
+  "commands": [
+    {
+      "name": "hf_cli_wrapper_check",
+      "command": "PATH=/private/tmp:$PATH which hf && PATH=/private/tmp:$PATH which huggingface-cli",
+      "exitCode": 0,
+      "evidence": "tooling/r3-g1-pull/commands.log"
+    },
+    {
+      "name": "pull_network_failure",
+      "command": "HF_ENDPOINT=http://127.0.0.1:9 MLX_STACK_HOME=/private/tmp/mlx-stack-user-testing/tooling-r3-g1-pull PATH=/private/tmp:$PATH uv run mlx-stack pull gemma3-4b --quant int4 --force",
+      "exitCode": 1,
+      "evidence": "tooling/r3-g1-pull/commands.log"
+    },
+    {
+      "name": "post_failure_cleanup_check",
+      "command": "rg -n \"Traceback \\(most recent call last\\)|^\\s+File \"\" tooling/r3-g1-pull/pull-output.txt && ls -la /private/tmp/mlx-stack-user-testing/tooling-r3-g1-pull/models",
+      "exitCode": 0,
+      "evidence": "tooling/r3-g1-pull/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-008",
+      "status": "pass",
+      "reason": "Forced network failure exited non-zero (1), printed concise network/auth guidance, showed no Python traceback block, and left no gemma3 partial artifacts under isolated MLX_STACK_HOME.",
+      "evidence": [
+        "tooling/r3-g1-pull/commands.log",
+        "tooling/r3-g1-pull/pull-output.txt",
+        "tooling/r3-g1-pull/pull-exit-code.txt"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 1 assertion: 1 passed, 0 failed, 0 blocked."
+}

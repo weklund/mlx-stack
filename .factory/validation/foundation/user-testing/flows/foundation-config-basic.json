@@ -1,0 +1,144 @@
+{
+  "groupId": "foundation-config-basic",
+  "testedAt": "2026-03-24T01:28:43Z",
+  "isolation": {
+    "testingSurface": "CLI",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/foundation-config-basic",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CONFIG-001",
+      "title": "Set and get values of all supported types",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set and get openrouter-key (string)",
+          "expected": "Value round-trips with masked display",
+          "observed": "`set` succeeded and `get` returned `sk-****123` with exit code 0"
+        },
+        {
+          "action": "Set and get memory-budget-pct (integer)",
+          "expected": "Value persists as integer",
+          "observed": "`set` succeeded and `get` returned `60` with exit code 0"
+        },
+        {
+          "action": "Set and get auto-health-check (boolean)",
+          "expected": "Value persists as boolean",
+          "observed": "`set` succeeded and `get` returned `False` with exit code 0"
+        },
+        {
+          "action": "Set and get model-dir (path)",
+          "expected": "Value persists as path string",
+          "observed": "`set` succeeded and `get` returned `/tmp/my-models` with exit code 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-basic/VAL-CONFIG-001-set-get.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-002",
+      "title": "Config list shows all values with API key masking",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack config list` after setting values",
+          "expected": "Table includes all 6 keys and masks openrouter-key",
+          "observed": "Table showed 6 keys with Source column and openrouter-key displayed as `sk-****123`"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-basic/VAL-CONFIG-002-config-list-masked.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-003",
+      "title": "Config persists in YAML format across sessions",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set values in one invocation and get in a new invocation",
+          "expected": "Configured values persist across process boundaries",
+          "observed": "`model-dir` was set then retrieved as `/tmp/my-models-persist` in a separate command, exit code 0"
+        },
+        {
+          "action": "Inspect config file contents",
+          "expected": "YAML file exists and stores full openrouter-key unmasked",
+          "observed": "`config.yaml` contained `openrouter-key: sk-persist-987654` and parsed as `yaml_type=dict`"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-basic/VAL-CONFIG-003-persist-and-yaml.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-004",
+      "title": "Invalid key rejected with valid key list",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack config set unknown-key value`",
+          "expected": "Non-zero exit and error listing valid keys",
+          "observed": "Command exited with code 1 and printed valid key list including auto-health-check/default-quant/litellm-port/memory-budget-pct/model-dir/openrouter-key"
+        },
+        {
+          "action": "Check config file for unknown key",
+          "expected": "Invalid key is not written",
+          "observed": "Search confirmed `unknown-key` not present in config.yaml"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-basic/VAL-CONFIG-004-invalid-key.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-005",
+      "title": "Config reset restores defaults with confirmation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack config reset` without confirmation flag",
+          "expected": "Reset blocked in non-interactive mode",
+          "observed": "Command exited with code 1 and printed requirement for `--yes` or `--force`"
+        },
+        {
+          "action": "Run `mlx-stack config reset --yes`",
+          "expected": "Reset succeeds",
+          "observed": "Command exited with code 0 and printed reset success message"
+        },
+        {
+          "action": "Run `mlx-stack config list` after reset",
+          "expected": "All keys display default values/source",
+          "observed": "All 6 keys listed with Source `default` and default values shown"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-basic/VAL-CONFIG-005-reset.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 assertions (VAL-CONFIG-001..005) via isolated CLI flow; all 5 passed with terminal evidence captured."
+}

@@ -1,0 +1,111 @@
+{
+  "groupId": "r2-g2-bench",
+  "testedAt": "2026-03-24T13:10:47.395970+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/tooling-r2-g2-bench",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/r2-g2-bench"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "python3",
+    "vllm-mlx"
+  ],
+  "commands": [
+    {
+      "name": "pull_bench_initial",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-r2-g2-bench uv run mlx-stack pull qwen3-8b --bench",
+      "exitCode": 1,
+      "evidence": "tooling/r2-g2-bench/commands.log"
+    },
+    {
+      "name": "pull_bench_retry_with_hf_wrapper",
+      "command": "PATH=/tmp:$PATH with /tmp/huggingface-cli wrapper -> MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-r2-g2-bench uv run mlx-stack pull qwen3-8b --bench",
+      "exitCode": 0,
+      "evidence": "tooling/r2-g2-bench/commands.log"
+    },
+    {
+      "name": "bench_model_target",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-r2-g2-bench uv run mlx-stack bench qwen3-8b",
+      "exitCode": 0,
+      "evidence": "tooling/r2-g2-bench/commands.log"
+    },
+    {
+      "name": "bench_model_target_save",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-r2-g2-bench uv run mlx-stack bench qwen3-8b --save",
+      "exitCode": 0,
+      "evidence": "tooling/r2-g2-bench/commands.log"
+    },
+    {
+      "name": "artifacts_and_cleanup_checks",
+      "command": "Inspect benchmark JSON, bench-temp log bind port, PID directory, and running processes",
+      "exitCode": 0,
+      "evidence": "tooling/r2-g2-bench/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-BENCH-002",
+      "status": "pass",
+      "reason": "`bench qwen3-8b` completed successfully against a temporary instance (`Using temporary vllm-mlx instance`) and cleanup checks showed no stale benchmark PID files or running temp process.",
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log",
+        "tooling/r2-g2-bench/bench-temp-qwen3-8b.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-004",
+      "status": "pass",
+      "reason": "`bench qwen3-8b --save` succeeded and wrote `/tmp/mlx-stack-user-testing/tooling-r2-g2-bench/benchmarks/m5-max-128.json` with required fields (`model_id`, `quant`, `prompt_tps`, `gen_tps`).",
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log",
+        "tooling/r2-g2-bench/m5-max-128.json"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-008",
+      "status": "fail",
+      "reason": "Tool-capable model benchmark still reports `Tool call failed \u2014 No tool calls in response` instead of validating a successful tool call structure and round-trip result.",
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log",
+        "tooling/r2-g2-bench/bench-temp-qwen3-8b.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-009",
+      "status": "pass",
+      "reason": "With local blockers on ports 4000/8000/8001/8002, model-target bench still succeeded and temp instance log shows bind on `127.0.0.1:8100`, demonstrating non-conflicting port selection.",
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log",
+        "tooling/r2-g2-bench/bench-temp-qwen3-8b.log"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-014",
+      "status": "pass",
+      "reason": "`pull qwen3-8b --bench` completed download + benchmark in a successful run (12.48s total), reported prompt/gen TPS output, left no temp benchmark process/PID files, and the pulled model appears in `mlx-stack models` output afterward.",
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log",
+        "tooling/r2-g2-bench/bench-temp-qwen3-8b.log",
+        "tooling/r2-g2-bench/m5-max-128.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "`mlx-stack pull` invokes `huggingface-cli`, but this host provides `hf` by default; first `pull --bench` attempt failed until a temporary `/tmp/huggingface-cli` wrapper was added.",
+      "resolved": true,
+      "resolution": "Used temporary wrapper script `/tmp/huggingface-cli -> hf` and retried `pull --bench` successfully without product code changes.",
+      "affectedAssertions": [
+        "VAL-CROSS-014"
+      ],
+      "evidence": [
+        "tooling/r2-g2-bench/commands.log"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 5 assertions: 4 passed, 1 failed, 0 blocked."
+}

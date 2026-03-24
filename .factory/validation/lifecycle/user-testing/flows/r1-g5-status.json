@@ -1,0 +1,200 @@
+{
+  "groupId": "r1-g5-status",
+  "testedAt": "2026-03-24T06:42:42.250591+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r1-g5-status",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r1-g5-status",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "python3",
+    "uv run python"
+  ],
+  "commands": [
+    {
+      "name": "init_isolated_stack",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g5-status uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack init --accept-defaults",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/01-init.txt"
+    },
+    {
+      "name": "status_no_stack_table_json",
+      "command": "temporarily move stacks/default.yaml aside, run `mlx-stack status` and `mlx-stack status --json`, then restore stack file",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/04-status-no-stack-table.txt"
+    },
+    {
+      "name": "status_before_up",
+      "command": "remove PID files and run `mlx-stack status` + `mlx-stack status --json`",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/05-status-before-up-json.txt"
+    },
+    {
+      "name": "up_then_status_all_healthy",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g5-status PATH=<shim+system> uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up && mlx-stack status --json",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/09-status-after-up-json.txt"
+    },
+    {
+      "name": "external_kill_then_status",
+      "command": "kill -9 $(cat /tmp/mlx-stack-user-testing/lifecycle/r1-g5-status/pids/fast.pid) && mlx-stack status --json",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/10-status-after-kill-json.txt"
+    },
+    {
+      "name": "down_then_status",
+      "command": "mlx-stack down && mlx-stack status --json",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/11-status-after-down-json.txt"
+    },
+    {
+      "name": "mixed_five_state_status",
+      "command": "manually start shim services + PID setup (healthy/degraded/down/crashed/stopped) then run status table/json",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/12-status-mixed-json.txt"
+    },
+    {
+      "name": "status_read_only_snapshot_check",
+      "command": "hash/mtime snapshot before and after `mlx-stack status` on tracked stack/config/pid/lock files",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/13-readonly-analysis.json"
+    },
+    {
+      "name": "status_concurrent_with_up",
+      "command": "run delayed `mlx-stack up` in background (lock held) and execute `mlx-stack status` concurrently",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/14c-concurrency-exit-codes.txt"
+    },
+    {
+      "name": "timeout_first_service_continuation",
+      "command": "start standard shim with 6s health response delay, run `mlx-stack status --json`, confirm elapsed ~5s and other services still checked",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g5-status/15-status-timeout-first-json.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-STATUS-001",
+      "status": "pass",
+      "reason": "A mixed-status run produced all five states simultaneously: standard=healthy, fast=degraded (3.014s), longctx=down (timeout), idle=crashed (dead PID), litellm=stopped.",
+      "evidence": [
+        "lifecycle/r1-g5-status/12-status-mixed-table.txt",
+        "lifecycle/r1-g5-status/12-status-mixed-json.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-002",
+      "status": "pass",
+      "reason": "Status used per-service health checks with timeout behavior: first service down timed out (response_time null) while subsequent fast/longctx/litellm checks still completed healthy; total runtime was ~5.147s for the timed-out-first run.",
+      "evidence": [
+        "lifecycle/r1-g5-status/15-status-timeout-first-json.txt",
+        "lifecycle/r1-g5-status/15-status-timeout-first-elapsed.txt",
+        "lifecycle/r1-g5-status/15-requests-timeout-first.jsonl",
+        "lifecycle/r1-g5-status/08-requests-healthy.jsonl",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-003",
+      "status": "pass",
+      "reason": "Default status output rendered a formatted table with Tier/Model/Port/Status/Uptime columns; running tiers displayed human-readable uptime (e.g., 2m 5s), while crashed/stopped tiers showed \"-\" uptime.",
+      "evidence": [
+        "lifecycle/r1-g5-status/12-status-mixed-table.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-004",
+      "status": "pass",
+      "reason": "`status --json` was valid parseable JSON containing tier/model/port/status/uptime fields for each service, and statuses/ports matched table output for the same run.",
+      "evidence": [
+        "lifecycle/r1-g5-status/12-status-mixed-json.txt",
+        "lifecycle/r1-g5-status/12-status-mixed-table.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-005",
+      "status": "pass",
+      "reason": "With no stack file, status returned the expected \"No stack configured\" guidance in table and JSON modes; with stack present and no PID files, all services reported stopped with no traceback.",
+      "evidence": [
+        "lifecycle/r1-g5-status/04-status-no-stack-table.txt",
+        "lifecycle/r1-g5-status/04-status-no-stack-json.txt",
+        "lifecycle/r1-g5-status/05-status-before-up-json.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-006",
+      "status": "pass",
+      "reason": "After externally killing the fast-tier process, status reported that tier as crashed (not stopped/healthy) with dash uptime.",
+      "evidence": [
+        "lifecycle/r1-g5-status/10-kill-fast.txt",
+        "lifecycle/r1-g5-status/10-status-after-kill-json.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-STATUS-007",
+      "status": "pass",
+      "reason": "Read-only verification showed zero changes to tracked stack/config/pid/lock files across a status run; status also succeeded while a delayed up command was holding lifecycle lock state (concurrency).",
+      "evidence": [
+        "lifecycle/r1-g5-status/13-readonly-analysis.json",
+        "lifecycle/r1-g5-status/14b-status-during-up.txt",
+        "lifecycle/r1-g5-status/14c-concurrency-exit-codes.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "status": "pass",
+      "reason": "Lifecycle stage status transitions matched contract: before up all stopped, after up all healthy, after down all stopped, and after external kill the killed tier reported crashed.",
+      "evidence": [
+        "lifecycle/r1-g5-status/05-status-before-up-json.txt",
+        "lifecycle/r1-g5-status/09-status-after-up-json.txt",
+        "lifecycle/r1-g5-status/11-status-after-down-json.txt",
+        "lifecycle/r1-g5-status/10-status-after-kill-json.txt",
+        "lifecycle/r1-g5-status/16-assertion-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Initial init invocation failed because PATH omitted /usr/sbin, so sysctl lookup failed during hardware detection.",
+      "resolved": true,
+      "resolution": "Re-ran commands with system path entries (/usr/sbin:/sbin) included in PATH.",
+      "affectedAssertions": [
+        "VAL-STATUS-005",
+        "VAL-CROSS-002"
+      ],
+      "evidence": [
+        "lifecycle/r1-g5-status/01-init.txt"
+      ]
+    },
+    {
+      "description": "Python http.server-based shim responders were non-responsive in this environment for health checks, causing false down states.",
+      "resolved": true,
+      "resolution": "Replaced isolation-only shim implementations with socket-based HTTP responders and re-ran all affected status lifecycle checks.",
+      "affectedAssertions": [
+        "VAL-STATUS-001",
+        "VAL-STATUS-002",
+        "VAL-STATUS-003",
+        "VAL-STATUS-004",
+        "VAL-STATUS-006",
+        "VAL-CROSS-002"
+      ],
+      "evidence": [
+        "lifecycle/r1-g5-status/08-up-healthy.txt",
+        "lifecycle/r1-g5-status/09-status-after-up-json.txt",
+        "lifecycle/r1-g5-status/12-status-mixed-json.txt"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 8 assigned assertions via real CLI surface in isolated MLX_STACK_HOME. All 8 assertions passed with evidence for no-stack handling, five-state classification, JSON/table consistency, timeout continuation behavior, read-only status semantics, and cross-stage lifecycle transitions."
+}

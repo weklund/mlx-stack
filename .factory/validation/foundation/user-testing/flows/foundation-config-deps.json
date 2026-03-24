@@ -1,0 +1,198 @@
+{
+  "groupId": "foundation-config-deps",
+  "testedAt": "2026-03-24T01:32:46.180838+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/foundation-config-deps",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CONFIG-006",
+      "title": "Default values applied for unset keys",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack config reset --yes` in isolated MLX_STACK_HOME",
+          "expected": "Config resets to default state",
+          "observed": "Exited 0 with \"Configuration reset to defaults.\""
+        },
+        {
+          "action": "Run `config get` for default-quant, memory-budget-pct, litellm-port, model-dir, auto-health-check, openrouter-key",
+          "expected": "Returns documented defaults for unset keys",
+          "observed": "Returned int4, 40, 4000, /tmp/mlx-stack-user-testing/foundation-config-deps/models, True, and empty value for openrouter-key"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-CONFIG-006-default-values.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-007",
+      "title": "Value validation enforced",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set valid values for default-quant, memory-budget-pct, litellm-port",
+          "expected": "Valid values accepted",
+          "observed": "int8, 60, and 4010 accepted with exit code 0"
+        },
+        {
+          "action": "Set invalid values (int6/fp32, 0/101/abc, 0/65536/abc)",
+          "expected": "Invalid values rejected with clear range/type guidance",
+          "observed": "Each invalid value exited 1 with explicit valid-values/range/integer error text"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-CONFIG-007-value-validation.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-008",
+      "title": "Corrupt or empty config file handled gracefully",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Write invalid YAML (`{{{`) to config.yaml and run `config list`",
+          "expected": "Clear corruption error suggesting reset command",
+          "observed": "Exited 1 with parse error and explicit `mlx-stack config reset --yes` suggestion"
+        },
+        {
+          "action": "Create empty config.yaml and run `config get default-quant`",
+          "expected": "Defaults apply without error",
+          "observed": "Exited 0 and returned int4"
+        },
+        {
+          "action": "Remove config.yaml and run `config get memory-budget-pct`",
+          "expected": "Defaults apply when file missing",
+          "observed": "Exited 0 and returned 40"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-CONFIG-008-corrupt-empty-missing.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CONFIG-009",
+      "title": "Config subcommands have help text",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack config --help`",
+          "expected": "Lists set/get/list/reset subcommands",
+          "observed": "Help output lists get, list, reset, set"
+        },
+        {
+          "action": "Run `--help` for each subcommand",
+          "expected": "Each subcommand displays usage and arguments/options",
+          "observed": "set/get/list/reset all returned help text with exit code 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-CONFIG-009-help-text.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-DEPS-001",
+      "title": "Auto-install of missing vllm-mlx and litellm",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Run dependency-triggering commands: `uv run mlx-stack up` and `uv run mlx-stack bench fast`",
+          "expected": "Missing dependencies detected, auto-install invoked, and success verified",
+          "observed": "Both commands exit 1 with \"Not yet implemented\" placeholder output"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-DEPS-001-auto-install.txt"
+        ]
+      },
+      "issues": "Cannot validate auto-install flow because `up` and `bench` user-surface commands are not implemented in this milestone build."
+    },
+    {
+      "id": "VAL-DEPS-002",
+      "title": "Auto-install failure produces clear error with manual instructions",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Attempt to reach dependency install path via `uv run mlx-stack up`",
+          "expected": "Install failure path shows failed command and manual instructions",
+          "observed": "Command exits 1 with \"Not yet implemented\" before dependency management is reached"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-DEPS-002-auto-install-failure.txt"
+        ]
+      },
+      "issues": "Dependency install failure path is unreachable from CLI because dependency-triggering commands are not implemented."
+    },
+    {
+      "id": "VAL-DEPS-003",
+      "title": "Read-only commands do not trigger dependency install",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run with PATH excluding vllm-mlx/litellm binaries and execute `uv run mlx-stack profile`",
+          "expected": "Read-only command succeeds without dependency install attempts",
+          "observed": "`command -v` found neither tool; `profile` still exited 0 and output contained no install/progress messages"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-DEPS-003-readonly-no-install.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-DEPS-004",
+      "title": "Version mismatch detection",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Attempt to validate mismatch warning via `uv run mlx-stack up`",
+          "expected": "Warning displayed when installed version differs from pinned version",
+          "observed": "`up` exits immediately with \"Not yet implemented\" placeholder output"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-config-deps/VAL-DEPS-004-version-mismatch-warning.txt"
+        ]
+      },
+      "issues": "Mismatch warning behavior cannot be exercised via CLI until dependency-checking lifecycle commands are implemented."
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Dependency-management assertions requiring `up`/`bench` are not testable through the real CLI surface because those commands are placeholders in this build.",
+      "affectedAssertions": [
+        "VAL-DEPS-001",
+        "VAL-DEPS-002",
+        "VAL-DEPS-004"
+      ],
+      "quickFixAttempted": "Retried `uv run mlx-stack up` and `uv run mlx-stack bench fast`; both consistently returned \"Not yet implemented\"."
+    }
+  ],
+  "summary": "Tested 8 assertions: 5 passed (VAL-CONFIG-006/007/008/009, VAL-DEPS-003), 0 failed, 3 blocked (VAL-DEPS-001/002/004 due to unimplemented dependency-triggering CLI commands)."
+}

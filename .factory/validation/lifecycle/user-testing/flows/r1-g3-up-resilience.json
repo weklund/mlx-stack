@@ -1,0 +1,185 @@
+{
+  "groupId": "r1-g3-up-resilience",
+  "testedAt": "2026-03-24T06:13:41.552312+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r1-g3-up-resilience",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "python3",
+    "uv run python"
+  ],
+  "commands": [
+    {
+      "name": "config_set_litellm_port",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience/shims/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack config set litellm-port 4100",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/01-config-set-litellm-port.txt"
+    },
+    {
+      "name": "up_lock_holder",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience MLX_SHIM_DELAY_HEALTH=8100:8 ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/02a-up-lock-holder.txt"
+    },
+    {
+      "name": "up_concurrent_denied",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience/shims/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 1,
+      "evidence": "lifecycle/r1-g3-up-resilience/02b-up-concurrent-denied.txt"
+    },
+    {
+      "name": "down_after_lock_test",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience/shims/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/02c-down-after-lock-test.txt"
+    },
+    {
+      "name": "up_port_conflict",
+      "command": "python3 -m http.server 8101 --bind 127.0.0.1 (background), then MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun.txt"
+    },
+    {
+      "name": "up_already_running_rerun",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience PATH=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience/shims/bin:/opt/homebrew/bin:/usr/bin:/bin uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up (second invocation with live services)",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/04c-up-already-running.txt"
+    },
+    {
+      "name": "up_with_stale_pids",
+      "command": "write stale PID files (999991/999992/999993), then MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/04f-up-stale-pids.txt"
+    },
+    {
+      "name": "up_memory_warning",
+      "command": "rewrite stack to three qwen3.5-72b tiers (8120/8121/8122), then MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/05b-up-memory-warning.txt"
+    },
+    {
+      "name": "config_set_openrouter_key",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack config set openrouter-key sk-or-r1g3-secret-xyz",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/06a-config-set-openrouter-key.txt"
+    },
+    {
+      "name": "up_dry_run_api_key",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --dry-run",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/06b-up-dry-run-api-key.txt"
+    },
+    {
+      "name": "up_api_key_runtime",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/lifecycle/r1-g3-up-resilience ... uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "evidence": "lifecycle/r1-g3-up-resilience/06d-up-api-key.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-UP-007",
+      "status": "pass",
+      "reason": "While one `up` invocation was still running, a second concurrent `up` returned immediate lockfile error and exit code 1; after the first run finished, `down` succeeded, showing lock release.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/02a-up-lock-holder.txt",
+        "lifecycle/r1-g3-up-resilience/02b-up-concurrent-denied.txt",
+        "lifecycle/r1-g3-up-resilience/02b-up-concurrent-denied-exit.txt",
+        "lifecycle/r1-g3-up-resilience/02c-down-after-lock-test.txt",
+        "lifecycle/r1-g3-up-resilience/02d-lockfile-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-012",
+      "status": "fail",
+      "reason": "With tier port 8101 occupied, startup did not emit `Port ... already in use by PID ...`; it attempted tier launch and later reported health-check timeout instead of explicit port-owner detection.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun.txt",
+        "lifecycle/r1-g3-up-resilience/03e-port-conflict-launch.jsonl",
+        "lifecycle/r1-g3-up-resilience/03g-port-conflict-analysis.json",
+        "lifecycle/r1-g3-up-resilience/03h-port-conflict-diagnostic.txt"
+      ]
+    },
+    {
+      "id": "VAL-UP-013",
+      "status": "pass",
+      "reason": "In the same partial-failure run, `fast` failed while `standard` and `litellm` came up healthy, confirming remaining tiers still start and mixed status is surfaced.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun.txt",
+        "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun-exit.txt",
+        "lifecycle/r1-g3-up-resilience/03e-port-conflict-requests.jsonl"
+      ]
+    },
+    {
+      "id": "VAL-UP-014",
+      "status": "pass",
+      "reason": "Re-running `up` with active services produced an `already running` summary and unchanged PIDs; with stale PID files injected, startup reported stale cleanup and replaced dead PIDs with fresh running processes.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/04c-up-already-running.txt",
+        "lifecycle/r1-g3-up-resilience/04d-pids-after-rerun.json",
+        "lifecycle/r1-g3-up-resilience/04f-up-stale-pids.txt",
+        "lifecycle/r1-g3-up-resilience/04g-stale-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-016",
+      "status": "pass",
+      "reason": "Before startup, `up` warned that estimated memory (126.0 GB) exceeded available memory (87.6 GB); startup continued and all tier/litellm PID files were created.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/05b-up-memory-warning.txt",
+        "lifecycle/r1-g3-up-resilience/05c-memory-warning-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-017",
+      "status": "pass",
+      "reason": "With OpenRouter key configured, dry-run masked the key (`OPENROUTER_API_KEY=***`), runtime litellm command line contained no key literal, process environment exposed `OPENROUTER_API_KEY`, and logs contained no secret.",
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/06b-up-dry-run-api-key.txt",
+        "lifecycle/r1-g3-up-resilience/06c-dry-run-api-key-analysis.json",
+        "lifecycle/r1-g3-up-resilience/06d-up-api-key.txt",
+        "lifecycle/r1-g3-up-resilience/06e-api-key-runtime-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Port-conflict simulation required a longer timeout because startup attempted to launch on the occupied port and only failed after health-check timeout, rather than immediate conflict skip.",
+      "resolved": true,
+      "resolution": "Increased test command timeout to allow full failure path completion and captured explicit timeout behavior for assertion adjudication.",
+      "affectedAssertions": [
+        "VAL-UP-012",
+        "VAL-UP-013"
+      ],
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun.txt",
+        "lifecycle/r1-g3-up-resilience/03g-port-conflict-analysis.json"
+      ]
+    },
+    {
+      "description": "Dependency check emits non-blocking litellm version mismatch warning on each up run (installed v1.82.6 vs pinned v1.67.2).",
+      "resolved": true,
+      "resolution": "Treated warning as informational and proceeded because it did not prevent exercising assigned lifecycle assertions.",
+      "affectedAssertions": [
+        "VAL-UP-007",
+        "VAL-UP-013",
+        "VAL-UP-014",
+        "VAL-UP-016",
+        "VAL-UP-017"
+      ],
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/02a-up-lock-holder.txt",
+        "lifecycle/r1-g3-up-resilience/05b-up-memory-warning.txt",
+        "lifecycle/r1-g3-up-resilience/06d-up-api-key.txt"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 6 assigned assertions: 5 passed, 1 failed (VAL-UP-012). No assertions were blocked."
+}

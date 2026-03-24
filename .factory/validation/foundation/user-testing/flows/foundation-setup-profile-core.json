@@ -1,0 +1,165 @@
+{
+  "groupId": "foundation-setup-profile-core",
+  "testedAt": "2026-03-24T01:20:53Z",
+  "isolation": {
+    "surface": "CLI",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/foundation-setup-profile-core",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6"
+  },
+  "toolsUsed": ["shell", "uv run mlx-stack"],
+  "assertions": [
+    {
+      "id": "VAL-SETUP-001",
+      "title": "CLI entry point and help text",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack --help` with isolated MLX_STACK_HOME",
+          "expected": "Usage output lists documented commands and exits 0",
+          "observed": "Help output listed profile/recommend/init/pull/models/up/down/status/bench/config and exited 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-SETUP-001-help.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-002",
+      "title": "Version flag displays correct version",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack --version` and compare with `pyproject.toml` version",
+          "expected": "Printed version matches project version and exits 0",
+          "observed": "Output was `mlx-stack, version 0.1.0`; pyproject version is `0.1.0`; exit code 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-SETUP-002-version.txt"
+        ],
+        "reference": "pyproject.toml version = 0.1.0"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-003",
+      "title": "Unknown subcommand produces helpful error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack foobar`",
+          "expected": "Non-zero exit and error includes unrecognized command",
+          "observed": "Error `No such command 'foobar'.` with exit code 2"
+        },
+        {
+          "action": "Run typo `uv run mlx-stack proflie`",
+          "expected": "Did-you-mean suggestion shown",
+          "observed": "Output suggested `profile`; exit code 2; no traceback observed"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-SETUP-003-unknown-command.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-004",
+      "title": "Data directory created on first use",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Delete isolated MLX_STACK_HOME and run `uv run mlx-stack profile`",
+          "expected": "Command succeeds and creates data directory",
+          "observed": "Before run directory was missing; profile command exited 0 and created `/tmp/mlx-stack-user-testing/foundation-setup-profile-core` with mode 755"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-SETUP-004-data-home-create.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-001",
+      "title": "Detects known Apple Silicon chip with correct specs",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Collect reference hardware values (`sysctl`, `system_profiler`) and run `uv run mlx-stack profile`",
+          "expected": "CLI reports matching chip, GPU cores, memory, and lookup-table bandwidth",
+          "observed": "CLI reported Apple M5 Max, 40 GPU cores, 128 GB memory, 546.0 GB/s bandwidth, matching system references and known table value"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-PROFILE-001-known-chip.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-002",
+      "title": "Unknown chip uses estimation with bench suggestion",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack profile` with isolated `/tmp` shims returning unknown chip `Apple M9 Ultra`",
+          "expected": "Bandwidth marked estimate, warning suggests `mlx-stack bench --save`, command exits 0 and writes profile",
+          "observed": "Output showed `Memory Bandwidth 400.0 GB/s (estimate)`, displayed calibration warning, wrote profile.json, exit code 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-PROFILE-002-unknown-chip-estimate.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-003",
+      "title": "Non-Apple-Silicon produces hard error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack profile` with shimmed `sysctl` returning Intel brand string",
+          "expected": "Hard error message, non-zero exit, no profile file written",
+          "observed": "Output `mlx-stack requires Apple Silicon (M1 or later)`, exit code 1, and `profile_written=no`"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-PROFILE-003-non-apple-error.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-004",
+      "title": "Profile JSON is valid, complete, and correctly located",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect and parse isolated `profile.json` after successful profile run",
+          "expected": "File exists at MLX_STACK_HOME/profile.json with required typed fields and valid profile_id",
+          "observed": "File existed and JSON validation confirmed required keys, correct types, non-null values, and profile_id pattern"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-setup-profile-core/VAL-PROFILE-004-profile-json.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 8 assigned assertions (VAL-SETUP-001..004, VAL-PROFILE-001..004): 8 passed, 0 failed, 0 blocked."
+}

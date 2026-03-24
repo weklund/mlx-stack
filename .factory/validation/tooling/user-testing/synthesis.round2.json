@@ -1,0 +1,81 @@
+{
+  "milestone": "tooling",
+  "round": 2,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 7,
+    "passed": 5,
+    "failed": 2,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-PULL-005",
+    "VAL-BENCH-002",
+    "VAL-BENCH-004",
+    "VAL-BENCH-009",
+    "VAL-CROSS-014"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-PULL-008",
+      "reason": "Network-error pull path still surfaces long upstream Traceback output from huggingface_hub/HTTPX before the concise error summary, so the user-visible error remains noisy."
+    },
+    {
+      "id": "VAL-BENCH-008",
+      "reason": "Tool-calling benchmark still reports `Tool call failed \u2014 No tool calls in response` for qwen3-8b instead of validating a successful tool-call structure."
+    }
+  ],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Updated tooling rerun notes to reflect recovered progress/temp-bench flows and remaining failures (traceback noise in pull network errors and tool-call benchmark output).",
+      "source": "flow-report"
+    }
+  ],
+  "flowReports": [
+    ".factory/validation/tooling/user-testing/flows/r2-g1-pull.json",
+    ".factory/validation/tooling/user-testing/flows/r2-g2-bench.json"
+  ],
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "python3",
+    "vllm-mlx",
+    "Task:user-testing-flow-validator"
+  ],
+  "frictions": [
+    {
+      "description": "Dedicated user-testing-flow-validator subagent execution for r2-g1-pull repeatedly failed with a permissions gate (`insufficient permission to proceed`).",
+      "resolved": true,
+      "resolution": "Completed the affected pull assertions directly in this validator session using the same isolation/evidence contract.",
+      "affectedAssertions": [
+        "VAL-PULL-005",
+        "VAL-PULL-008"
+      ],
+      "evidence": [
+        "tooling/r2-g1-pull/commands.log"
+      ]
+    },
+    {
+      "description": "`mlx-stack pull` still relies on `huggingface-cli` while this host provides `hf` by default.",
+      "resolved": true,
+      "resolution": "Used a temporary `/tmp/huggingface-cli` wrapper to run user-surface pull flows without product code changes.",
+      "affectedAssertions": [
+        "VAL-PULL-005",
+        "VAL-PULL-008",
+        "VAL-CROSS-014"
+      ],
+      "evidence": [
+        "tooling/r2-g1-pull/commands.log",
+        "tooling/r2-g2-bench/commands.log"
+      ]
+    }
+  ],
+  "dedupedBlockers": [
+    "Network-error pull path still leaks long upstream traceback output, so user-facing error quality for VAL-PULL-008 remains below contract expectations.",
+    "Tool-calling benchmark path still returns no tool calls for qwen3-8b, leaving VAL-BENCH-008 failing."
+  ],
+  "generatedAt": "2026-03-24T13:15:49.874173+00:00",
+  "previousRound": ".factory/validation/tooling/user-testing/synthesis.round1.json"
+}

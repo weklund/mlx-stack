@@ -1,0 +1,164 @@
+{
+  "groupId": "foundation-profile-catalog",
+  "testedAt": "2026-03-24T01:25:32.163454+00:00",
+  "isolation": {
+    "testingSurface": "CLI",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/foundation-profile-catalog",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-PROFILE-005",
+      "title": "Profile output is a formatted Rich table",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack profile` with isolated MLX_STACK_HOME",
+          "expected": "Formatted table with chip, GPU cores, memory, bandwidth, and profile ID rows",
+          "observed": "Rich-formatted table rendered with all required rows and exit code 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-PROFILE-005-profile-table.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-006",
+      "title": "Re-running profile overwrites existing data",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack profile` and record profile.json mtime",
+          "expected": "profile.json exists after first run",
+          "observed": "First run exited 0 and wrote /tmp/mlx-stack-user-testing/foundation-profile-catalog/profile.json"
+        },
+        {
+          "action": "Run `uv run mlx-stack profile` again after delay and compare mtime",
+          "expected": "Second run overwrites profile.json with newer timestamp",
+          "observed": "MTIME_RUN2 > MTIME_RUN1 and second run exited 0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-PROFILE-006-profile-run1.txt",
+          "foundation/foundation-profile-catalog/VAL-PROFILE-006-profile-run2.txt",
+          "foundation/foundation-profile-catalog/VAL-PROFILE-006-mtime-check.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-PROFILE-007",
+      "title": "System command failures handled gracefully",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Prepend mock failing `sysctl` binary in PATH and run `uv run mlx-stack profile`",
+          "expected": "Descriptive error, non-zero exit, and no Python traceback",
+          "observed": "Output showed `Error: sysctl failed... simulated sysctl failure`, exit code 1, and no traceback"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-PROFILE-007-sysctl-failure.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CATALOG-001",
+      "title": "Catalog loads all entries via models --catalog",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack models --catalog`",
+          "expected": "Display 15 catalog entries with model/family/params/quants and exit code 0",
+          "observed": "Command returned `Not yet implemented. Coming in the models-command feature.` and exit code 1"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-CATALOG-001-models-catalog.txt"
+        ]
+      },
+      "issues": "CLI catalog listing surface is not implemented, so required catalog table is not produced."
+    },
+    {
+      "id": "VAL-CATALOG-002",
+      "title": "Catalog queryable by family, tag, and capability",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack models --catalog --family \"Qwen 3.5\"`",
+          "expected": "Catalog entries filtered by family",
+          "observed": "CLI error: `No such option: --family` (exit 2)"
+        },
+        {
+          "action": "Run `uv run mlx-stack models --catalog --tag agent-ready`",
+          "expected": "Catalog entries filtered by tag",
+          "observed": "CLI error: `No such option: --tag` (exit 2)"
+        },
+        {
+          "action": "Run `uv run mlx-stack models --catalog --tool-calling true`",
+          "expected": "Catalog entries filtered by capability",
+          "observed": "CLI error: `No such option: --tool-calling` (exit 2)"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-CATALOG-002-filter-family.txt",
+          "foundation/foundation-profile-catalog/VAL-CATALOG-002-filter-tag.txt",
+          "foundation/foundation-profile-catalog/VAL-CATALOG-002-filter-capability.txt"
+        ]
+      },
+      "issues": "Required catalog filtering options are absent on current CLI surface."
+    },
+    {
+      "id": "VAL-CATALOG-003",
+      "title": "Corrupt or missing catalog produces clear error",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Attempt to exercise catalog-loading surface via `uv run mlx-stack models --catalog`",
+          "expected": "Catalog load path available to test malformed/empty catalog error handling",
+          "observed": "Command exits with `Not yet implemented...`, preventing corrupt/missing catalog scenario execution"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "foundation/foundation-profile-catalog/VAL-CATALOG-003-catalog-error-surface.txt"
+        ]
+      },
+      "issues": "Blocked by unimplemented CLI catalog command; corrupt/missing catalog behavior cannot be reached from real CLI surface."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Assigned catalog assertions require `models --catalog` behavior and filter flags that are not currently implemented on the CLI surface.",
+      "resolved": false,
+      "resolution": null,
+      "affectedAssertions": [
+        "VAL-CATALOG-001",
+        "VAL-CATALOG-002",
+        "VAL-CATALOG-003"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Catalog error-path validation (corrupt/missing catalog) is not reachable because `mlx-stack models --catalog` is not implemented.",
+      "affectedAssertions": [
+        "VAL-CATALOG-003"
+      ],
+      "quickFixAttempted": "Executed `mlx-stack models --catalog` and filter variants to find an alternate CLI catalog path; all attempts returned unimplemented/unknown option responses."
+    }
+  ],
+  "summary": "Tested 6 assertions: 3 passed (VAL-PROFILE-005/006/007), 2 failed (VAL-CATALOG-001/002), 1 blocked (VAL-CATALOG-003 due unimplemented catalog CLI surface)."
+}
