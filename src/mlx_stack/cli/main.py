@@ -19,6 +19,7 @@ from mlx_stack.cli.down import down as down_command
 from mlx_stack.cli.init import init as init_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
+from mlx_stack.cli.pull import pull as pull_command
 from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
@@ -160,17 +161,7 @@ cli.add_command(recommend_command, "recommend")
 cli.add_command(init_command, "init")
 
 
-@cli.command()
-@click.argument("model", required=False)
-@click.option("--quant", type=str, help="Quantization level (int4, int8, bf16).")
-@click.option("--bench", is_flag=True, help="Run benchmark after download.")
-@click.option("--force", is_flag=True, help="Re-download even if model exists.")
-def pull(model: str | None, quant: str | None, bench: bool, force: bool) -> None:
-    """Download a model from the catalog."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the pull-command feature.")
-    raise SystemExit(1)
-
-
+cli.add_command(pull_command, "pull")
 cli.add_command(models_command, "models")
 cli.add_command(up_command, "up")
 cli.add_command(down_command, "down")

@@ -1,0 +1,130 @@
+"""CLI command for model download — `mlx-stack pull`.
+
+Downloads models from the catalog with source resolution, disk space
+checking, progress display, duplicate detection, inventory tracking,
+and optional post-download benchmark.
+
+Supports --quant for quantization override, --bench for post-download
+smoke test, and --force for re-downloading existing models.
+"""
+
+from __future__ import annotations
+
+import click
+from rich.console import Console
+
+from mlx_stack.core.catalog import CatalogError
+from mlx_stack.core.pull import (
+    ConversionError,
+    DiskSpaceError,
+    DownloadError,
+    InvalidModelError,
+    PullError,
+    pull_model,
+)
+
+console = Console(stderr=True)
+
+
+@click.command()
+@click.argument("model", required=True)
+@click.option(
+    "--quant",
+    type=str,
+    default=None,
+    help="Quantization level (int4, int8, bf16). Default from config.",
+)
+@click.option(
+    "--bench",
+    is_flag=True,
+    default=False,
+    help="Run a quick benchmark after download.",
+)
+@click.option(
+    "--force",
+    is_flag=True,
+    default=False,
+    help="Re-download even if model already exists.",
+)
+def pull(model: str, quant: str | None, bench: bool, force: bool) -> None:
+    """Download a model from the catalog.
+
+    MODEL is the catalog model ID (e.g., qwen3.5-8b). Use 'mlx-stack models --catalog'
+    to see available models.
+
+    Without --quant, uses the default quantization from config (default: int4).
+    Invalid quantization values are rejected with a clear error.
+
+    Downloads are checked against available disk space before starting.
+    Already-downloaded models are detected and skipped unless --force is used.
+
+    With --bench, runs a quick benchmark after download completes. This
+    auto-installs vllm-mlx if needed.
+    """
+    out = Console()
+
+    try:
+        result = pull_model(
+            model_id=model,
+            quant=quant,
+            force=force,
+            console=out,
+        )
+
+        if bench and not result.already_existed:
+            _run_post_download_bench(model, result.quant, out)
+        elif bench and result.already_existed:
+            _run_post_download_bench(model, result.quant, out)
+
+    except InvalidModelError as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except DiskSpaceError as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except DownloadError as exc:
+        console.print(f"[bold red]Download error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except ConversionError as exc:
+        console.print(f"[bold red]Conversion error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except PullError as exc:
+        console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except CatalogError as exc:
+        console.print(f"[bold red]Catalog error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+
+
+def _run_post_download_bench(model_id: str, quant: str, out: Console) -> None:
+    """Run a quick benchmark after downloading a model.
+
+    Auto-installs vllm-mlx if needed.
+
+    Args:
+        model_id: The model ID that was pulled.
+        quant: The quantization level.
+        out: Rich console for output.
+    """
+    out.print()
+    out.print("[bold cyan]Running post-download benchmark...[/bold cyan]")
+
+    try:
+        from mlx_stack.core.deps import ensure_dependency
+
+        ensure_dependency("vllm-mlx")
+    except Exception as exc:
+        out.print(
+            f"[yellow]Could not ensure vllm-mlx is installed: {exc}[/yellow]\n"
+            "Skipping benchmark. Install vllm-mlx manually and run "
+            f"'mlx-stack bench {model_id}'."
+        )
+        return
+
+    # Import bench module if available — this is a stub for the bench-command
+    # feature which will implement the actual benchmarking logic.
+    out.print(
+        f"[yellow]Benchmark for {model_id} ({quant}) — "
+        "the bench command will be available in a future update.[/yellow]\n"
+        f"Run 'mlx-stack bench {model_id}' when the bench feature is ready."
+    )
