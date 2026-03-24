@@ -825,6 +825,135 @@ class TestTempInstanceCommand:
         idx = cmd.index("--tool-call-parser")
         assert cmd[idx + 1] == "hermes"
 
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_reasoning_parser_flag_added_for_thinking_models(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+        sample_entry: CatalogEntry,
+    ) -> None:
+        """Thinking model with reasoning_parser gets --reasoning-parser flag.
+
+        VAL-BENCH-008: Without this flag, thinking models like Qwen3 emit
+        <think> tags that break the hermes tool-call parser.
+        """
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        # sample_entry has thinking=True, reasoning_parser="qwen3"
+        assert sample_entry.capabilities.thinking is True
+        assert sample_entry.capabilities.reasoning_parser == "qwen3"
+
+        _start_temp_instance("mlx-community/Qwen3.5-8B-4bit", 8100, sample_entry, "int4")
+
+        call_kwargs = mock_start.call_args
+        cmd = call_kwargs[1]["cmd"] if "cmd" in call_kwargs[1] else call_kwargs[0][1]
+        assert "--reasoning-parser" in cmd
+        idx = cmd.index("--reasoning-parser")
+        assert cmd[idx + 1] == "qwen3"
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_no_reasoning_parser_for_non_thinking_models(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+        sample_entry_no_tool_calling: CatalogEntry,
+    ) -> None:
+        """Non-thinking models don't get --reasoning-parser flag even if reasoning_parser is set.
+
+        (DeepSeek R1 has thinking=True but reasoning_parser="deepseek"
+        so it SHOULD get the flag. Let's test a truly non-thinking model.)
+        """
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        # Create a model without thinking capability
+        no_thinking_entry = CatalogEntry(
+            id="test-no-thinking",
+            name="Test No Thinking",
+            family="Test",
+            params_b=8.0,
+            architecture="transformer",
+            min_mlx_lm_version="0.22.0",
+            sources={
+                "int4": QuantSource(
+                    hf_repo="mlx-community/test-4bit", disk_size_gb=4.5
+                ),
+            },
+            capabilities=Capabilities(
+                tool_calling=False,
+                tool_call_parser=None,
+                thinking=False,
+                reasoning_parser=None,
+                vision=False,
+            ),
+            quality=QualityScores(
+                overall=50, coding=50, reasoning=50, instruction_following=50
+            ),
+            benchmarks={},
+            tags=[],
+        )
+
+        _start_temp_instance("mlx-community/test-4bit", 8100, no_thinking_entry, "int4")
+
+        call_kwargs = mock_start.call_args
+        cmd = call_kwargs[1]["cmd"] if "cmd" in call_kwargs[1] else call_kwargs[0][1]
+        assert "--reasoning-parser" not in cmd
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_thinking_without_reasoning_parser_no_flag(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+    ) -> None:
+        """Thinking model without reasoning_parser set does NOT get --reasoning-parser flag."""
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        entry = CatalogEntry(
+            id="test-thinking-no-parser",
+            name="Test Thinking No Parser",
+            family="Test",
+            params_b=8.0,
+            architecture="transformer",
+            min_mlx_lm_version="0.22.0",
+            sources={
+                "int4": QuantSource(
+                    hf_repo="mlx-community/test-4bit", disk_size_gb=4.5
+                ),
+            },
+            capabilities=Capabilities(
+                tool_calling=False,
+                tool_call_parser=None,
+                thinking=True,
+                reasoning_parser=None,  # thinking=True but no parser
+                vision=False,
+            ),
+            quality=QualityScores(
+                overall=50, coding=50, reasoning=50, instruction_following=50
+            ),
+            benchmarks={},
+            tags=[],
+        )
+
+        _start_temp_instance("mlx-community/test-4bit", 8100, entry, "int4")
+
+        call_kwargs = mock_start.call_args
+        cmd = call_kwargs[1]["cmd"] if "cmd" in call_kwargs[1] else call_kwargs[0][1]
+        assert "--reasoning-parser" not in cmd
+
 
 # --------------------------------------------------------------------------- #
 # Test: Temp instance cleanup

@@ -401,14 +401,35 @@ def _run_download(
 
     # Stream stdout (merged with stderr) line-by-line to show download
     # progress bars in real-time. Capture lines for error extraction.
+    # Filter traceback blocks DURING streaming — suppress them from
+    # console output but still capture them for the error handler.
     assert proc.stdout is not None
     captured_lines: list[str] = []
+    in_traceback = False
     try:
         for line in proc.stdout:
             stripped = line.rstrip("\n")
-            if stripped:
-                console.print(f"  {stripped}")
-                captured_lines.append(stripped)
+            if not stripped:
+                continue
+
+            captured_lines.append(stripped)
+
+            # Detect start of a traceback block
+            if stripped.strip().startswith("Traceback (most recent call last)"):
+                in_traceback = True
+                continue
+
+            if in_traceback:
+                # Inside traceback: suppress indented frame/code lines
+                if stripped.startswith((" ", "\t")):
+                    continue
+                # First non-indented line after frames is the exception
+                # message — suppress it too (it's the error summary)
+                in_traceback = False
+                continue
+
+            # Normal line — show to user
+            console.print(f"  {stripped}")
 
         # Wait for process to complete
         proc.wait(timeout=3600)

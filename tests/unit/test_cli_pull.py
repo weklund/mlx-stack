@@ -918,6 +918,189 @@ class TestDownloadProgress:
 
 
 # =========================================================================== #
+# Streaming traceback suppression tests — VAL-PULL-008
+# =========================================================================== #
+
+
+class TestStreamingTracebackSuppression:
+    """Tests that traceback lines are suppressed DURING real-time streaming.
+
+    The _run_download() function must detect traceback blocks in the output
+    stream and suppress them from console display, while still capturing
+    them in captured_lines for error extraction.
+    """
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_traceback_lines_not_printed_to_console(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Traceback block lines are NOT printed to console during streaming."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        # Simulate output: progress line, then a full traceback
+        output_text = (
+            "Downloading model.safetensors: 100%\n"
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/python3.13/site-packages/requests/adapters.py", line 667\n'
+            "    resp = conn.urlopen(...)\n"
+            "requests.exceptions.ConnectionError: Connection refused\n"
+        )
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO(output_text)
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console_output = StringIO()
+        console = Console(file=console_output, no_color=True)
+
+        with pytest.raises(DownloadError):
+            _run_download("test/repo", local_dir, console)
+
+        printed = console_output.getvalue()
+        # Progress line should be printed
+        assert "Downloading model.safetensors" in printed
+        # Traceback lines should NOT be printed to console
+        assert "Traceback (most recent call last)" not in printed
+        assert "File " not in printed
+        assert "resp = conn.urlopen" not in printed
+        assert "ConnectionError" not in printed
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_traceback_still_captured_for_error_handler(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Traceback lines are still captured in error message for extraction."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        output_text = (
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/python3.13/something.py", line 10\n'
+            "    do_stuff()\n"
+            "OSError: Network error\n"
+        )
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO(output_text)
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO(), no_color=True)
+
+        with pytest.raises(DownloadError) as exc_info:
+            _run_download("test/repo", local_dir, console)
+
+        # The error message should contain the filtered (clean) error
+        error_msg = str(exc_info.value)
+        assert "Network error" in error_msg
+        # But not the raw traceback frames
+        assert "Traceback (most recent call last)" not in error_msg
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_normal_output_still_printed(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Non-traceback lines are still streamed to console normally."""
+        from io import StringIO
+
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        output_text = (
+            "Fetching 5 files\n"
+            "Downloading config.json: 100%\n"
+            "Downloading model.safetensors: 100%\n"
+        )
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO(output_text)
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console_output = StringIO()
+        console = Console(file=console_output, no_color=True)
+
+        _run_download("test/repo", local_dir, console)
+
+        printed = console_output.getvalue()
+        assert "Fetching 5 files" in printed
+        assert "config.json" in printed
+        assert "model.safetensors" in printed
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_multiple_tracebacks_all_suppressed(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Multiple traceback blocks in output are all suppressed from console."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        output_text = (
+            "Starting download...\n"
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/retry.py", line 5\n'
+            "    attempt()\n"
+            "TimeoutError: first attempt failed\n"
+            "Retrying...\n"
+            "Traceback (most recent call last):\n"
+            '  File "/usr/lib/retry.py", line 5\n'
+            "    attempt()\n"
+            "TimeoutError: second attempt failed\n"
+        )
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO(output_text)
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console_output = StringIO()
+        console = Console(file=console_output, no_color=True)
+
+        with pytest.raises(DownloadError):
+            _run_download("test/repo", local_dir, console)
+
+        printed = console_output.getvalue()
+        # Normal lines printed
+        assert "Starting download..." in printed
+        assert "Retrying..." in printed
+        # All traceback lines suppressed
+        assert "Traceback" not in printed
+        assert "TimeoutError" not in printed
+        assert "File " not in printed
+
+
+# =========================================================================== #
 # Conversion tests
 # =========================================================================== #
 

@@ -823,6 +823,12 @@ def _start_temp_instance(
         if entry.capabilities.tool_call_parser:
             cmd.extend(["--tool-call-parser", entry.capabilities.tool_call_parser])
 
+    # Add reasoning parser for thinking models (e.g., Qwen3).
+    # Without this flag, thinking models emit <think> tags that break
+    # the tool-call parser (e.g., hermes).
+    if entry.capabilities.thinking and entry.capabilities.reasoning_parser:
+        cmd.extend(["--reasoning-parser", entry.capabilities.reasoning_parser])
+
     try:
         start_service(
             service_name=service_name,
