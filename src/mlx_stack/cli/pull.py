@@ -110,21 +110,28 @@ def _run_post_download_bench(model_id: str, quant: str, out: Console) -> None:
     out.print("[bold cyan]Running post-download benchmark...[/bold cyan]")
 
     try:
-        from mlx_stack.core.deps import ensure_dependency
+        from mlx_stack.core.benchmark import BenchmarkError, run_benchmark
 
-        ensure_dependency("vllm-mlx")
+        result = run_benchmark(target=model_id, save=False)
+        out.print(
+            f"  Prompt TPS: {result.prompt_tps_mean:.1f} ± {result.prompt_tps_std:.1f} tok/s"
+        )
+        out.print(
+            f"  Gen TPS:    {result.gen_tps_mean:.1f} ± {result.gen_tps_std:.1f} tok/s"
+        )
+        out.print()
+        out.print(
+            f"[dim]Run 'mlx-stack bench {model_id} --save' "
+            "to persist results for scoring.[/dim]"
+        )
+    except BenchmarkError as exc:
+        out.print(
+            f"[yellow]Benchmark failed: {exc}[/yellow]\n"
+            f"Run 'mlx-stack bench {model_id}' to retry."
+        )
     except Exception as exc:
         out.print(
-            f"[yellow]Could not ensure vllm-mlx is installed: {exc}[/yellow]\n"
+            f"[yellow]Could not run benchmark: {exc}[/yellow]\n"
             "Skipping benchmark. Install vllm-mlx manually and run "
             f"'mlx-stack bench {model_id}'."
         )
-        return
-
-    # Import bench module if available — this is a stub for the bench-command
-    # feature which will implement the actual benchmarking logic.
-    out.print(
-        f"[yellow]Benchmark for {model_id} ({quant}) — "
-        "the bench command will be available in a future update.[/yellow]\n"
-        f"Run 'mlx-stack bench {model_id}' when the bench feature is ready."
-    )

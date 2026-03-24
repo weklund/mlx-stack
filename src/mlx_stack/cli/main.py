@@ -14,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from mlx_stack import __version__
+from mlx_stack.cli.bench import bench as bench_command
 from mlx_stack.cli.config import config as config_group
 from mlx_stack.cli.down import down as down_command
 from mlx_stack.cli.init import init as init_command
@@ -168,13 +169,6 @@ cli.add_command(down_command, "down")
 cli.add_command(status_command, "status")
 
 
-@cli.command()
-@click.argument("target", required=False)
-@click.option("--save", is_flag=True, help="Save benchmark results.")
-def bench(target: str | None, save: bool) -> None:
-    """Benchmark a tier or model."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the bench-command feature.")
-    raise SystemExit(1)
-
+cli.add_command(bench_command, "bench")
 
 cli.add_command(config_group, "config")
