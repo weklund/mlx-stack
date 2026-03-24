@@ -1,0 +1,40 @@
+{
+  "featureId": "process-management",
+  "reviewedAt": "2026-03-24T04:49:15.529316Z",
+  "commitId": "eb151f1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation covers the requested process-management surface overall, but there is one blocking reliability defect in service startup error handling plus two non-blocking contract/edge-case gaps.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/process.py",
+        "line": 557,
+        "severity": "blocking",
+        "description": "start_service() starts the subprocess before writing the PID file and does not handle write_pid_file() failure. If PID file write fails (e.g., permission/disk issues), the function raises while leaving the child process running and unmanaged (no PID tracking/cleanup)."
+      },
+      {
+        "file": "src/mlx_stack/core/process.py",
+        "line": 522,
+        "severity": "non_blocking",
+        "description": "start_service() documents raising PortConflictError when a port is already in use, but the function does not call detect_port_conflict()/check_port_conflict(). This creates an API contract mismatch and shifts all safety to callers."
+      },
+      {
+        "file": "src/mlx_stack/core/process.py",
+        "line": 465,
+        "severity": "non_blocking",
+        "description": "check_port_conflict() ignores LISTEN sockets where psutil reports pid=None and can return None as if the port were free. Under limited process visibility, this can miss real port conflicts."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature declares skillName `cli-feature`, but runtime skill invocation failed with `Skill \"cli-feature\" not found` despite a local skill file existing.",
+      "evidence": "Worker transcript skeleton for session 138efa4d-3dcb-4ec9-a14b-58a511bc21d9 shows Tool: Skill {\"skill\": \"cli-feature\"} -> Error: Skill \"cli-feature\" not found. Handoff skillFeedback.deviations/suggestedChanges also calls this out. Skill file exists at .factory/skills/cli-feature/SKILL.md."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review status: fail. The feature is broadly implemented, but startup can leak unmanaged subprocesses when PID-file creation fails; additional non-blocking API/port-detection gaps and a skill-registry mismatch were noted."
+}

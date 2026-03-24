@@ -1,0 +1,34 @@
+{
+  "featureId": "up-command",
+  "reviewedAt": "2026-03-24T04:50:24Z",
+  "commitId": "1ceaf7304d7631cfae33444d551db8e185f4da21",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The implementation covers most lifecycle startup behaviors (ordering, dry-run, lockfile, health checks, partial failures, localhost binding, and API-key env propagation), but two blocking gaps remain versus the feature contract.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/stack_up.py",
+        "line": 637,
+        "severity": "blocking",
+        "description": "Missing-model handling is not implemented. The startup loop goes straight from port checks to process launch/health polling, but there is no preflight check that the referenced tier model/source is actually present locally (or a targeted missing-model error path). This does not satisfy the feature requirement to handle missing models explicitly and can degrade into generic startup timeout/failure behavior instead."
+      },
+      {
+        "file": "src/mlx_stack/core/stack_up.py",
+        "line": 577,
+        "severity": "blocking",
+        "description": "Corrupt PID files can crash `mlx-stack up` with an unhandled exception. `read_pid_file()` can raise `ProcessError` on non-numeric PID content (`src/mlx_stack/core/process.py:167-194`), but `_run_startup()` does not catch it when probing existing tier/litellm PIDs, and the CLI handler only catches `UpError`/`LockError` (`src/mlx_stack/cli/up.py:146-150`). This leaves a traceback path instead of graceful stale/corrupt PID cleanup."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature metadata requires `skillName: cli-feature`, and a skill file exists at `.factory/skills/cli-feature/SKILL.md`, but the worker transcript shows `Skill \"cli-feature\" not found` and the worker proceeded without it.",
+      "evidence": "Transcript skeleton for worker session `56acad8a-d59d-4541-8303-9964ade5f00f` includes `Tool: Skill {\"skill\":\"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; handoff `skillFeedback.deviations` repeats this."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed: two blocking issues were found in `up-command` (missing explicit missing-model handling and an unhandled corrupt-PID exception path). Shared-state note: `cli-feature` skill is referenced but not available at runtime."
+}

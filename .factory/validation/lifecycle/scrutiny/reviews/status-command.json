@@ -1,0 +1,33 @@
+{
+  "featureId": "status-command",
+  "reviewedAt": "2026-03-24T04:48:55Z",
+  "commitId": "045c67d",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The status command implementation is solid for 5-state reporting, uptime formatting, table/JSON output, and graceful no-stack handling, but it does not satisfy the read-only contract end-to-end because invoking `mlx-stack status` can create filesystem state.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/main.py",
+        "line": 151,
+        "severity": "blocking",
+        "description": "`cli()` always calls `ensure_data_home()`, so running `mlx-stack status` creates `MLX_STACK_HOME` when it does not exist. This violates the feature's required read-only behavior (no file modifications/creation). Repro: with a missing temp home (`MLX_STACK_HOME=/tmp/mlx-stack-status-readonly-check-<id>`), `uv run mlx-stack status` exits 0 and leaves the directory created (`post_dir_exists`)."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The configured worker skill was not invokable at runtime even though the skill file exists, causing workers to proceed without the intended guided procedure.",
+      "evidence": "worker-transcripts.jsonl:28 for session 43df8ad8-5c6f-4ce3-b861-193027d9bf6a shows `Tool: Skill {\"skill\": \"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; skill file exists at .factory/skills/cli-feature/SKILL.md."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill guidance is partially out of sync with this repo's actual command-registration pattern and can mislead implementation/review procedure checks.",
+      "evidence": "SKILL.md line 189 instructs registering commands in `src/mlx_stack/cli/__init__.py`, while the repository registers commands in `src/mlx_stack/cli/main.py` (e.g., lines 160-191, including status at line 179)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, transcript skeleton, and skill context for status-command. Result is FAIL due to one blocking contract gap: `mlx-stack status` is not fully read-only in a clean environment because the CLI callback creates data-home state before command execution."
+}

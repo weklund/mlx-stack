@@ -1,0 +1,34 @@
+{
+  "featureId": "down-command",
+  "reviewedAt": "2026-03-24T04:48:48Z",
+  "commitId": "b377667",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature implements the down command surface and most expected behaviors (ordered stop flow, selective tier handling, stale/corrupt PID cleanup, and idle no-op), but it has a blocking shutdown-accountability gap: the command can report success and remove PID files even when a process may still be alive after forced termination.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/process.py",
+        "line": 617,
+        "severity": "blocking",
+        "description": "stop_service() always removes the PID file and returns a ShutdownResult after _terminate_process(), but _terminate_process() returns false both when SIGKILL succeeds and when the process still remains alive. This means down can report a service as stopped and clear its PID tracking without confirming termination, violating the expected post-down guarantee of zero running managed processes/confirmed termination before cleanup."
+      },
+      {
+        "file": "src/mlx_stack/core/stack_down.py",
+        "line": 227,
+        "severity": "non_blocking",
+        "description": "Tier validation is skipped when stack tier metadata cannot be loaded (the check is gated by `if valid_tiers and ...`). In that case, `down --tier <typo>` silently degrades to not-running behavior instead of returning the documented invalid-tier error with valid tier guidance."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata requires skillName `cli-feature`, but workers cannot invoke it in runtime even though the skill file exists in-repo, causing repeated procedure drift.",
+      "evidence": "worker-transcripts.jsonl (session ce99eb98-4412-4b8d-81ee-c7e67867f213) shows `Error: Skill \"cli-feature\" not found`; skill file exists at .factory/skills/cli-feature/SKILL.md; handoff.skillFeedback.deviations documents the same mismatch."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature down-command via handoff, transcript skeleton, skill file, and commit b377667 diff. Result is FAIL due to a blocking termination-confirmation gap that can leave live processes untracked after down; one additional non-blocking tier-validation edge case was noted."
+}
