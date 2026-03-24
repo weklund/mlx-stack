@@ -880,6 +880,208 @@ class TestModelsCatalogCommand:
 
 
 # =========================================================================== #
+# CLI tests — catalog filter flags (--family, --tag, --tool-calling)
+# =========================================================================== #
+
+
+class TestCatalogFilters:
+    """Tests for catalog filter flags: --family, --tag, --tool-calling.
+
+    VAL-CATALOG-002: Catalog queryable by family, tag, and capability.
+    """
+
+    def test_filter_by_family(self, mlx_stack_home: Path) -> None:
+        """--family filters catalog to matching family only."""
+        catalog = [
+            _make_entry(
+                model_id="qwen-a", name="Qwen A", family="Qwen 3.5",
+                tags=["balanced"],
+            ),
+            _make_entry(
+                model_id="qwen-b", name="Qwen B", family="Qwen 3.5",
+                tags=["balanced"],
+            ),
+            _make_entry(
+                model_id="gemma-a", name="Gemma A", family="Gemma 3",
+                tags=["balanced"],
+            ),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(cli, ["models", "--catalog", "--family", "qwen 3.5"])
+
+        assert result.exit_code == 0
+        assert "Qwen A" in result.output
+        assert "Qwen B" in result.output
+        assert "Gemma A" not in result.output
+
+    def test_filter_by_family_case_insensitive(self, mlx_stack_home: Path) -> None:
+        """--family is case-insensitive."""
+        catalog = [
+            _make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(cli, ["models", "--catalog", "--family", "QWEN 3.5"])
+
+        assert result.exit_code == 0
+        assert "Qwen Model" in result.output
+
+    def test_filter_by_tag(self, mlx_stack_home: Path) -> None:
+        """--tag filters catalog to models with the specified tag."""
+        catalog = [
+            _make_entry(
+                model_id="agent-model", name="Agent Model",
+                tags=["agent-ready", "balanced"],
+            ),
+            _make_entry(
+                model_id="basic-model", name="Basic Model",
+                tags=["balanced"],
+            ),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(cli, ["models", "--catalog", "--tag", "agent-ready"])
+
+        assert result.exit_code == 0
+        assert "Agent Model" in result.output
+        assert "Basic Model" not in result.output
+
+    def test_filter_by_tool_calling(self, mlx_stack_home: Path) -> None:
+        """--tool-calling filters to tool-calling-capable models only."""
+        catalog = [
+            _make_entry(
+                model_id="with-tools", name="With Tools",
+                tool_calling=True,
+            ),
+            _make_entry(
+                model_id="no-tools", name="No Tools",
+                tool_calling=False,
+            ),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(cli, ["models", "--catalog", "--tool-calling"])
+
+        assert result.exit_code == 0
+        assert "With Tools" in result.output
+        assert "No Tools" not in result.output
+
+    def test_combined_filters(self, mlx_stack_home: Path) -> None:
+        """Multiple filters are applied together (AND logic)."""
+        catalog = [
+            _make_entry(
+                model_id="match", name="Match Both",
+                family="Qwen 3.5", tool_calling=True,
+                tags=["agent-ready"],
+            ),
+            _make_entry(
+                model_id="family-only", name="Family Only",
+                family="Qwen 3.5", tool_calling=False,
+                tags=[],
+            ),
+            _make_entry(
+                model_id="tools-only", name="Tools Only",
+                family="Gemma 3", tool_calling=True,
+                tags=["agent-ready"],
+            ),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(
+                cli,
+                ["models", "--catalog", "--family", "qwen 3.5", "--tool-calling"],
+            )
+
+        assert result.exit_code == 0
+        assert "Match Both" in result.output
+        assert "Family Only" not in result.output
+        assert "Tools Only" not in result.output
+
+    def test_no_matches_message(self, mlx_stack_home: Path) -> None:
+        """Shows informative message when no models match filters."""
+        catalog = [
+            _make_entry(model_id="x", name="Some Model", family="Gemma 3"),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(
+                cli, ["models", "--catalog", "--family", "nonexistent"]
+            )
+
+        assert result.exit_code == 0
+        assert "No models match" in result.output
+
+    def test_filter_flags_imply_catalog(self, mlx_stack_home: Path) -> None:
+        """Using --family without --catalog still shows catalog (auto-enables)."""
+        catalog = [
+            _make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
+        ]
+
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            # Note: no --catalog flag, just --family
+            result = runner.invoke(cli, ["models", "--family", "qwen 3.5"])
+
+        assert result.exit_code == 0
+        assert "Qwen Model" in result.output
+
+    def test_real_catalog_family_filter(self, mlx_stack_home: Path) -> None:
+        """VAL-CATALOG-002: Filter real catalog by family."""
+        runner = CliRunner()
+        with patch("mlx_stack.cli.models.load_profile", return_value=None):
+            result = runner.invoke(
+                cli, ["models", "--catalog", "--family", "qwen 3.5"]
+            )
+
+        assert result.exit_code == 0
+        assert "Qwen 3.5" in result.output
+        # Other families should NOT appear
+        assert "Nemotron" not in result.output
+        assert "Gemma 3" not in result.output
+        assert "DeepSeek R1" not in result.output
+
+    def test_real_catalog_tool_calling_filter(self, mlx_stack_home: Path) -> None:
+        """VAL-CATALOG-002: Filter real catalog by tool-calling capability."""
+        runner = CliRunner()
+        with patch("mlx_stack.cli.models.load_profile", return_value=None):
+            result = runner.invoke(
+                cli, ["models", "--catalog", "--tool-calling"]
+            )
+
+        assert result.exit_code == 0
+        # Should have some models but not all 15
+        assert "Model Catalog" in result.output
+
+
+# =========================================================================== #
 # CLI tests — help text
 # =========================================================================== #
 
@@ -894,6 +1096,9 @@ class TestModelsHelp:
 
         assert result.exit_code == 0
         assert "--catalog" in result.output
+        assert "--family" in result.output
+        assert "--tag" in result.output
+        assert "--tool-calling" in result.output
         assert "local models" in result.output.lower() or "catalog" in result.output.lower()
 
     def test_models_in_main_help(self) -> None:

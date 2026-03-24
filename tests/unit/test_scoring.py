@@ -774,18 +774,24 @@ class TestScoreAndFilter:
 class TestAssignTiers:
     """Tests for assign_tiers."""
 
-    def test_standard_is_highest_quality(
+    def test_standard_is_highest_composite_score(
         self,
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
+        """Standard tier gets the model with the highest composite score.
+
+        The composite score is intent-weighted, so standard tier reflects
+        the intent-specific best model rather than the raw quality leader.
+        """
         scored = score_and_filter(
             sample_catalog, m4_max_128_profile, "balanced", 51.2
         )
         tiers = assign_tiers(scored, 51.2)
         standard = next(t for t in tiers if t.tier == TIER_STANDARD)
-        # premium-72b (91 quality) fits in 51.2 GB budget (42 GB memory)
-        assert standard.model.entry.quality.overall >= 85
+        # Standard tier should be the model with the highest composite score
+        max_composite = max(m.composite_score for m in scored)
+        assert standard.model.composite_score == pytest.approx(max_composite)
 
     def test_fast_is_highest_gen_tps(
         self,
@@ -1241,3 +1247,157 @@ class TestWithRealCatalog:
         for t1, t2 in zip(r1.tiers, r2.tiers):
             assert t1.tier == t2.tier
             assert t1.model.entry.id == t2.model.entry.id
+
+    def test_real_catalog_intents_produce_different_tier_assignments(self) -> None:
+        """Regression: balanced and agent-fleet produce different tier model assignments.
+
+        This was broken when assign_tiers() used hardcoded quality.overall and
+        gen_tps instead of the intent-weighted composite score. Now that
+        assign_tiers() uses composite_score for the standard tier, different
+        intents (which weight quality vs. tool_calling differently) should
+        produce at least one different tier assignment on the same hardware.
+        """
+        from mlx_stack.core.catalog import load_catalog
+
+        catalog = load_catalog()
+        profile = _make_profile()  # M4 Max 128 GB
+
+        balanced = recommend(catalog, profile, intent="balanced")
+        fleet = recommend(catalog, profile, intent="agent-fleet")
+
+        balanced_tier_models = {t.tier: t.model.entry.id for t in balanced.tiers}
+        fleet_tier_models = {t.tier: t.model.entry.id for t in fleet.tiers}
+
+        # The two intents must produce at least one different tier assignment
+        common_tiers = set(balanced_tier_models) & set(fleet_tier_models)
+        has_difference = any(
+            balanced_tier_models[tier] != fleet_tier_models[tier]
+            for tier in common_tiers
+        )
+        assert has_difference, (
+            f"balanced and agent-fleet should differ in at least one tier, "
+            f"but both produced identical assignments: "
+            f"balanced={balanced_tier_models}, fleet={fleet_tier_models}"
+        )
+
+
+# =========================================================================== #
+# Tests: Intent differentiation in tier assignment
+# =========================================================================== #
+
+
+class TestIntentDifferentiation:
+    """Regression tests: different intents produce different tier assignments.
+
+    Prior to the fix, assign_tiers() used hardcoded quality.overall for the
+    standard tier and gen_tps for the fast tier, ignoring the composite score
+    entirely. This meant that balanced and agent-fleet produced identical
+    tier assignments despite having very different weight configurations.
+    """
+
+    def test_different_intents_different_standard_tier(
+        self,
+        m4_max_128_profile: HardwareProfile,
+    ) -> None:
+        """Standard tier should differ between balanced and agent-fleet.
+
+        Construct a catalog where:
+        - Model A: high quality, no tool_calling, moderate speed, same memory
+          → favoured by balanced (quality weight 0.40)
+        - Model B: moderate quality, has tool_calling, same speed, same memory
+          → favoured by agent-fleet (tool_calling weight 0.35)
+
+        Models are carefully balanced so that speed and memory_efficiency
+        are similar, making the quality vs. tool_calling weight difference
+        the decisive factor.
+        """
+        model_a = _make_entry(
+            model_id="quality-leader",
+            name="Quality Leader",
+            quality_overall=95,
+            quality_coding=93,
+            quality_reasoning=94,
+            quality_instruction=95,
+            tool_calling=False,
+            tool_call_parser=None,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(
+                    prompt_tps=40.0, gen_tps=25.0, memory_gb=20.0
+                ),
+            },
+        )
+        model_b = _make_entry(
+            model_id="tool-caller",
+            name="Tool Caller",
+            quality_overall=50,
+            quality_coding=48,
+            quality_reasoning=45,
+            quality_instruction=52,
+            tool_calling=True,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(
+                    prompt_tps=42.0, gen_tps=26.0, memory_gb=20.0
+                ),
+            },
+        )
+        catalog = [model_a, model_b]
+        budget_gb = 51.2
+
+        balanced_scored = score_and_filter(
+            catalog, m4_max_128_profile, "balanced", budget_gb
+        )
+        fleet_scored = score_and_filter(
+            catalog, m4_max_128_profile, "agent-fleet", budget_gb
+        )
+
+        balanced_tiers = assign_tiers(balanced_scored, budget_gb)
+        fleet_tiers = assign_tiers(fleet_scored, budget_gb)
+
+        balanced_standard = next(t for t in balanced_tiers if t.tier == TIER_STANDARD)
+        fleet_standard = next(t for t in fleet_tiers if t.tier == TIER_STANDARD)
+
+        # Under balanced (quality=0.40, tool_calling=0.15), quality-leader
+        # should win due to its much higher quality score.
+        # Under agent-fleet (quality=0.20, tool_calling=0.35), tool-caller
+        # should win due to the large tool_calling bonus outweighing quality.
+        assert balanced_standard.model.entry.id != fleet_standard.model.entry.id, (
+            "Standard tier should differ between balanced and agent-fleet intents"
+        )
+        assert balanced_standard.model.entry.id == "quality-leader"
+        assert fleet_standard.model.entry.id == "tool-caller"
+
+    def test_standard_tier_uses_composite_not_raw_quality(
+        self,
+        m4_max_128_profile: HardwareProfile,
+    ) -> None:
+        """Standard tier should pick the highest composite score, not raw quality."""
+        # Model with highest quality but terrible speed and efficiency
+        high_q = _make_entry(
+            model_id="slow-quality",
+            quality_overall=95,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(
+                    prompt_tps=5.0, gen_tps=3.0, memory_gb=48.0
+                ),
+            },
+        )
+        # Model with moderate quality but good speed and efficiency
+        balanced_model = _make_entry(
+            model_id="balanced-model",
+            quality_overall=70,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(
+                    prompt_tps=120.0, gen_tps=70.0, memory_gb=5.0
+                ),
+            },
+        )
+
+        scored = score_and_filter(
+            [high_q, balanced_model], m4_max_128_profile, "balanced", 51.2
+        )
+        tiers = assign_tiers(scored, 51.2)
+        standard = next(t for t in tiers if t.tier == TIER_STANDARD)
+
+        # The balanced-model should win because its composite score is higher
+        # even though slow-quality has higher raw quality
+        assert standard.model.entry.id == "balanced-model"

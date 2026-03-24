@@ -467,7 +467,9 @@ def assign_tiers(
     """Assign scored models to tiers: standard, fast, longctx.
 
     Assignment rules:
-    - standard: highest quality.overall model from budget-eligible candidates
+    - standard: highest intent-weighted composite score from budget-eligible
+      candidates (varies by intent — agent-fleet favours tool_calling,
+      balanced favours quality)
     - fast: highest gen_tps model that is different from standard
     - longctx: architecturally diverse model (e.g., mamba2-hybrid) if available
       and different from standard and fast
@@ -477,6 +479,7 @@ def assign_tiers(
 
     Args:
         scored_models: Pre-filtered, scored models within budget.
+            Must already be scored with intent-specific weights.
         memory_budget_gb: The memory budget in GB (used for tier count decisions).
 
     Returns:
@@ -488,10 +491,13 @@ def assign_tiers(
     assignments: list[TierAssignment] = []
     used_model_ids: set[str] = set()
 
-    # --- Standard tier: highest quality overall ---
+    # --- Standard tier: highest intent-weighted composite score ---
+    # The composite_score already reflects intent weights (quality-heavy for
+    # balanced, tool_calling-heavy for agent-fleet), so sorting by it
+    # naturally produces different tier assignments per intent.
     standard_candidates = sorted(
         scored_models,
-        key=lambda m: (-m.entry.quality.overall, m.entry.id),
+        key=lambda m: (-m.composite_score, m.entry.id),
     )
     standard_model = standard_candidates[0]
     assignments.append(TierAssignment(

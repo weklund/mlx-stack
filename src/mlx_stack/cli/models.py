@@ -14,7 +14,13 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from mlx_stack.core.catalog import CatalogError, load_catalog
+from mlx_stack.core.catalog import (
+    CatalogError,
+    load_catalog,
+    query_by_capability,
+    query_by_family,
+    query_by_tag,
+)
 from mlx_stack.core.hardware import load_profile
 from mlx_stack.core.models import (
     ModelsError,
@@ -130,8 +136,18 @@ def _display_local_models() -> None:
 # --------------------------------------------------------------------------- #
 
 
-def _display_catalog() -> None:
-    """Display the full model catalog with hardware-specific benchmark data."""
+def _display_catalog(
+    family: str | None = None,
+    tag: str | None = None,
+    tool_calling: bool = False,
+) -> None:
+    """Display the full model catalog with hardware-specific benchmark data.
+
+    Args:
+        family: Optional family name filter (case-insensitive).
+        tag: Optional tag filter (case-insensitive).
+        tool_calling: If True, filter to tool-calling-capable models only.
+    """
     out = Console()
 
     try:
@@ -140,10 +156,36 @@ def _display_catalog() -> None:
         console.print(f"[bold red]Error:[/bold red] Could not load catalog: {exc}")
         raise SystemExit(1) from None
 
+    # Apply filters
+    filtered = catalog
+    if family:
+        filtered = query_by_family(filtered, family)
+    if tag:
+        filtered = query_by_tag(filtered, tag)
+    if tool_calling:
+        filtered = query_by_capability(filtered, tool_calling=True)
+
+    if not filtered:
+        out.print()
+        filter_parts: list[str] = []
+        if family:
+            filter_parts.append(f"family={family}")
+        if tag:
+            filter_parts.append(f"tag={tag}")
+        if tool_calling:
+            filter_parts.append("tool-calling")
+        filter_desc = ", ".join(filter_parts) if filter_parts else "filters"
+        out.print(
+            f"[yellow]No models match the given filters ({filter_desc}).[/yellow] "
+            "Run [bold]mlx-stack models --catalog[/bold] to see all models."
+        )
+        out.print()
+        return
+
     profile = load_profile()
     local_models = scan_local_models(catalog=catalog)
     catalog_models = list_catalog_models(
-        catalog=catalog, profile=profile, local_models=local_models
+        catalog=filtered, profile=profile, local_models=local_models
     )
 
     out.print()
@@ -225,7 +267,18 @@ def _display_catalog() -> None:
 
 @click.command()
 @click.option("--catalog", is_flag=True, help="Show full catalog with benchmark data.")
-def models(catalog: bool) -> None:
+@click.option("--family", default=None, help="Filter catalog by model family (e.g., 'qwen3.5').")
+@click.option("--tag", default=None, help="Filter catalog by tag (e.g., 'agent-ready').")
+@click.option(
+    "--tool-calling", "tool_calling", is_flag=True,
+    help="Filter catalog to tool-calling-capable models only.",
+)
+def models(
+    catalog: bool,
+    family: str | None,
+    tag: str | None,
+    tool_calling: bool,
+) -> None:
     """List local models or browse the catalog.
 
     Without flags, shows locally downloaded models with disk size,
@@ -234,10 +287,16 @@ def models(catalog: bool) -> None:
 
     Use --catalog to display all 15 catalog models with hardware-specific
     benchmark data (gen_tps, memory) for your detected hardware profile.
+
+    Filter flags (--family, --tag, --tool-calling) require --catalog.
     """
     try:
+        # If filter flags are used without --catalog, enable catalog mode
+        if (family or tag or tool_calling) and not catalog:
+            catalog = True
+
         if catalog:
-            _display_catalog()
+            _display_catalog(family=family, tag=tag, tool_calling=tool_calling)
         else:
             _display_local_models()
     except ModelsError as exc:
