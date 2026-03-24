@@ -619,7 +619,45 @@ class TestDownCli:
 
         assert result.exit_code == 0
         assert "graceful" in result.output
-        assert "SIGKILL" in result.output or "forced" in result.output
+        assert "SIGTERM" in result.output
+        assert "forced (SIGKILL)" in result.output
+
+    def test_forced_sigkill_explicit_in_output(self, mlx_stack_home: Path) -> None:
+        """VAL-DOWN-002: SIGKILL escalation explicitly reported per service."""
+        mock_result = DownResult(
+            services=[
+                ServiceStopResult(
+                    name="standard", pid=1001, status="stopped", graceful=False,
+                ),
+            ],
+        )
+
+        with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["down"])
+
+        assert result.exit_code == 0
+        # Must explicitly say "forced (SIGKILL)" for force-killed service
+        assert "forced (SIGKILL)" in result.output
+        # The service name must appear so user knows which service was forced
+        assert "standard" in result.output
+
+    def test_graceful_sigterm_explicit_in_output(self, mlx_stack_home: Path) -> None:
+        """VAL-DOWN-002: Graceful shutdown explicitly reports SIGTERM."""
+        mock_result = DownResult(
+            services=[
+                ServiceStopResult(
+                    name="fast", pid=1002, status="stopped", graceful=True,
+                ),
+            ],
+        )
+
+        with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
+            runner = CliRunner()
+            result = runner.invoke(cli, ["down"])
+
+        assert result.exit_code == 0
+        assert "graceful (SIGTERM)" in result.output
 
     def test_tier_filter_option(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier option passed to run_down."""

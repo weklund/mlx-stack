@@ -812,6 +812,122 @@ class TestRunUp:
     @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
+    @patch("mlx_stack.core.stack_up.check_port_conflict")
+    @patch("mlx_stack.core.stack_up.read_pid_file", return_value=None)
+    @patch("mlx_stack.core.stack_up.acquire_lock")
+    @patch("mlx_stack.core.stack_up.ensure_dependency")
+    @patch("mlx_stack.core.stack_up.load_catalog")
+    @patch("mlx_stack.core.stack_up.get_value")
+    @patch("mlx_stack.core.stack_up.shutil.which")
+    def test_port_conflict_error_shows_pid_and_process(
+        self,
+        mock_which: MagicMock,
+        mock_get_value: MagicMock,
+        mock_load_catalog: MagicMock,
+        mock_ensure_dep: MagicMock,
+        mock_lock: MagicMock,
+        mock_read_pid: MagicMock,
+        mock_port_conflict: MagicMock,
+        mock_wait_healthy: MagicMock,
+        mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-UP-012: Port conflict error includes PID and process name."""
+        _write_stack_yaml(mlx_stack_home)
+        _write_litellm_yaml(mlx_stack_home)
+        mock_load_catalog.return_value = _make_test_catalog()
+        mock_get_value.side_effect = lambda key: {
+            "litellm-port": 4000,
+            "openrouter-key": "",
+        }.get(key, "")
+        mock_which.side_effect = lambda x: f"/usr/local/bin/{x}"
+        mock_lock.return_value.__enter__ = MagicMock(return_value=None)
+        mock_lock.return_value.__exit__ = MagicMock(return_value=False)
+
+        # Port 8000 occupied by a known process
+        def port_conflict_side_effect(port: int) -> tuple[int, str] | None:
+            if port == 8000:
+                return (54321, "node")
+            return None
+
+        mock_port_conflict.side_effect = port_conflict_side_effect
+        mock_start_service.return_value = ServiceInfo(
+            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            pid_path=Path("/tmp/fast.pid"),
+        )
+        mock_wait_healthy.return_value = HealthCheckResult(
+            healthy=True, response_time=0.5, status_code=200,
+        )
+
+        result = run_up()
+        # Find the skipped tier
+        skipped = [t for t in result.tiers if t.status == "skipped"]
+        assert len(skipped) == 1
+        assert skipped[0].name == "standard"
+        # Error message must include the conflicting PID and process name
+        assert skipped[0].error is not None
+        assert "54321" in skipped[0].error
+        assert "node" in skipped[0].error
+        assert "8000" in skipped[0].error
+
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
+    @patch("mlx_stack.core.stack_up.start_service")
+    @patch("mlx_stack.core.stack_up.wait_for_healthy")
+    @patch("mlx_stack.core.stack_up.check_port_conflict")
+    @patch("mlx_stack.core.stack_up.read_pid_file", return_value=None)
+    @patch("mlx_stack.core.stack_up.acquire_lock")
+    @patch("mlx_stack.core.stack_up.ensure_dependency")
+    @patch("mlx_stack.core.stack_up.load_catalog")
+    @patch("mlx_stack.core.stack_up.get_value")
+    @patch("mlx_stack.core.stack_up.shutil.which")
+    def test_port_conflict_unknown_owner(
+        self,
+        mock_which: MagicMock,
+        mock_get_value: MagicMock,
+        mock_load_catalog: MagicMock,
+        mock_ensure_dep: MagicMock,
+        mock_lock: MagicMock,
+        mock_read_pid: MagicMock,
+        mock_port_conflict: MagicMock,
+        mock_wait_healthy: MagicMock,
+        mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-UP-012: Port conflict with unknown owner still shows port."""
+        _write_stack_yaml(mlx_stack_home)
+        _write_litellm_yaml(mlx_stack_home)
+        mock_load_catalog.return_value = _make_test_catalog()
+        mock_get_value.side_effect = lambda key: {
+            "litellm-port": 4000,
+            "openrouter-key": "",
+        }.get(key, "")
+        mock_which.side_effect = lambda x: f"/usr/local/bin/{x}"
+        mock_lock.return_value.__enter__ = MagicMock(return_value=None)
+        mock_lock.return_value.__exit__ = MagicMock(return_value=False)
+
+        # Port occupied but owner unknown (e.g., macOS permission issue)
+        mock_port_conflict.side_effect = lambda port: (
+            (0, "<unknown>") if port == 8000 else None
+        )
+        mock_start_service.return_value = ServiceInfo(
+            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            pid_path=Path("/tmp/fast.pid"),
+        )
+        mock_wait_healthy.return_value = HealthCheckResult(
+            healthy=True, response_time=0.5, status_code=200,
+        )
+
+        result = run_up()
+        skipped = [t for t in result.tiers if t.status == "skipped"]
+        assert len(skipped) == 1
+        assert "8000" in (skipped[0].error or "")
+        assert "already in use" in (skipped[0].error or "")
+
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
+    @patch("mlx_stack.core.stack_up.start_service")
+    @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
     @patch("mlx_stack.core.stack_up.read_pid_file", return_value=None)
     @patch("mlx_stack.core.stack_up.acquire_lock")
@@ -1303,6 +1419,39 @@ class TestCLIOutput:
         result = runner.invoke(cli, ["up"])
         assert result.exit_code == 0
         assert "memory" in result.output.lower()
+
+    @patch("mlx_stack.cli.up.run_up")
+    def test_port_conflict_in_summary(
+        self,
+        mock_run_up: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-UP-012: Port conflict error with PID/process shown in CLI summary."""
+        mock_run_up.return_value = UpResult(
+            tiers=[
+                TierStatus(
+                    name="standard", model="big-model", port=8000,
+                    status="skipped",
+                    error="Port 8000 already in use by PID 54321 (node)",
+                ),
+                TierStatus(
+                    name="fast", model="fast-model", port=8001,
+                    status="healthy",
+                ),
+            ],
+            litellm=TierStatus(
+                name="litellm", model="proxy", port=4000, status="healthy",
+            ),
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["up"])
+        assert result.exit_code == 0
+        # Port conflict error should include PID and process name
+        assert "54321" in result.output
+        assert "node" in result.output
+        assert "8000" in result.output
+        assert "skipped" in result.output
 
 
 # --------------------------------------------------------------------------- #

@@ -382,11 +382,45 @@ class TestWaitForHealthy:
 # =========================================================================== #
 
 
-class TestCheckPortConflict:
-    """Tests for check_port_conflict."""
+class TestSocketBindCheck:
+    """Tests for _socket_bind_check."""
+
+    def test_available_port(self) -> None:
+        """Available port returns False (not in use)."""
+        from mlx_stack.core.process import _socket_bind_check
+        import socket
+
+        # Find a free port
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.bind(("127.0.0.1", 0))
+        _, port = sock.getsockname()
+        sock.close()
+
+        assert _socket_bind_check(port) is False
+
+    def test_occupied_port(self) -> None:
+        """Occupied port returns True (in use)."""
+        from mlx_stack.core.process import _socket_bind_check
+        import socket
+
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+        sock.bind(("127.0.0.1", 0))
+        _, port = sock.getsockname()
+        sock.listen(1)
+        try:
+            assert _socket_bind_check(port) is True
+        finally:
+            sock.close()
+
+
+class TestFindPidOnPort:
+    """Tests for _find_pid_on_port."""
 
     @patch("mlx_stack.core.process.psutil.net_connections")
-    def test_port_in_use(self, mock_conns: MagicMock) -> None:
+    def test_finds_pid(self, mock_conns: MagicMock) -> None:
+        from mlx_stack.core.process import _find_pid_on_port
+
         mock_conn = MagicMock()
         mock_conn.laddr = MagicMock()
         mock_conn.laddr.port = 8000
@@ -396,61 +430,61 @@ class TestCheckPortConflict:
 
         with patch("mlx_stack.core.process.psutil.Process") as mock_proc:
             mock_proc.return_value.name.return_value = "python"
-            result = check_port_conflict(8000)
-            assert result is not None
+            result = _find_pid_on_port(8000)
             assert result == (42, "python")
 
     @patch("mlx_stack.core.process.psutil.net_connections")
-    def test_port_available(self, mock_conns: MagicMock) -> None:
+    def test_no_match(self, mock_conns: MagicMock) -> None:
+        from mlx_stack.core.process import _find_pid_on_port
+
         mock_conns.return_value = []
-        result = check_port_conflict(8000)
-        assert result is None
-
-    @patch("mlx_stack.core.process.psutil.net_connections")
-    def test_different_port(self, mock_conns: MagicMock) -> None:
-        mock_conn = MagicMock()
-        mock_conn.laddr = MagicMock()
-        mock_conn.laddr.port = 9000
-        mock_conn.status = "LISTEN"
-        mock_conn.pid = 42
-        mock_conns.return_value = [mock_conn]
-
-        result = check_port_conflict(8000)
-        assert result is None
+        assert _find_pid_on_port(8000) is None
 
     @patch("mlx_stack.core.process.psutil.net_connections", side_effect=psutil.AccessDenied(0))
     def test_access_denied(self, mock_conns: MagicMock) -> None:
+        from mlx_stack.core.process import _find_pid_on_port
+
+        assert _find_pid_on_port(8000) is None
+
+
+class TestCheckPortConflict:
+    """Tests for check_port_conflict."""
+
+    @patch("mlx_stack.core.process._find_pid_on_port", return_value=(42, "python"))
+    @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
+    def test_port_in_use_with_owner(
+        self, mock_bind: MagicMock, mock_find: MagicMock,
+    ) -> None:
+        """Port occupied, owner identified via psutil."""
+        result = check_port_conflict(8000)
+        assert result is not None
+        assert result == (42, "python")
+
+    @patch("mlx_stack.core.process._socket_bind_check", return_value=False)
+    def test_port_available(self, mock_bind: MagicMock) -> None:
+        """Port available via socket bind."""
         result = check_port_conflict(8000)
         assert result is None
 
-    @patch("mlx_stack.core.process.psutil.net_connections")
-    def test_process_vanished(self, mock_conns: MagicMock) -> None:
-        mock_conn = MagicMock()
-        mock_conn.laddr = MagicMock()
-        mock_conn.laddr.port = 8000
-        mock_conn.status = "LISTEN"
-        mock_conn.pid = 42
-        mock_conns.return_value = [mock_conn]
-
-        with patch(
-            "mlx_stack.core.process.psutil.Process",
-            side_effect=psutil.NoSuchProcess(42),
-        ):
-            result = check_port_conflict(8000)
-            assert result is not None
-            assert result == (42, "<unknown>")
-
-    @patch("mlx_stack.core.process.psutil.net_connections")
-    def test_non_listen_connection_ignored(self, mock_conns: MagicMock) -> None:
-        mock_conn = MagicMock()
-        mock_conn.laddr = MagicMock()
-        mock_conn.laddr.port = 8000
-        mock_conn.status = "ESTABLISHED"
-        mock_conn.pid = 42
-        mock_conns.return_value = [mock_conn]
-
+    @patch("mlx_stack.core.process._find_pid_on_port", return_value=None)
+    @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
+    def test_port_in_use_unknown_owner(
+        self, mock_bind: MagicMock, mock_find: MagicMock,
+    ) -> None:
+        """Port occupied but owner can't be identified (e.g., macOS permission)."""
         result = check_port_conflict(8000)
-        assert result is None
+        assert result is not None
+        assert result == (0, "<unknown>")
+
+    @patch("mlx_stack.core.process._find_pid_on_port", return_value=(42, "<unknown>"))
+    @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
+    def test_process_vanished(
+        self, mock_bind: MagicMock, mock_find: MagicMock,
+    ) -> None:
+        """Process vanished between detection and lookup."""
+        result = check_port_conflict(8000)
+        assert result is not None
+        assert result == (42, "<unknown>")
 
 
 class TestDetectPortConflict:

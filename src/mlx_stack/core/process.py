@@ -448,15 +448,39 @@ def wait_for_healthy(
 # --------------------------------------------------------------------------- #
 
 
-def check_port_conflict(port: int) -> tuple[int, str] | None:
-    """Check if a port is in use and identify the owning process.
+def _socket_bind_check(port: int) -> bool:
+    """Check if a port is available by attempting a socket bind.
+
+    This is more reliable than psutil.net_connections on macOS where
+    the latter can fail with AccessDenied.
 
     Args:
         port: The TCP port to check.
 
     Returns:
-        A tuple of (pid, process_name) if the port is in use,
-        or None if the port is available.
+        True if the port is in use (bind failed), False if available.
+    """
+    import socket
+
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)
+        sock.bind(("127.0.0.1", port))
+        return False  # Port is available
+    except OSError:
+        return True  # Port is in use
+    finally:
+        sock.close()
+
+
+def _find_pid_on_port(port: int) -> tuple[int, str] | None:
+    """Find the PID and process name listening on a port via psutil.
+
+    Args:
+        port: The TCP port to look up.
+
+    Returns:
+        A tuple of (pid, process_name) if found, or None.
     """
     try:
         for conn in psutil.net_connections(kind="inet"):
@@ -470,8 +494,38 @@ def check_port_conflict(port: int) -> tuple[int, str] | None:
                         return (pid, "<unknown>")
     except (psutil.AccessDenied, OSError):
         pass
-
     return None
+
+
+def check_port_conflict(port: int) -> tuple[int, str] | None:
+    """Check if a port is in use and identify the owning process.
+
+    Uses a two-phase approach for reliability:
+    1. Attempt a socket bind to definitively check port availability.
+    2. If the port is in use, look up the owning PID/process via psutil.
+
+    This ensures detection works even when psutil.net_connections is
+    restricted by macOS permissions.
+
+    Args:
+        port: The TCP port to check.
+
+    Returns:
+        A tuple of (pid, process_name) if the port is in use,
+        or None if the port is available.
+    """
+    # Phase 1: Socket bind check (most reliable)
+    if not _socket_bind_check(port):
+        return None  # Port is available
+
+    # Phase 2: Port is in use — try to identify the owner
+    owner = _find_pid_on_port(port)
+    if owner is not None:
+        return owner
+
+    # Port is occupied but we can't identify the owner
+    return (0, "<unknown>")
+
 
 
 def detect_port_conflict(port: int) -> None:

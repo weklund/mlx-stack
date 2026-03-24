@@ -64,7 +64,7 @@ def _display_results(result: DownResult) -> None:
 
         # Method display
         if svc.graceful is True:
-            method_display = "[green]graceful[/green]"
+            method_display = "[green]graceful (SIGTERM)[/green]"
         elif svc.graceful is False:
             method_display = "[red]forced (SIGKILL)[/red]"
         else:
