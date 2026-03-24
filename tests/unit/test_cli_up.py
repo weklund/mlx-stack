@@ -650,6 +650,7 @@ class TestUpErrors:
 class TestRunUp:
     """Tests for run_up with mocked process management."""
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -670,6 +671,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-001/004/005: Successful startup with PID files and LiteLLM."""
@@ -697,6 +699,7 @@ class TestRunUp:
         assert result.litellm is not None
         assert result.litellm.status == "healthy"
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -717,6 +720,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-009: --tier starts only the specified tier."""
@@ -744,6 +748,7 @@ class TestRunUp:
         assert "fast" in tier_names
         assert "standard" not in tier_names
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict")
@@ -764,6 +769,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-012/013: Port conflict skips tier, remaining still start."""
@@ -803,6 +809,7 @@ class TestRunUp:
         assert result.litellm is not None
         assert result.litellm.status == "healthy"
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -823,6 +830,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-003/013: Health check timeout reports error, continues."""
@@ -859,6 +867,7 @@ class TestRunUp:
         assert "failed" in statuses.values()
         assert "healthy" in statuses.values()
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
     @patch("mlx_stack.core.stack_up.read_pid_file", return_value=None)
     @patch("mlx_stack.core.stack_up.acquire_lock")
@@ -875,6 +884,7 @@ class TestRunUp:
         mock_lock: MagicMock,
         mock_read_pid: MagicMock,
         mock_port_conflict: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-005: LiteLLM not started if all model servers fail."""
@@ -932,6 +942,7 @@ class TestRunUp:
         assert result.already_running is True
         assert all(t.status == "already-running" for t in result.tiers)
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -956,6 +967,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-014 / VAL-CROSS-010: Stale PID cleanup and fresh start."""
@@ -1032,6 +1044,7 @@ class TestRunUp:
         with pytest.raises(UpError, match="Dependency installation failed"):
             run_up()
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -1052,6 +1065,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-017: API key passed via env var, not CLI args."""
@@ -1091,6 +1105,7 @@ class TestRunUp:
         assert "OPENROUTER_API_KEY" in env_arg
         assert env_arg["OPENROUTER_API_KEY"] == "sk-or-secret-key"
 
+    @patch("mlx_stack.core.stack_up.check_local_model_exists", return_value=None)
     @patch("mlx_stack.core.stack_up.start_service")
     @patch("mlx_stack.core.stack_up.wait_for_healthy")
     @patch("mlx_stack.core.stack_up.check_port_conflict", return_value=None)
@@ -1111,6 +1126,7 @@ class TestRunUp:
         mock_port_conflict: MagicMock,
         mock_wait_healthy: MagicMock,
         mock_start_service: MagicMock,
+        mock_model_exists: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
         """VAL-UP-016: Memory estimate warning before startup."""

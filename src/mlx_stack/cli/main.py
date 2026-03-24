@@ -22,7 +22,6 @@ from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
-from mlx_stack.core.paths import ensure_data_home
 
 console = Console(stderr=True)
 
@@ -148,7 +147,6 @@ def version_callback(ctx: click.Context, _param: click.Parameter, value: bool) -
 @click.pass_context
 def cli(ctx: click.Context) -> None:
     """CLI control plane for local LLM infrastructure on Apple Silicon."""
-    ensure_data_home()
     if ctx.invoked_subcommand is None:
         click.echo(ctx.get_help())
 

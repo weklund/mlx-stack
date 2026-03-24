@@ -230,6 +230,57 @@ def check_memory_warning(estimated_gb: float) -> str | None:
 
 
 # --------------------------------------------------------------------------- #
+# Preflight local-model existence check
+# --------------------------------------------------------------------------- #
+
+
+def _get_models_dir() -> Path:
+    """Resolve the models directory from config.
+
+    Returns:
+        Path to the models directory.
+    """
+    try:
+        model_dir = str(get_value("model-dir"))
+        return Path(model_dir).expanduser()
+    except (ConfigCorruptError, Exception):
+        return get_data_home() / "models"
+
+
+def check_local_model_exists(tier: dict[str, Any]) -> str | None:
+    """Check if a tier's local model exists on disk.
+
+    Looks for the model in the configured models directory by both
+    the model ID and the source repo directory name.
+
+    Args:
+        tier: A tier dict from the stack definition.
+
+    Returns:
+        An error message string if the model is missing, or None if found.
+    """
+    models_dir = _get_models_dir()
+    model_id = tier.get("model", "")
+    source = tier.get("source", "")
+
+    # Check by model ID as directory name
+    model_path = models_dir / model_id
+
+    # Check by HF repo name (directory name from source)
+    source_dir_name = source.rsplit("/", 1)[-1] if "/" in source else source
+    source_path = models_dir / source_dir_name if source_dir_name else None
+
+    if model_path.exists() or (source_path is not None and source_path.exists()):
+        return None
+
+    # Model not found — generate diagnostic message
+    return (
+        f"Model '{model_id}' not found locally. "
+        f"Run 'mlx-stack pull {model_id}' to download it."
+    )
+
+
+# --------------------------------------------------------------------------- #
 # vllm-mlx command building
 # --------------------------------------------------------------------------- #
 
@@ -652,6 +703,18 @@ def _run_startup(
     for tier in tiers_needing_start:
         tier_name = tier["name"]
         port = tier["port"]
+
+        # Preflight: check local model exists on disk
+        missing_msg = check_local_model_exists(tier)
+        if missing_msg is not None:
+            result.tiers.append(TierStatus(
+                name=tier_name,
+                model=tier.get("model", ""),
+                port=port,
+                status="skipped",
+                error=missing_msg,
+            ))
+            continue
 
         # Check port conflict
         conflict = check_port_conflict(port)

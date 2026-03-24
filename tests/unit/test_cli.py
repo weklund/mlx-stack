@@ -111,27 +111,34 @@ class TestUnknownCommand:
 
 
 class TestDataHomeAutoCreation:
-    """Tests for ensure_data_home() being called in the CLI group callback."""
+    """Tests for data-home gating: only state-writing commands create it."""
 
-    def test_bare_command_creates_data_home(
+    def test_bare_command_does_not_create_data_home(
         self, clean_mlx_stack_home: Path,
     ) -> None:
-        """Running bare mlx-stack with no args auto-creates the data directory."""
+        """Running bare mlx-stack (help) does NOT create the data directory."""
         assert not clean_mlx_stack_home.exists()
         runner = CliRunner()
         result = runner.invoke(cli, [])
         assert result.exit_code == 0
-        assert clean_mlx_stack_home.exists()
-        assert clean_mlx_stack_home.is_dir()
+        assert not clean_mlx_stack_home.exists()
 
-    def test_subcommand_creates_data_home(
+    def test_readonly_subcommand_does_not_create_data_home(
         self, clean_mlx_stack_home: Path,
     ) -> None:
-        """Running a subcommand on a clean system auto-creates the data directory."""
+        """Read-only subcommands do NOT create the data directory."""
         assert not clean_mlx_stack_home.exists()
         runner = CliRunner()
-        # recommend is a placeholder that exits non-zero, but cli() body still runs
-        runner.invoke(cli, ["recommend"])
+        runner.invoke(cli, ["status"])
+        assert not clean_mlx_stack_home.exists()
+
+    def test_state_writing_subcommand_creates_data_home(
+        self, clean_mlx_stack_home: Path,
+    ) -> None:
+        """State-writing subcommands (config set) auto-create the data directory."""
+        assert not clean_mlx_stack_home.exists()
+        runner = CliRunner()
+        runner.invoke(cli, ["config", "set", "default-quant", "int4"])
         assert clean_mlx_stack_home.exists()
         assert clean_mlx_stack_home.is_dir()
 
