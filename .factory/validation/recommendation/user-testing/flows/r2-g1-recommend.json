@@ -1,0 +1,160 @@
+{
+  "groupId": "r2-g1-recommend",
+  "testedAt": "2026-03-24T04:11:28.016760+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation-r2-g1",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/r2-g1-recommend"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "commands": [
+    {
+      "command": "uv run mlx-stack recommend --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-004-balanced.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --intent agent-fleet",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-004-agent-fleet.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --budget 0.5gb",
+      "exitCode": 1,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-0.5gb.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --intent invalid_value",
+      "exitCode": 1,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-invalid-intent.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --budget abc",
+      "exitCode": 1,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-abc.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --budget -5gb",
+      "exitCode": 1,
+      "artifact": "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-negative.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-003-with-profile.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-003-no-profile.txt"
+    },
+    {
+      "command": "uv run mlx-stack recommend --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-recommend-64-balanced.txt"
+    },
+    {
+      "command": "uv run mlx-stack init --accept-defaults --intent balanced --force",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-init-64-balanced.txt"
+    },
+    {
+      "command": "uv run mlx-stack init --accept-defaults --intent balanced --force",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-init-128-balanced.txt"
+    },
+    {
+      "command": "uv run mlx-stack init --accept-defaults --intent agent-fleet --force",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-init-64-agent-fleet.txt"
+    },
+    {
+      "command": "uv run mlx-stack init --accept-defaults --intent agent-fleet --force",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-init-128-agent-fleet.txt"
+    },
+    {
+      "command": "COLUMNS=240 uv run mlx-stack recommend --show-all --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-show-all-64-balanced.txt"
+    },
+    {
+      "command": "COLUMNS=240 uv run mlx-stack recommend --show-all --intent balanced",
+      "exitCode": 0,
+      "artifact": "recommendation/r2-g1-recommend/VAL-CROSS-005-show-all-128-balanced.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-RECOMMEND-004",
+      "status": "pass",
+      "reason": "Balanced and agent-fleet recommendations differ in tier assignments on same hardware.",
+      "evidence": [
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-004-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-004-agent-fleet.txt",
+        "recommendation/r2-g1-recommend/r2-g1-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-RECOMMEND-012",
+      "status": "pass",
+      "reason": "Invalid budget/intent edge cases return descriptive errors with non-zero exits.",
+      "evidence": [
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-0.5gb.txt",
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-invalid-intent.txt",
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-abc.txt",
+        "recommendation/r2-g1-recommend/VAL-RECOMMEND-012-budget-negative.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "pass",
+      "reason": "Recommend consumes existing profile and, when absent, auto-detects without writing profile.json.",
+      "evidence": [
+        "recommendation/r2-g1-recommend/VAL-CROSS-003-with-profile.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-003-no-profile.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-003-profile-exists-after.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "status": "pass",
+      "reason": "64 GB recommendations stay within 25.6 GB budget, 128 GB has a larger budget-eligible model set, and intent/hardware produce distinct stack selections.",
+      "evidence": [
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-recommend-64-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-init-64-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-init-128-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-init-64-agent-fleet.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-init-128-agent-fleet.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-show-all-64-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-show-all-128-balanced.txt",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-stack-64-balanced.yaml",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-stack-128-balanced.yaml",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-stack-64-agent-fleet.yaml",
+        "recommendation/r2-g1-recommend/VAL-CROSS-005-stack-128-agent-fleet.yaml",
+        "recommendation/r2-g1-recommend/r2-g1-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "The dedicated user-testing-flow-validator subagent failed to execute this assertion group due a permissions gate (`insufficient permission to proceed`).",
+      "resolved": true,
+      "resolution": "Validated this group directly in the validator session with strict MLX_STACK_HOME isolation and full evidence capture.",
+      "affectedAssertions": [
+        "VAL-RECOMMEND-004",
+        "VAL-RECOMMEND-012",
+        "VAL-CROSS-003",
+        "VAL-CROSS-005"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Rerun recommendation assertions: VAL-RECOMMEND-004=pass, VAL-RECOMMEND-012=pass, VAL-CROSS-003=pass, VAL-CROSS-005=pass."
+}

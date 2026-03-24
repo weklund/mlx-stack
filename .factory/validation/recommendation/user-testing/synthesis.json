@@ -1,117 +1,63 @@
 {
   "milestone": "recommendation",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "assertionsSummary": {
-    "total": 39,
-    "passed": 33,
-    "failed": 5,
+    "total": 6,
+    "passed": 5,
+    "failed": 0,
     "blocked": 1
   },
   "passedAssertions": [
-    "VAL-CATALOG-001",
-    "VAL-CATALOG-003",
-    "VAL-CROSS-004",
-    "VAL-CROSS-008",
-    "VAL-INIT-001",
-    "VAL-INIT-002",
-    "VAL-INIT-003",
-    "VAL-INIT-004",
-    "VAL-INIT-005",
-    "VAL-INIT-006",
-    "VAL-INIT-007",
-    "VAL-INIT-008",
-    "VAL-INIT-009",
-    "VAL-INIT-010",
-    "VAL-INIT-011",
-    "VAL-INIT-012",
-    "VAL-INIT-013",
-    "VAL-MODELS-001",
-    "VAL-MODELS-002",
-    "VAL-MODELS-003",
-    "VAL-MODELS-004",
-    "VAL-MODELS-005",
-    "VAL-MODELS-006",
-    "VAL-RECOMMEND-001",
-    "VAL-RECOMMEND-002",
-    "VAL-RECOMMEND-003",
-    "VAL-RECOMMEND-005",
-    "VAL-RECOMMEND-006",
-    "VAL-RECOMMEND-007",
-    "VAL-RECOMMEND-008",
-    "VAL-RECOMMEND-009",
-    "VAL-RECOMMEND-010",
-    "VAL-RECOMMEND-011"
+    "VAL-CATALOG-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-005",
+    "VAL-RECOMMEND-004",
+    "VAL-RECOMMEND-012"
   ],
-  "failedAssertions": [
-    {
-      "id": "VAL-CATALOG-002",
-      "reason": "Required family/tag/capability query interface is not available on current CLI surface."
-    },
-    {
-      "id": "VAL-CROSS-003",
-      "reason": "Missing-profile recommend path did not persist profile.json as required by contract."
-    },
-    {
-      "id": "VAL-CROSS-005",
-      "reason": "Fails contract criteria: 64 GB stack exceeded 25.6 GB budget target in output summary, and balanced vs agent-fleet selections did not diverge on 128 GB profile."
-    },
-    {
-      "id": "VAL-RECOMMEND-004",
-      "reason": "No tier assignment differences observed between balanced and agent-fleet intents."
-    },
-    {
-      "id": "VAL-RECOMMEND-012",
-      "reason": "Contract expectation for --budget 1gb did not match observed behavior."
-    }
-  ],
+  "failedAssertions": [],
   "blockedAssertions": [
     {
       "id": "VAL-CROSS-012",
-      "blockedBy": "Blocked by missing pull/bench implementations in tested CLI build."
+      "blockedBy": "Cannot execute benchmark-save override flow because `mlx-stack bench <target> --save` returns `Not yet implemented. Coming in the bench-command feature.` and produces no saved benchmark artifacts in the isolated MLX_STACK_HOME."
     }
   ],
-  "appliedUpdates": [
-    {
-      "target": "user-testing.md",
-      "description": "Added recommendation milestone run notes documenting current CLI validation limitations and practical validator setup tips.",
-      "source": "flow-report"
-    }
-  ],
+  "appliedUpdates": [],
   "flowReports": [
-    ".factory/validation/recommendation/user-testing/flows/g1-recommend-budget-ranking.json",
-    ".factory/validation/recommendation/user-testing/flows/g2-recommend-output-integration.json",
-    ".factory/validation/recommendation/user-testing/flows/g3-init-core-routing.json",
-    ".factory/validation/recommendation/user-testing/flows/g4-init-cloud-overwrite.json",
-    ".factory/validation/recommendation/user-testing/flows/g5-init-hardware-summary.json",
-    ".factory/validation/recommendation/user-testing/flows/g6-models-local.json",
-    ".factory/validation/recommendation/user-testing/flows/g7-models-catalog.json"
+    ".factory/validation/recommendation/user-testing/flows/r2-g1-recommend.json",
+    ".factory/validation/recommendation/user-testing/flows/r2-g2-models-catalog-filters.json",
+    ".factory/validation/recommendation/user-testing/flows/r2-g3-cross-012.json"
   ],
   "toolsUsed": [
     "Execute (shell)",
-    "uv run mlx-stack",
-    "uv run python",
-    "execute(shell)",
     "python3",
-    "shell inspection (grep/read/cp)",
-    "shell inspection (test/cp/read)",
-    "uv run python (YAML/summary parsing)",
-    "uv run python (isolated fixture setup)",
-    "shell file operations (cp)",
-    "shell (mkdir/cat/env)",
-    "python3 (evidence parsing)"
+    "uv run mlx-stack",
+    "uv run python"
   ],
   "frictions": [
-    "When using mocked memory sizes (32/64 GB) with profile_id m5-max-128, CLI reports estimated Gen TPS based on bandwidth ratio warning.",
-    "`config get openrouter-key` is blank when unset, so key-state validation relied on recommend output deltas.",
-    "Assigned MLX_STACK_HOME already contained prior stack/model artifacts, so overwrite-sensitive checks needed explicit `config reset --yes` and repeated `init --force` setup to normalize state.",
-    "Physical host is 128 GB only; validating 64 GB branch required manual profile override in isolated `MLX_STACK_HOME/profile.json` before rerunning `init`.",
-    "Fixture setup via system `python3` lacked PyYAML (`ModuleNotFoundError: yaml`).",
-    "No first-class CLI option exists to point `models --catalog` at an alternate catalog path for negative-path testing."
+    {
+      "description": "The dedicated user-testing-flow-validator subagent failed to execute this assertion group due a permissions gate (`insufficient permission to proceed`).",
+      "resolved": true,
+      "resolution": "Validated this group directly in the validator session with strict MLX_STACK_HOME isolation and full evidence capture.",
+      "affectedAssertions": [
+        "VAL-RECOMMEND-004",
+        "VAL-RECOMMEND-012",
+        "VAL-CROSS-003",
+        "VAL-CROSS-005"
+      ]
+    },
+    {
+      "description": "Validation contract example uses `--capability tool_calling=true`, but current CLI capability filter is exposed as `--tool-calling`.",
+      "resolved": true,
+      "resolution": "Executed both commands; used `--tool-calling` for capability filtering and confirmed exact match to catalog capability metadata.",
+      "affectedAssertions": [
+        "VAL-CATALOG-002"
+      ]
+    }
   ],
   "dedupedBlockers": [
-    "Pull and bench commands are not implemented, preventing benchmark-save flow execution."
+    "Benchmark command save flow is unavailable in this milestone/build."
   ],
-  "generatedAt": "2026-03-24T03:46:09.654269+00:00",
-  "previousRound": null
+  "generatedAt": "2026-03-24T04:12:00.503237+00:00",
+  "previousRound": ".factory/validation/recommendation/user-testing/synthesis.round1.json"
 }

@@ -1,0 +1,112 @@
+{
+  "groupId": "r2-g2-models-catalog-filters",
+  "testedAt": "2026-03-24T04:05:07Z",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation-r2-g2",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/r2-g2-models"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-CATALOG-002",
+      "title": "Catalog queryable by family, tag, and capability",
+      "status": "pass",
+      "findings": {
+        "catalogRows": 15,
+        "familyFilterCount": 6,
+        "tagFilterCount": 10,
+        "capabilityFilterCount": 10,
+        "familyFilterMatchesCatalog": true,
+        "tagFilterMatchesCatalog": true,
+        "capabilityFilterMatchesCatalog": true
+      },
+      "steps": [
+        {
+          "action": "Run `mlx-stack models --help` to confirm available catalog filter flags",
+          "expected": "Family/tag/capability filter flags are available for `--catalog`",
+          "observed": "Help lists `--family`, `--tag`, and `--tool-calling` filter flags."
+        },
+        {
+          "action": "Run `mlx-stack models --catalog --family \"Qwen 3.5\"`",
+          "expected": "Only Qwen 3.5 family models are returned (6 expected)",
+          "observed": "6 rows returned, all in family Qwen 3.5; exact set matches catalog metadata."
+        },
+        {
+          "action": "Run `mlx-stack models --catalog --tag agent-ready`",
+          "expected": "Only models tagged `agent-ready` are returned",
+          "observed": "10 rows returned; exact set matches catalog entries tagged `agent-ready`."
+        },
+        {
+          "action": "Run capability filter checks (`--capability tool_calling=true` and `--tool-calling`)",
+          "expected": "Capability-based filtering returns tool-calling-capable models",
+          "observed": "`--capability` is not an exposed option, while `--tool-calling` returns 10 rows and exactly matches catalog models with `capabilities.tool_calling=true`."
+        }
+      ],
+      "commandEvidence": [
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --help",
+          "exitCode": 0,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-help.txt"
+        },
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog",
+          "exitCode": 0,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-catalog-all.txt"
+        },
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog --family \"Qwen 3.5\"",
+          "exitCode": 0,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-family-qwen35.txt"
+        },
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog --tag agent-ready",
+          "exitCode": 0,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-tag-agent-ready.txt"
+        },
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog --capability tool_calling=true",
+          "exitCode": 2,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-capability-tool-calling-true.txt"
+        },
+        {
+          "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g2 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog --tool-calling",
+          "exitCode": 0,
+          "artifact": "recommendation/r2-g2-models/VAL-CATALOG-002-tool-calling.txt"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/r2-g2-models/VAL-CATALOG-002-profile.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-help.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-catalog-all.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-family-qwen35.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-tag-agent-ready.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-capability-tool-calling-true.txt",
+          "recommendation/r2-g2-models/VAL-CATALOG-002-tool-calling.txt"
+        ],
+        "analysis": [
+          "recommendation/r2-g2-models/VAL-CATALOG-002-analysis.json"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Validation contract example uses `--capability tool_calling=true`, but current CLI capability filter is exposed as `--tool-calling`.",
+      "resolved": true,
+      "resolution": "Executed both commands; used `--tool-calling` for capability filtering and confirmed exact match to catalog capability metadata.",
+      "affectedAssertions": [
+        "VAL-CATALOG-002"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "VAL-CATALOG-002 passed: family/tag/capability filtering is working on CLI (`--family`, `--tag`, `--tool-calling`) with result sets matching catalog metadata exactly."
+}

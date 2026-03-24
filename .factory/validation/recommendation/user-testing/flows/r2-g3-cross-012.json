@@ -1,0 +1,101 @@
+{
+  "groupId": "r2-g3-cross-012",
+  "testedAt": "2026-03-24T04:05:02.927952+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/recommendation-r2-g3",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/r2-g3-bench-override",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "python3"
+  ],
+  "commands": [
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g3 uv run mlx-stack bench --help",
+      "evidence": "recommendation/r2-g3-bench-override/VAL-CROSS-012-bench-help.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g3 uv run mlx-stack recommend --intent balanced --show-all",
+      "evidence": "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-before.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g3 uv run mlx-stack bench qwen3.5-8b --save",
+      "evidence": "recommendation/r2-g3-bench-override/VAL-CROSS-012-bench-save.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation-r2-g3 uv run mlx-stack recommend --intent balanced --show-all",
+      "evidence": "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-after.txt"
+    },
+    {
+      "command": "ls -la /tmp/mlx-stack-user-testing/recommendation-r2-g3",
+      "evidence": "recommendation/r2-g3-bench-override/VAL-CROSS-012-mlx-stack-home-listing.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-CROSS-012",
+      "status": "blocked",
+      "reason": "Cannot execute benchmark-save override flow because `mlx-stack bench <target> --save` returns `Not yet implemented. Coming in the bench-command feature.` and produces no saved benchmark artifacts in the isolated MLX_STACK_HOME.",
+      "evidence": [
+        "recommendation/r2-g3-bench-override/VAL-CROSS-012-bench-save.txt",
+        "recommendation/r2-g3-bench-override/VAL-CROSS-012-mlx-stack-home-listing.txt",
+        "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-before.txt",
+        "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-after.txt",
+        "recommendation/r2-g3-bench-override/VAL-CROSS-012-output-comparison.json"
+      ]
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-012",
+      "title": "Saved benchmark data overrides catalog in recommendations",
+      "status": "blocked",
+      "steps": [
+        {
+          "action": "Run pre-benchmark recommendation output snapshot",
+          "expected": "Capture baseline Gen TPS values prior to override",
+          "observed": "Baseline recommendation output captured."
+        },
+        {
+          "action": "Run `mlx-stack bench qwen3.5-8b --save`",
+          "expected": "Benchmark runs and saves local measured results for subsequent recommendation scoring",
+          "observed": "CLI returned `Not yet implemented. Coming in the bench-command feature.`"
+        },
+        {
+          "action": "Rerun recommendation and inspect MLX_STACK_HOME for saved benchmark artifacts",
+          "expected": "Recommendation reflects saved benchmark (override) and benchmark artifacts exist in MLX_STACK_HOME",
+          "observed": "Recommendation output hash before/after is identical and isolated MLX_STACK_HOME remains empty."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-bench-help.txt",
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-before.txt",
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-bench-save.txt",
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-recommend-after.txt",
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-mlx-stack-home-listing.txt",
+          "recommendation/r2-g3-bench-override/VAL-CROSS-012-output-comparison.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": "Bench command surface for save flow is not implemented in this build, preventing end-to-end override validation."
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Benchmark command save flow is unavailable in this milestone/build.",
+      "affectedAssertions": [
+        "VAL-CROSS-012"
+      ],
+      "quickFixAttempted": "Checked `mlx-stack bench --help`, retried benchmark-save with a concrete target (`qwen3.5-8b`), reran recommendation, and inspected isolated MLX_STACK_HOME for saved benchmark artifacts; functionality remained unavailable."
+    }
+  ],
+  "summary": "Tested 1 assertion (VAL-CROSS-012): 0 pass, 0 fail, 1 blocked due to unimplemented `bench --save` flow in current CLI build."
+}
