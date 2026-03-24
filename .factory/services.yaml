@@ -1,0 +1,9 @@
+commands:
+  install: uv sync
+  test: uv run pytest -x -q --tb=short
+  typecheck: uv run python -m pyright
+  lint: uv run ruff check src/ tests/
+  format: uv run ruff format src/ tests/
+  coverage: uv run pytest --cov=src/mlx_stack --cov-report=term-missing
+
+services: {}
