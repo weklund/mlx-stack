@@ -1,0 +1,52 @@
+{
+  "featureId": "misc-cross-area-validation",
+  "reviewedAt": "2026-03-24T14:08:53.201995+00:00",
+  "commitId": "0d0847c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The commit adds a large cross-area test file, but several tests do not actually validate the contract requirements they claim to cover. Key assertions for VAL-CROSS-001/007/012/013 are either missing or implemented with weak checks that can pass even when behavior is incorrect.",
+    "issues": [
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 420,
+        "severity": "blocking",
+        "description": "VAL-CROSS-001 is not fully tested: the lifecycle test executes only init -> up -> down (lines 420-456) and does not include the required pull step or the required `http://localhost:4000/v1/models` HTTP 200 verification from the validation contract."
+      },
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 539,
+        "severity": "blocking",
+        "description": "Config propagation checks for VAL-CROSS-007 are vacuous/insufficient. `assert \"80\" in result.output or \"102\" in result.output or len(stack[\"tiers\"]) >= 1` passes whenever at least one tier exists, so it does not prove memory-budget propagation. The related litellm-port test (line 505) only asserts that 5001 is not a tier port, not that init/up actually uses configured LiteLLM port values."
+      },
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 641,
+        "severity": "blocking",
+        "description": "The default-quant pull propagation test can pass without validating behavior: assertions run only inside `if result.exit_code == 0`, so a failing pull invocation is not treated as test failure and propagation is not guaranteed to be checked."
+      },
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 780,
+        "severity": "blocking",
+        "description": "VAL-CROSS-012 assertions are incomplete: `test_saved_benchmarks_remove_estimated_label` never verifies that the 'estimated' label disappears, and `test_saved_benchmarks_affect_scoring_order` (lines 802-826) checks only exit codes, not any scoring/order/tier change."
+      },
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 868,
+        "severity": "blocking",
+        "description": "VAL-CROSS-013 coverage is incomplete for models consistency: `test_models_json_consistent_with_models_command` does not invoke the `models` command and only parses JSON directly, so it does not validate consistency between pull-updated inventory and actual command output."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Mission metadata sets `skillName` to `cli-feature`, but the worker transcript shows `Error: Skill \"cli-feature\" not found` at runtime, causing procedural deviation despite a project skill file existing.",
+      "evidence": "features.json (misc-cross-area-validation) sets `skillName: cli-feature`; worker transcript skeleton for session e340e54d-3dba-4445-a8d1-c192a50bdeff contains `Tool Result Error: Skill \"cli-feature\" not found`; repository has `.factory/skills/cli-feature/SKILL.md`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail. The feature adds tests but misses required contract checks and uses multiple weak assertions that can pass without validating the intended cross-area behavior."
+}

@@ -1,0 +1,68 @@
+{
+  "milestone": "misc-cross-area",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "failedFeatures": [
+      "misc-cross-area-validation"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "misc-cross-area-validation",
+      "severity": "blocking",
+      "description": "VAL-CROSS-001 test coverage is incomplete: lifecycle test omits required pull step and /v1/models HTTP 200 verification."
+    },
+    {
+      "featureId": "misc-cross-area-validation",
+      "severity": "blocking",
+      "description": "VAL-CROSS-007 propagation checks are weak/vacuous and can pass without proving litellm-port or memory-budget propagation."
+    },
+    {
+      "featureId": "misc-cross-area-validation",
+      "severity": "blocking",
+      "description": "Default-quant pull propagation test conditionally skips assertions when pull exits non-zero, allowing false positives."
+    },
+    {
+      "featureId": "misc-cross-area-validation",
+      "severity": "blocking",
+      "description": "VAL-CROSS-012 checks do not verify estimated-label removal and do not assert scoring/ranking impact from saved benchmarks."
+    },
+    {
+      "featureId": "misc-cross-area-validation",
+      "severity": "blocking",
+      "description": "VAL-CROSS-013 models consistency test does not invoke the models command and therefore does not validate command/file consistency."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add an explicit orchestrator-side preflight to ensure each feature's declared skill is actually available to workers before assignment; if unavailable, assign a valid fallback skill and record that decision.",
+      "evidence": "Feature misc-cross-area-validation declares skillName=cli-feature, but the worker transcript reports \"Skill \\\"cli-feature\\\" not found\" while a project skill file exists, causing procedural deviation.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}
