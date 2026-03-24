@@ -152,11 +152,6 @@ class TestDataHomeAutoCreation:
 class TestPlaceholderCommands:
     """Tests for placeholder commands that are not yet implemented."""
 
-    def test_recommend_placeholder(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(cli, ["recommend"])
-        assert result.exit_code != 0
-
     def test_config_help(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["config", "--help"])

@@ -16,6 +16,7 @@ from rich.text import Text
 from mlx_stack import __version__
 from mlx_stack.cli.config import config as config_group
 from mlx_stack.cli.profile import profile as profile_command
+from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.core.paths import ensure_data_home
 
 console = Console(stderr=True)
@@ -152,13 +153,7 @@ def cli(ctx: click.Context) -> None:
 
 
 cli.add_command(profile_command, "profile")
-
-
-@cli.command()
-def recommend() -> None:
-    """Recommend an optimal model stack for your hardware."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the recommendation feature.")
-    raise SystemExit(1)
+cli.add_command(recommend_command, "recommend")
 
 
 @cli.command()
