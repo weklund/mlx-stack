@@ -13,12 +13,17 @@ Architectural decisions, patterns discovered, and conventions.
   - `cli/main.py` — CLI entry point with Click command group
   - `cli/profile.py` — `mlx-stack profile` command
   - `cli/config.py` — `mlx-stack config` commands
+  - `cli/init.py` — `mlx-stack init` command (stack + LiteLLM config generation)
+  - `cli/recommend.py` — `mlx-stack recommend` command
 - `src/mlx_stack/core/` — shared business logic modules
   - `core/hardware.py` — hardware detection (Apple Silicon profiling)
   - `core/config.py` — configuration management (YAML-based)
   - `core/catalog.py` — model catalog system (query API over YAML entries)
   - `core/deps.py` — dependency management (auto-installing uv tools)
   - `core/paths.py` — path utilities (`~/.mlx-stack/` and friends)
+  - `core/scoring.py` — recommendation scoring engine (intent-weighted composite scoring)
+  - `core/litellm_gen.py` — LiteLLM proxy config generation (model_list, router_settings, fallbacks)
+  - `core/stack_init.py` — stack initialization logic (port allocation, vllm_flags, overwrite protection)
 - `src/mlx_stack/data/` — static data files
   - `data/catalog/` — shipped YAML catalog files (15 models)
 - `src/mlx_stack/utils/` — utility modules

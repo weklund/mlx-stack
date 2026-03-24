@@ -15,6 +15,7 @@ from rich.text import Text
 
 from mlx_stack import __version__
 from mlx_stack.cli.config import config as config_group
+from mlx_stack.cli.init import init as init_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.core.paths import ensure_data_home
@@ -154,16 +155,7 @@ def cli(ctx: click.Context) -> None:
 
 cli.add_command(profile_command, "profile")
 cli.add_command(recommend_command, "recommend")
-
-
-@cli.command()
-@click.option("--accept-defaults", is_flag=True, help="Use defaults without prompting.")
-@click.option("--intent", type=str, help="Recommendation intent (balanced, agent-fleet).")
-@click.option("--force", is_flag=True, help="Overwrite existing stack configuration.")
-def init(accept_defaults: bool, intent: str | None, force: bool) -> None:
-    """Generate stack definition and LiteLLM config."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the init-command feature.")
-    raise SystemExit(1)
+cli.add_command(init_command, "init")
 
 
 @cli.command()
