@@ -1,0 +1,188 @@
+{
+  "groupId": "g4-init-cloud-overwrite",
+  "testedAt": "2026-03-24T03:34:16Z",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation/g4-init-cloud-overwrite",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g4-init-cloud-overwrite",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "shell inspection (grep/read/cp)"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-INIT-007",
+      "title": "Cloud fallback conditional on OpenRouter key",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack config reset --yes` then `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force`",
+          "expected": "No cloud fallback in stack/litellm config without key",
+          "observed": "Generated configs had only local tiers; no `cloud_fallback`, `premium`, or `openrouter` entries."
+        },
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack config set openrouter-key sk-or-g4-test-key` then `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force`",
+          "expected": "Cloud fallback and premium OpenRouter entries appear",
+          "observed": "Stack gained `cloud_fallback` section; litellm config gained `premium` entries with `openrouter/...` models and `api_key: os.environ/OPENROUTER_API_KEY`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g4-init-cloud-overwrite/01-config-reset-before-no-key.txt",
+          "recommendation/g4-init-cloud-overwrite/02-init-no-key-force.txt",
+          "recommendation/g4-init-cloud-overwrite/05-config-set-openrouter-key.txt",
+          "recommendation/g4-init-cloud-overwrite/06-init-with-key-force.txt"
+        ],
+        "files": [
+          "recommendation/g4-init-cloud-overwrite/02-default-no-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/02-litellm-no-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/06-default-with-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/06-litellm-with-key.yaml"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-008",
+      "title": "--add and --remove customize tier selection",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force --add gemma3-12b --remove longctx`",
+          "expected": "Additional model added as tier and longctx removed",
+          "observed": "Stack contained `added-gemma3-12b` and no `longctx` tier."
+        },
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force --add not-a-real-model`",
+          "expected": "Invalid model errors with catalog suggestion",
+          "observed": "Command failed (exit 1): `Unknown model 'not-a-real-model'. Run 'mlx-stack models --catalog'`."
+        },
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force --add gemma3-27b`",
+          "expected": "Add-over-budget warning is shown",
+          "observed": "Command warned: `Adding 'gemma3-27b' exceeds memory budget (65.3 GB > 51.2 GB)`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g4-init-cloud-overwrite/09-init-add-remove.txt",
+          "recommendation/g4-init-cloud-overwrite/10-init-add-invalid-model.txt",
+          "recommendation/g4-init-cloud-overwrite/11b-init-add-overbudget-warning.txt"
+        ],
+        "files": [
+          "recommendation/g4-init-cloud-overwrite/09-default-add-remove.yaml",
+          "recommendation/g4-init-cloud-overwrite/09-litellm-add-remove.yaml",
+          "recommendation/g4-init-cloud-overwrite/11b-default-add-overbudget-warning.yaml"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-009",
+      "title": "Overwrite protection with --force",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults` when stack exists",
+          "expected": "Non-interactive run without --force errors",
+          "observed": "Command failed (exit 1): stack already exists and instructs to use `--force`."
+        },
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force`",
+          "expected": "Overwrites existing stack without prompt",
+          "observed": "Command succeeded (exit 0) and regenerated stack/litellm files."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g4-init-cloud-overwrite/03-init-existing-without-force.txt",
+          "recommendation/g4-init-cloud-overwrite/04-init-existing-with-force.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-010",
+      "title": "Missing local models detected with pull suggestion",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `MLX_STACK_HOME=... uv run mlx-stack config set model-dir /tmp/.../models-empty` then `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force`",
+          "expected": "If models are missing, output lists missing model IDs and suggests `mlx-stack pull`",
+          "observed": "Output listed all missing models and included explicit `Run mlx-stack pull` guidance."
+        },
+        {
+          "action": "Create local model directories for all tier model IDs under configured model-dir, then rerun `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults --force`",
+          "expected": "No missing-model warning when all required models are local",
+          "observed": "Second init output had no `Missing local models` section and no pull suggestion."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g4-init-cloud-overwrite/12-config-set-model-dir-empty.txt",
+          "recommendation/g4-init-cloud-overwrite/13-init-missing-model-warning.txt",
+          "recommendation/g4-init-cloud-overwrite/14-create-local-model-dirs.txt",
+          "recommendation/g4-init-cloud-overwrite/15-init-all-local-no-warning.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "title": "OpenRouter key enables cloud fallback end-to-end",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "No-key phase: `config reset --yes` then `init --accept-defaults --force`",
+          "expected": "Local-only stack and litellm config",
+          "observed": "No cloud fallback/premium/openrouter entries present."
+        },
+        {
+          "action": "Key-enabled phase: `config set openrouter-key ...` then `init --accept-defaults --force`",
+          "expected": "Cloud fallback + premium OpenRouter model entries added",
+          "observed": "Cloud fallback appeared in stack and premium OpenRouter entries appeared in litellm config."
+        },
+        {
+          "action": "Reset phase: `config reset --yes` then `init --accept-defaults --force`",
+          "expected": "Return to local-only configuration",
+          "observed": "Cloud fallback and premium OpenRouter entries were removed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g4-init-cloud-overwrite/01-config-reset-before-no-key.txt",
+          "recommendation/g4-init-cloud-overwrite/02-init-no-key-force.txt",
+          "recommendation/g4-init-cloud-overwrite/05-config-set-openrouter-key.txt",
+          "recommendation/g4-init-cloud-overwrite/06-init-with-key-force.txt",
+          "recommendation/g4-init-cloud-overwrite/07-config-reset-after-key.txt",
+          "recommendation/g4-init-cloud-overwrite/08-init-after-reset-force.txt"
+        ],
+        "files": [
+          "recommendation/g4-init-cloud-overwrite/02-default-no-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/02-litellm-no-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/06-default-with-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/06-litellm-with-key.yaml",
+          "recommendation/g4-init-cloud-overwrite/08-default-after-reset.yaml",
+          "recommendation/g4-init-cloud-overwrite/08-litellm-after-reset.yaml"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Assigned MLX_STACK_HOME already contained prior stack/model artifacts, so overwrite-sensitive checks needed explicit `config reset --yes` and repeated `init --force` setup to normalize state.",
+      "resolved": true,
+      "resolution": "Reset config and reran init phases in deterministic order; captured isolated evidence for each phase.",
+      "affectedAssertions": [
+        "VAL-INIT-007",
+        "VAL-INIT-009",
+        "VAL-CROSS-008"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 5 assigned assertions via CLI. All 5 passed: cloud fallback gating, add/remove customization (including invalid-model and over-budget behaviors), overwrite protection, missing-model pull guidance, and end-to-end OpenRouter-key reset flow."
+}

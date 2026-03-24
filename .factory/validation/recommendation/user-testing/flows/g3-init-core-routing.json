@@ -1,0 +1,191 @@
+{
+  "groupId": "g3-init-core-routing",
+  "testedAt": "2026-03-24T03:16:07.027795+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "testingTool": "direct shell command execution (`uv run mlx-stack ...`)",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/recommendation/g3-init-core-routing",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g3-init-core-routing"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "commands": [
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g3-init-core-routing uv run mlx-stack init --accept-defaults --intent agent-fleet",
+      "evidence": "recommendation/g3-init-core-routing/VAL-INIT-001-init-agent-fleet.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g3-init-core-routing uv run mlx-stack recommend --intent balanced",
+      "evidence": "recommendation/g3-init-core-routing/VAL-CROSS-004-recommend-balanced.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g3-init-core-routing uv run mlx-stack init --accept-defaults",
+      "evidence": "recommendation/g3-init-core-routing/VAL-INIT-001-init-balanced.txt"
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-INIT-001",
+      "title": "Non-interactive mode completes without prompts",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack init --accept-defaults` with isolated MLX_STACK_HOME",
+          "expected": "Completes non-interactively using balanced intent and default 40% budget; exits 0; config files generated",
+          "observed": "Exited 0 with no prompt markers; output shows `Budget: 51.2 GB` on 128 GB profile; stack and litellm files generated"
+        },
+        {
+          "action": "Run `uv run mlx-stack init --accept-defaults --intent agent-fleet` on fresh isolated home",
+          "expected": "Command succeeds non-interactively when combined with explicit intent",
+          "observed": "Exited 0 without prompts"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g3-init-core-routing/VAL-INIT-001-init-balanced.txt",
+          "recommendation/g3-init-core-routing/VAL-INIT-001-init-agent-fleet.txt"
+        ],
+        "files": [
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/generated-litellm.yaml"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-002",
+      "title": "Stack definition has required top-level fields",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Parse generated stack YAML",
+          "expected": "schema_version=1, hardware_profile matches profile_id, intent matches selected intent, name=default, created is ISO-8601",
+          "observed": "All required top-level fields present and valid; hardware_profile matches generated profile.json profile_id"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g3-init-core-routing/VAL-INIT-001-init-balanced.txt"
+        ],
+        "files": [
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/generated-profile.json",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-003",
+      "title": "Each tier has required fields with unique ports",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect stack tiers in generated default.yaml",
+          "expected": "Every tier has name/model/quant/source/port/vllm_flags; ports unique and not LiteLLM port",
+          "observed": "All tiers contain required fields; ports 8000/8001/8002 are unique and distinct from LiteLLM port 4000"
+        }
+      ],
+      "evidence": {
+        "files": [
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-004",
+      "title": "vllm_flags include required feature flags",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Compare tier vllm_flags in stack YAML against model catalog capabilities",
+          "expected": "All tiers include continuous_batching/use_paged_cache=true; tool-calling and thinking parsers match catalog requirements",
+          "observed": "Base flags are true on all tiers; tool-calling tiers have enable_auto_tool_choice + hermes parser; thinking tiers have correct reasoning parser"
+        }
+      ],
+      "evidence": {
+        "files": [
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-005",
+      "title": "LiteLLM config valid with correct model list and endpoints",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Parse generated litellm.yaml and compare entries to stack tiers",
+          "expected": "One model_list entry per local tier with api_base localhost:tier_port/v1, openai/ model prefix, and api_key=dummy",
+          "observed": "model_list count matches local tiers and all endpoint/model/api_key fields match expected values"
+        }
+      ],
+      "evidence": {
+        "files": [
+          "recommendation/g3-init-core-routing/generated-litellm.yaml",
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-006",
+      "title": "LiteLLM config includes fallback chain",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect general_settings.fallbacks in litellm.yaml",
+          "expected": "Fallback chain exists and references only local tier names in model_list",
+          "observed": "Fallbacks present (`standard -> fast`, `fast -> longctx`) and all references are valid local tier names"
+        }
+      ],
+      "evidence": {
+        "files": [
+          "recommendation/g3-init-core-routing/generated-litellm.yaml",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "title": "Recommend tier assignments flow into init stack definition",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack recommend --intent balanced` and capture tier assignments",
+          "expected": "Recommend returns tier model assignments",
+          "observed": "Recommend returned standard/fast/longctx model assignments successfully"
+        },
+        {
+          "action": "Generate stack with `uv run mlx-stack init --accept-defaults` and compare tier models",
+          "expected": "Tier models in stack default.yaml exactly match recommend assignments for same intent",
+          "observed": "All three tiers match after normalized model-name comparison"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g3-init-core-routing/VAL-CROSS-004-recommend-balanced.txt",
+          "recommendation/g3-init-core-routing/VAL-INIT-001-init-balanced.txt"
+        ],
+        "files": [
+          "recommendation/g3-init-core-routing/generated-default.yaml",
+          "recommendation/g3-init-core-routing/assertion-checks.json"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 7 assertions: 7 passed, 0 failed, 0 blocked."
+}

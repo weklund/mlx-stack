@@ -1,0 +1,131 @@
+{
+  "groupId": "g5-init-hardware-summary",
+  "testedAt": "2026-03-24T03:38:53Z",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation/g5-init-hardware-summary",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g5-init-hardware-summary",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "shell inspection (test/cp/read)",
+    "uv run python (YAML/summary parsing)"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-INIT-011",
+      "title": "Directory structure auto-created",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Confirm assigned MLX_STACK_HOME directory starts empty, then run `MLX_STACK_HOME=... uv run mlx-stack init --accept-defaults`",
+          "expected": "Missing `~/.mlx-stack/` structure (or missing `stacks/`) is created automatically",
+          "observed": "From an empty assigned home, init succeeded and generated `/stacks/default.yaml` and `/litellm.yaml`."
+        },
+        {
+          "action": "Run existence checks for stacks dir and generated files",
+          "expected": "`stacks/`, `stacks/default.yaml`, and `litellm.yaml` exist",
+          "observed": "All required paths were present (`stacks_dir=present`, `default_yaml=present`, `litellm_yaml=present`)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g5-init-hardware-summary/val-init-011-012-initial-init.txt",
+          "recommendation/g5-init-hardware-summary/val-init-011-structure-check.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-012",
+      "title": "Terminal summary displayed on success",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect successful `init --accept-defaults` terminal output",
+          "expected": "Summary includes generated file paths, tier assignments, total estimated memory, and next-step instructions",
+          "observed": "Output included Stack/LiteLLM file paths, tier assignment table, `Total estimated memory: 48.3 GB`, and next steps (`mlx-stack pull`, `mlx-stack up`)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g5-init-hardware-summary/val-init-011-012-initial-init.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-INIT-013",
+      "title": "LiteLLM config includes router settings",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Parse generated `litellm.yaml` after init",
+          "expected": "`router_settings.routing_strategy` exists and `num_retries: 2`, `timeout: 120`",
+          "observed": "`litellm.yaml` contained `router_settings: { routing_strategy: simple-shuffle, num_retries: 2, timeout: 120 }`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g5-init-hardware-summary/val-cross-005-init-128-balanced.txt"
+        ],
+        "files": [
+          "recommendation/g5-init-hardware-summary/litellm-128-balanced.yaml",
+          "recommendation/g5-init-hardware-summary/assertion-analysis.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "title": "Different hardware profiles produce different stacks",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Set profile to 64 GB in isolated `profile.json`, run `init --accept-defaults --force`",
+          "expected": "64 GB stack total estimated memory should be ≤ 25.6 GB",
+          "observed": "Output reported `Budget: 25.6 GB` but `Total estimated memory: 26.3 GB` (exceeds requirement)."
+        },
+        {
+          "action": "Set profile to 128 GB, run `init --accept-defaults --intent balanced --force`, compare models vs 64 GB stack",
+          "expected": "128 GB stack includes at least one model excluded from 64 GB stack",
+          "observed": "Condition met: 128 GB included `qwen3.5-72b`, while 64 GB used `deepseek-r1-32b` instead."
+        },
+        {
+          "action": "On 128 GB profile, compare `init --intent balanced` vs `init --intent agent-fleet`",
+          "expected": "Selections should differ measurably between intents",
+          "observed": "Selections were identical for both intents (`qwen3.5-72b`, `qwen3.5-0.8b`, `deepseek-r1-8b`)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g5-init-hardware-summary/val-cross-005-init-64-balanced.txt",
+          "recommendation/g5-init-hardware-summary/val-cross-005-init-128-balanced.txt",
+          "recommendation/g5-init-hardware-summary/val-cross-005-init-128-agent-fleet.txt"
+        ],
+        "files": [
+          "recommendation/g5-init-hardware-summary/profile-64.json",
+          "recommendation/g5-init-hardware-summary/profile-128.json",
+          "recommendation/g5-init-hardware-summary/stack-64-balanced.yaml",
+          "recommendation/g5-init-hardware-summary/stack-128-balanced.yaml",
+          "recommendation/g5-init-hardware-summary/stack-128-agent-fleet.yaml",
+          "recommendation/g5-init-hardware-summary/assertion-analysis.json"
+        ]
+      },
+      "issues": "Fails contract criteria: 64 GB stack exceeded 25.6 GB budget target in output summary, and balanced vs agent-fleet selections did not diverge on 128 GB profile."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Physical host is 128 GB only; validating 64 GB branch required manual profile override in isolated `MLX_STACK_HOME/profile.json` before rerunning `init`.",
+      "resolved": true,
+      "resolution": "Used isolated profile fixtures (`profile-64.json`, `profile-128.json`) and repeated init runs with `--force` to compare outputs deterministically.",
+      "affectedAssertions": [
+        "VAL-CROSS-005"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 4 assigned assertions via CLI: 3 passed (VAL-INIT-011/012/013) and 1 failed (VAL-CROSS-005) due to 64 GB budget overrun in output summary and no intent-based model selection difference on 128 GB."
+}

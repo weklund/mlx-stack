@@ -1,0 +1,131 @@
+{
+  "groupId": "g6-models-local",
+  "testedAt": "2026-03-24T03:43:09Z",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation/g6-models-local",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g6-models-local",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "uv run python (isolated fixture setup)",
+    "shell file operations (cp)"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-MODELS-001",
+      "title": "Lists locally downloaded models with disk size and quant",
+      "status": "pass",
+      "reason": "`mlx-stack models` listed local model directories with human-readable disk sizes (5.2 GB, 2.3 GB), quant values (int4/int8), and source type column.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g6-models-local uv run mlx-stack models"
+      ],
+      "steps": [
+        {
+          "action": "Create local model directories with sparse weight files in assigned MLX_STACK_HOME/models",
+          "expected": "Model scan should detect local directories and compute display sizes/quantization",
+          "observed": "Two local entries were shown with sizes `5.2 GB` and `2.3 GB`, quants `int4` and `int8`, and source values `unknown`/`mlx-community`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g6-models-local/val-models-001-002-setup.txt",
+          "recommendation/g6-models-local/val-models-001-002-models-output.txt"
+        ],
+        "files": [
+          "recommendation/g6-models-local/default-stack.yaml"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-MODELS-002",
+      "title": "Active stack models marked with indicator",
+      "status": "pass",
+      "reason": "Output marked stack-active local model with `✓`, left non-stack local model unmarked, and showed a remote-only stack model with `remote` source plus estimated size `4.5 GB`.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g6-models-local uv run mlx-stack models"
+      ],
+      "steps": [
+        {
+          "action": "Create `stacks/default.yaml` referencing one downloaded model and one undownloaded model",
+          "expected": "Downloaded stack model should be marked active; undownloaded stack model should appear as remote with estimated size",
+          "observed": "`Qwen 3.5 8B` local row had `✓`; non-stack local nemotron row had no indicator; `DeepSeek R1 8B` appeared in `Stack Models (not downloaded)` with `remote` source and `4.5 GB` estimated size."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g6-models-local/val-models-001-002-models-output.txt"
+        ],
+        "files": [
+          "recommendation/g6-models-local/default-stack.yaml"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-MODELS-003",
+      "title": "No local models produces informative message",
+      "status": "pass",
+      "reason": "On an empty assigned MLX_STACK_HOME, `mlx-stack models` returned exit code 0 and displayed `No models found` plus guidance to run `mlx-stack pull` or `mlx-stack init`.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g6-models-local uv run mlx-stack models"
+      ],
+      "steps": [
+        {
+          "action": "Run `models` before creating any model directory",
+          "expected": "Helpful no-models guidance with suggested next commands",
+          "observed": "Output: `No models found. Run mlx-stack pull ... or mlx-stack init ...` and exit code 0."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g6-models-local/val-models-003-no-models.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-MODELS-006",
+      "title": "Custom model-dir configuration respected",
+      "status": "pass",
+      "reason": "After `config set model-dir <custom>`, `models` scanned and reported only the custom directory content and printed the custom models path in footer.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g6-models-local uv run mlx-stack config set model-dir /tmp/mlx-stack-user-testing/recommendation/g6-models-local/custom-models",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g6-models-local uv run mlx-stack models"
+      ],
+      "steps": [
+        {
+          "action": "Set `model-dir` to `/tmp/mlx-stack-user-testing/recommendation/g6-models-local/custom-models`",
+          "expected": "Subsequent `models` command should scan custom path instead of default",
+          "observed": "Output listed `Custom-Model-4bit` from custom dir and footer showed `Models directory: /tmp/mlx-stack-user-testing/recommendation/g6-models-local/custom-models`."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g6-models-local/val-models-006-config-set.txt",
+          "recommendation/g6-models-local/val-models-006-setup-custom-dir.txt",
+          "recommendation/g6-models-local/val-models-006-models-custom-dir.txt"
+        ],
+        "files": [
+          "recommendation/g6-models-local/config-after-model-dir-set.yaml"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Fixture setup via system `python3` lacked PyYAML (`ModuleNotFoundError: yaml`).",
+      "resolved": true,
+      "resolution": "Used `MLX_STACK_HOME=... uv run python` for fixture generation so project dependencies were available.",
+      "affectedAssertions": [
+        "VAL-MODELS-001",
+        "VAL-MODELS-002"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 4 assigned assertions (VAL-MODELS-001/002/003/006) via CLI in isolated MLX_STACK_HOME; all 4 passed."
+}

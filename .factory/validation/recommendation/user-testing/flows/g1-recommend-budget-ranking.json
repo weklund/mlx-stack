@@ -1,0 +1,227 @@
+{
+  "groupId": "g1-recommend-budget-ranking",
+  "testedAt": "2026-03-24T03:22:02.963147+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g1-recommend-budget-ranking",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "commands": [
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_128.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced --show-all",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_show_all_128.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent agent-fleet",
+      "evidence": "recommendation/g1-recommend-budget-ranking/agent_128.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_64.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced --show-all",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_show_all_64.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced --budget 30gb",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_budget30_64.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced --budget 30gb --show-all",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_budget30_show_all_64.txt"
+    },
+    {
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g1-recommend-budget-ranking uv run mlx-stack recommend --intent balanced",
+      "evidence": "recommendation/g1-recommend-budget-ranking/balanced_32.txt"
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-RECOMMEND-001",
+      "title": "Models exceeding memory budget are excluded",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack recommend --intent balanced` with 128 GB profile",
+          "expected": "Every recommended tier model has memory <= budget",
+          "observed": "Budget 51.2 GB; tiers memory: standard=42.0 GB, fast=0.8 GB, longctx=5.5 GB (all within budget)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_128.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-002",
+      "title": "Default memory budget is 40% of unified memory",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack recommend --intent balanced` with mocked 64 GB profile",
+          "expected": "Default budget should be 40% of 64 GB (25.6 GB)",
+          "observed": "CLI reported budget 25.6 GB."
+        },
+        {
+          "action": "Run `mlx-stack recommend --intent balanced --show-all` and compare to catalog memory",
+          "expected": "Only models with memory <= 25.6 GB included",
+          "observed": "Show-all model set matched memory filter exactly: True."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_64.txt",
+          "recommendation/g1-recommend-budget-ranking/balanced_show_all_64.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-003",
+      "title": "Explicit --budget overrides default",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Compare 64 GB runs with default budget vs `--budget 30gb`",
+          "expected": "Budget changes from 25.6 GB to 30.0 GB and expands eligible model set",
+          "observed": "Observed budgets: default=25.6 GB, explicit=30.0 GB."
+        },
+        {
+          "action": "Compare `--show-all` outputs between default and `--budget 30gb`",
+          "expected": "Models in (25.6, 30] GB appear only with explicit budget",
+          "observed": "Newly included with 30 GB: ['Nemotron 49B'] (expected ['Nemotron 49B'])."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_64.txt",
+          "recommendation/g1-recommend-budget-ranking/balanced_budget30_64.txt",
+          "recommendation/g1-recommend-budget-ranking/balanced_show_all_64.txt",
+          "recommendation/g1-recommend-budget-ranking/balanced_budget30_show_all_64.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-004",
+      "title": "Different intents produce different recommendations",
+      "status": "fail",
+      "steps": [
+        {
+          "action": "Run `mlx-stack recommend --intent balanced` and `--intent agent-fleet` with same 128 GB profile",
+          "expected": "At least one tier assignment differs between intents",
+          "observed": "Balanced tiers: {'standard': 'Qwen 3.5 72B', 'fast': 'Qwen 3.5 0.8B', 'longctx': 'DeepSeek R1 8B'}; Agent-fleet tiers: {'standard': 'Qwen 3.5 72B', 'fast': 'Qwen 3.5 0.8B', 'longctx': 'DeepSeek R1 8B'}; differences: {}."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_128.txt",
+          "recommendation/g1-recommend-budget-ranking/agent_128.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": "No tier assignment differences observed between balanced and agent-fleet intents."
+    },
+    {
+      "id": "VAL-RECOMMEND-005",
+      "title": "Tier assignment follows quality/speed/architecture rules",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Verify standard tier against highest quality-overall eligible model",
+          "expected": "standard == Qwen 3.5 72B",
+          "observed": "standard == Qwen 3.5 72B"
+        },
+        {
+          "action": "Verify fast tier against highest gen_tps among remaining eligible models",
+          "expected": "fast == Qwen 3.5 0.8B and distinct from standard",
+          "observed": "fast == Qwen 3.5 0.8B (distinct=True)"
+        },
+        {
+          "action": "Verify longctx architectural diversity when mamba2-hybrid candidates fit budget",
+          "expected": "longctx uses a mamba2-hybrid model if available",
+          "observed": "longctx == DeepSeek R1 8B (architecture=mamba2-hybrid); mamba candidates=['DeepSeek R1 32B', 'DeepSeek R1 8B']"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_128.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "files": [
+          "recommendation/g1-recommend-budget-ranking/catalog-m5-max-128.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-006",
+      "title": "Small-memory systems get fewer tiers; large-memory get up to 3",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `mlx-stack recommend --intent balanced` with mocked 32 GB profile",
+          "expected": "1-2 tiers on small-memory budget (~12.8 GB)",
+          "observed": "Budget 12.8 GB, tiers={'standard': 'Qwen 3.5 14B', 'fast': 'Qwen 3.5 0.8B'} (count=2)."
+        },
+        {
+          "action": "Run same command with mocked 128 GB profile",
+          "expected": "Up to 3 tiers on large-memory budget (~51.2 GB)",
+          "observed": "Budget 51.2 GB, tiers={'standard': 'Qwen 3.5 72B', 'fast': 'Qwen 3.5 0.8B', 'longctx': 'DeepSeek R1 8B'} (count=3)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g1-recommend-budget-ranking/balanced_32.txt",
+          "recommendation/g1-recommend-budget-ranking/balanced_128.txt",
+          "recommendation/g1-recommend-budget-ranking/assertion-analysis.json"
+        ],
+        "network": "N/A (CLI-only)",
+        "consoleErrors": "N/A (CLI-only)"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "When using mocked memory sizes (32/64 GB) with profile_id m5-max-128, CLI reports estimated Gen TPS based on bandwidth ratio warning.",
+      "resolved": true,
+      "resolution": "Used estimates only for recommendation assertions that depend on budget/tier selection; memory inclusion checks validated against catalog benchmarks.",
+      "affectedAssertions": [
+        "VAL-RECOMMEND-002",
+        "VAL-RECOMMEND-003",
+        "VAL-RECOMMEND-006"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 5 passed, 1 failed, 0 blocked. Failure: VAL-RECOMMEND-004 (no tier differences between balanced and agent-fleet)."
+}

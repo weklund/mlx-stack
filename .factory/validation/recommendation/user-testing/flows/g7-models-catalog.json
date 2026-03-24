@@ -1,0 +1,174 @@
+{
+  "groupId": "g7-models-catalog",
+  "testedAt": "2026-03-24T03:44:40Z",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g7-models-catalog",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "shell (mkdir/cat/env)",
+    "python3 (evidence parsing)"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-MODELS-004",
+      "title": "--catalog shows full catalog with hardware-specific data",
+      "status": "pass",
+      "reason": "`models --catalog` returned 15 catalog entries with Name/Family/Params/Quants and hardware columns (Gen t/s, Mem GB), included local availability marker, and showed estimated labels (`~`) under unknown hardware.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack profile",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog (with unknown profile fixture)",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack profile (restore)"
+      ],
+      "steps": [
+        {
+          "action": "Create isolated local model fixture and run `mlx-stack models --catalog` after `mlx-stack profile`",
+          "expected": "Catalog table shows all models and hardware-specific benchmark data with local indicator",
+          "observed": "Table rendered 15 models with `Gen t/s` and `Mem GB` columns; one model (`Qwen 3.5 0.8B`) marked local with `\u25cf`."
+        },
+        {
+          "action": "Set isolated profile to unknown hardware and rerun `mlx-stack models --catalog`",
+          "expected": "Unknown hardware values are estimated and clearly labeled",
+          "observed": "All benchmark values were suffixed with `~` and legend `~ = estimated values ...` was printed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g7-models-catalog/VAL-MODELS-004-profile.txt",
+          "recommendation/g7-models-catalog/VAL-MODELS-004-005-models-catalog.txt",
+          "recommendation/g7-models-catalog/VAL-MODELS-004-models-catalog-unknown-hw.txt",
+          "recommendation/g7-models-catalog/VAL-MODELS-004-profile-restore.txt"
+        ],
+        "files": [
+          "recommendation/g7-models-catalog/assertion-analysis.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-MODELS-005",
+      "title": "Output is a formatted table with human-readable names",
+      "status": "pass",
+      "reason": "`models --catalog` output is a Rich-formatted aligned table with headers and readable model names such as `Qwen 3.5 0.8B`, not raw directory names.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog"
+      ],
+      "steps": [
+        {
+          "action": "Inspect catalog output formatting",
+          "expected": "Terminal table layout with aligned headers/columns and human-readable model names",
+          "observed": "Rich table contained aligned columns (`Name`, `Family`, `Params`, `Quants`, `Gen t/s`, `Mem GB`) and human-readable names."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g7-models-catalog/VAL-MODELS-004-005-models-catalog.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CATALOG-001",
+      "title": "Catalog loads all entries via models --catalog",
+      "status": "pass",
+      "reason": "Catalog view loaded successfully with 15 entries; analysis confirmed family distribution includes the required model families and field coverage (name/family/params/quants).",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog"
+      ],
+      "steps": [
+        {
+          "action": "Run `mlx-stack models --catalog` after isolated profile setup",
+          "expected": "All 15 catalog models are shown with name, family, params, and quantizations",
+          "observed": "Command exited 0 and displayed 15 model rows (including 6 Qwen 3.5 entries) with required columns."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g7-models-catalog/VAL-MODELS-004-005-models-catalog.txt"
+        ],
+        "files": [
+          "recommendation/g7-models-catalog/assertion-analysis.json"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CATALOG-002",
+      "title": "Catalog queryable by family, tag, and capability",
+      "status": "fail",
+      "reason": "The CLI does not expose required catalog filter options; `--family`, `--tag`, and `--tool-calling` all error as unknown options.",
+      "commands": [
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --help",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog --family 'Qwen 3.5'",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog --tag agent-ready",
+        "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog --tool-calling true"
+      ],
+      "steps": [
+        {
+          "action": "Check available `models` options",
+          "expected": "Filter/query flags available for family, tag, capability",
+          "observed": "Help output lists only `--catalog` and `--help`."
+        },
+        {
+          "action": "Run family/tag/capability filter commands",
+          "expected": "Each command returns filtered catalog rows",
+          "observed": "All commands exited 2 with `No such option` errors for the requested flags."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g7-models-catalog/VAL-CATALOG-002-help.txt",
+          "recommendation/g7-models-catalog/VAL-CATALOG-002-family.txt",
+          "recommendation/g7-models-catalog/VAL-CATALOG-002-tag.txt",
+          "recommendation/g7-models-catalog/VAL-CATALOG-002-capability.txt"
+        ]
+      },
+      "issues": "Required family/tag/capability query interface is not available on current CLI surface."
+    },
+    {
+      "id": "VAL-CATALOG-003",
+      "title": "Corrupt or missing catalog produces clear error",
+      "status": "pass",
+      "reason": "When catalog data was intentionally replaced in isolated PYTHONPATH fixtures with malformed YAML and with an empty catalog package, `models --catalog` returned clear descriptive errors and no traceback.",
+      "commands": [
+        "PYTHONPATH=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog/shadow2 MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog",
+        "PYTHONPATH=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog/empty_shadow2 MLX_STACK_HOME=/tmp/mlx-stack-user-testing/recommendation/g7-models-catalog uv run mlx-stack models --catalog"
+      ],
+      "steps": [
+        {
+          "action": "Run catalog command with malformed isolated catalog YAML fixture",
+          "expected": "Clear corrupt-catalog error message with non-zero exit and no traceback",
+          "observed": "Output: `Error: Could not load catalog: Catalog file 'bad.yaml' contains invalid YAML ...`; exit code 1; no traceback."
+        },
+        {
+          "action": "Run catalog command with empty isolated catalog package",
+          "expected": "Clear missing/empty catalog error with non-zero exit and no traceback",
+          "observed": "Output: `Error: Could not load catalog: No catalog YAML files found \u2014 catalog directory is empty`; exit code 1; no traceback."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g7-models-catalog/VAL-CATALOG-003-corrupt-catalog-v2.txt",
+          "recommendation/g7-models-catalog/VAL-CATALOG-003-missing-catalog-v2.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "No first-class CLI option exists to point `models --catalog` at an alternate catalog path for negative-path testing.",
+      "resolved": true,
+      "resolution": "Used isolated PYTHONPATH shadow packages under assigned MLX_STACK_HOME to inject malformed and empty catalog fixtures without touching repository source files.",
+      "affectedAssertions": [
+        "VAL-CATALOG-003"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 5 assigned assertions: 4 passed (VAL-MODELS-004, VAL-MODELS-005, VAL-CATALOG-001, VAL-CATALOG-003) and 1 failed (VAL-CATALOG-002: required family/tag/capability filters are not exposed by current CLI options)."
+}

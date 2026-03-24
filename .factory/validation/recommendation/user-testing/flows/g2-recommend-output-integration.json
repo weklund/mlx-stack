@@ -1,0 +1,284 @@
+{
+  "groupId": "g2-recommend-output-integration",
+  "testedAt": "2026-03-24T03:30:31.894790+00:00",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/recommendation/g2-recommend-output-integration",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/recommendation/g2-recommend-output-integration",
+    "contract": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/validation-contract.md"
+  },
+  "toolsUsed": [
+    "execute(shell)",
+    "uv run mlx-stack",
+    "python3"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-RECOMMEND-007",
+      "title": "Profile integration \u2014 reads existing or auto-detects",
+      "status": "pass",
+      "reason": "Missing-profile run auto-detected hardware; saved-profile runs used existing profile context.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack recommend",
+        "MLX_STACK_HOME=... uv run mlx-stack profile",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend"
+      ],
+      "steps": [
+        {
+          "action": "recommend with no profile",
+          "expected": "auto-detect hardware",
+          "observed": "printed 'No saved profile found \u2014 detecting hardware...'"
+        },
+        {
+          "action": "recommend with existing profile",
+          "expected": "read saved profile",
+          "observed": "recommend ran without missing-profile detection banner"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-007-009-default-recommend.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-003-profile-command.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-003-recommend-after-profile.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-008",
+      "title": "Unknown hardware uses bandwidth-ratio estimation with warning",
+      "status": "pass",
+      "reason": "Unknown profile produced '(est.)' Gen TPS values and bench calibration warning.",
+      "commands": [
+        "python3 write synthetic profile.json",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend"
+      ],
+      "steps": [
+        {
+          "action": "write unknown profile",
+          "expected": "unknown hardware path",
+          "observed": "recommend hardware shown as Apple M9 Hyper"
+        },
+        {
+          "action": "run recommend",
+          "expected": "estimated labels + bench guidance",
+          "observed": "Gen TPS marked '(est.)' and warned to run 'mlx-stack bench --save'"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-008-custom-unknown-profile.json",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-008-unknown-hardware-recommend.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-009",
+      "title": "Default output shows recommended stack with tiers",
+      "status": "pass",
+      "reason": "Default output shows tier table; --show-all lists all budget-fitting models sorted by score.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack recommend",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --show-all"
+      ],
+      "steps": [
+        {
+          "action": "run recommend",
+          "expected": "tier table",
+          "observed": "standard/fast/longctx with model, quant, Gen TPS, memory"
+        },
+        {
+          "action": "run recommend --show-all",
+          "expected": "all fit models sorted by composite score",
+          "observed": "15 rows with descending Score column"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-007-009-default-recommend.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-009-show-all.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-010",
+      "title": "Cloud fallback tier conditional on OpenRouter key",
+      "status": "pass",
+      "reason": "Premium cloud fallback was absent without key and present after setting openrouter-key.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --intent balanced",
+        "MLX_STACK_HOME=... uv run mlx-stack config set openrouter-key sk-or-test-recommendation-g2",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --intent balanced"
+      ],
+      "steps": [
+        {
+          "action": "recommend without key",
+          "expected": "no premium tier",
+          "observed": "local tiers only"
+        },
+        {
+          "action": "set key + recommend",
+          "expected": "premium fallback appears",
+          "observed": "output included cloud fallback line"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-010-no-key-recommend.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-010-set-key.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-010-with-key-recommend.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-011",
+      "title": "Recommendation is display-only \u2014 no files written",
+      "status": "pass",
+      "reason": "Before/after snapshots showed no stacks/ or litellm.yaml creation/modification during recommend.",
+      "commands": [
+        "python3 before/after snapshot + uv run mlx-stack recommend"
+      ],
+      "steps": [
+        {
+          "action": "snapshot before",
+          "expected": "baseline recorded",
+          "observed": "stacks and litellm.yaml absent"
+        },
+        {
+          "action": "run recommend + snapshot after",
+          "expected": "no persistence artifacts",
+          "observed": "no changes_detected"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-011-no-write-check.json",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-011-recommend-output.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-RECOMMEND-012",
+      "title": "Edge cases \u2014 zero models, invalid intent, invalid budget",
+      "status": "fail",
+      "reason": "Invalid intent and malformed budgets correctly errored, but '--budget 1gb' returned a successful recommendation instead of no-models-fit error required by contract.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --budget 1gb",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --intent invalid_value",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --budget abc",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend --budget -5gb"
+      ],
+      "steps": [
+        {
+          "action": "recommend --budget 1gb",
+          "expected": "error/no model fits",
+          "observed": "returned qwen 3.5 0.8b and EXIT_CODE=0"
+        },
+        {
+          "action": "invalid intent/budget format",
+          "expected": "descriptive non-zero errors",
+          "observed": "all returned EXIT_CODE=1 with clear error text"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-012-budget-1gb.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-012-intent-invalid.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-012-budget-abc.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-012-budget-negative.txt"
+        ]
+      },
+      "issues": "Contract expectation for --budget 1gb did not match observed behavior."
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "title": "Profile \u2192 recommend data flow",
+      "status": "fail",
+      "reason": "profile created profile.json, but missing-profile recommend run did not create profile.json after auto-detect.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack profile",
+        "MLX_STACK_HOME=... uv run mlx-stack recommend",
+        "MLX_STACK_HOME=... python3 check profile.json exists"
+      ],
+      "steps": [
+        {
+          "action": "run profile",
+          "expected": "profile.json created",
+          "observed": "profile.json exists with profile_id m5-max-128"
+        },
+        {
+          "action": "run recommend in missing-profile state",
+          "expected": "auto-detect and create profile.json",
+          "observed": "auto-detect message shown but profile.json remained absent"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-003-profile-command.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-003-profile-json-after-profile-command.json",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-007-009-default-recommend.txt",
+          "recommendation/g2-recommend-output-integration/VAL-RECOMMEND-007-profile-created-check.json",
+          "recommendation/g2-recommend-output-integration/01-home-tree-after-first-recommend.txt"
+        ]
+      },
+      "issues": "Missing-profile recommend path did not persist profile.json as required by contract."
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "title": "Saved benchmark data overrides catalog in recommendations",
+      "status": "blocked",
+      "reason": "Cannot generate saved benchmark data because required pull/bench commands are placeholder/unimplemented in this build.",
+      "commands": [
+        "MLX_STACK_HOME=... uv run mlx-stack models",
+        "MLX_STACK_HOME=... uv run mlx-stack pull qwen3.5-0.8b --quant int4",
+        "MLX_STACK_HOME=... uv run mlx-stack bench qwen3.5-8b --save",
+        "MLX_STACK_HOME=... uv run mlx-stack bench --save"
+      ],
+      "steps": [
+        {
+          "action": "check models",
+          "expected": "at least one local model for bench",
+          "observed": "no models found"
+        },
+        {
+          "action": "attempt pull + bench --save",
+          "expected": "download + benchmark saved",
+          "observed": "both commands returned not-implemented errors"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-012-models-before-bench.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-012-pull-qwen3.5-0.8b-int4.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-012-bench-save-qwen3.5-8b.txt",
+          "recommendation/g2-recommend-output-integration/VAL-CROSS-012-bench-save-default-target.txt"
+        ]
+      },
+      "issues": "Blocked by missing pull/bench implementations in tested CLI build."
+    }
+  ],
+  "frictions": [
+    {
+      "description": "`config get openrouter-key` is blank when unset, so key-state validation relied on recommend output deltas.",
+      "resolved": true,
+      "resolution": "Compared no-key and with-key recommend outputs directly.",
+      "affectedAssertions": [
+        "VAL-RECOMMEND-010"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Pull and bench commands are not implemented, preventing benchmark-save flow execution.",
+      "affectedAssertions": [
+        "VAL-CROSS-012"
+      ],
+      "quickFixAttempted": "Tried pull qwen3.5-0.8b --quant int4 and bench --save variants; all returned not-implemented responses."
+    }
+  ],
+  "summary": "Tested 8 assertions: 5 passed, 2 failed (VAL-RECOMMEND-012, VAL-CROSS-003), 1 blocked (VAL-CROSS-012)."
+}
