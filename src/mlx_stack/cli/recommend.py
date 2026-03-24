@@ -24,7 +24,6 @@ from mlx_stack.core.hardware import (
     HardwareProfile,
     detect_hardware,
     load_profile,
-    save_profile,
 )
 from mlx_stack.core.paths import get_benchmarks_dir
 from mlx_stack.core.scoring import (
@@ -94,11 +93,10 @@ def _resolve_profile() -> HardwareProfile:
     if profile is not None:
         return profile
 
-    # Auto-detect
+    # Auto-detect (in-memory only — recommend is display-only, no file writes)
     console.print("[dim]No saved profile found — detecting hardware...[/dim]")
     try:
         profile = detect_hardware()
-        save_profile(profile)
         return profile
     except HardwareError as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
@@ -132,7 +130,10 @@ def _load_saved_benchmarks(profile_id: str) -> dict[str, Any] | None:
         if isinstance(data, dict):
             return data
     except (json.JSONDecodeError, OSError):
-        pass
+        console.print(
+            f"[yellow]⚠ Warning:[/yellow] Could not parse saved benchmarks "
+            f"at {benchmark_file}. Falling back to catalog data."
+        )
 
     return None
 

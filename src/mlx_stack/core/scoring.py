@@ -14,12 +14,15 @@ catalog benchmark data is not available.
 
 from __future__ import annotations
 
+import logging
 import math
 from dataclasses import dataclass
 from typing import Any
 
 from mlx_stack.core.catalog import BenchmarkResult, CatalogEntry
 from mlx_stack.core.hardware import HardwareProfile
+
+logger = logging.getLogger("mlx_stack")
 
 # --------------------------------------------------------------------------- #
 # Constants
@@ -191,11 +194,19 @@ def _resolve_benchmark(
     # 1. Check saved benchmarks
     if saved_benchmarks and entry.id in saved_benchmarks:
         saved = saved_benchmarks[entry.id]
-        return (
-            float(saved.get("gen_tps", 0.0)),
-            float(saved.get("memory_gb", 0.0)),
-            False,
-        )
+        try:
+            return (
+                float(saved.get("gen_tps", 0.0)),
+                float(saved.get("memory_gb", 0.0)),
+                False,
+            )
+        except (ValueError, TypeError):
+            # Malformed saved benchmark data — fall through to catalog lookup
+            logger.warning(
+                "Ignoring malformed saved benchmark for model '%s': "
+                "invalid numeric values",
+                entry.id,
+            )
 
     profile_id = profile.profile_id
 
@@ -290,7 +301,8 @@ def _normalize_gen_tps_log(gen_tps: float) -> float:
     max_ref = 200.0  # Upper bound reference for normalization
     if gen_tps <= 0:
         return 0.0
-    return math.log(1.0 + gen_tps) / math.log(1.0 + max_ref)
+    score = math.log(1.0 + gen_tps) / math.log(1.0 + max_ref)
+    return min(score, 1.0)
 
 
 def _normalize_quality(quality_overall: int) -> float:

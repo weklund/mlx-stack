@@ -601,7 +601,6 @@ class TestProfileResolution:
         assert result.exit_code == 0
         assert "64 GB" in result.output
 
-    @patch("mlx_stack.cli.recommend.save_profile")
     @patch("mlx_stack.cli.recommend.detect_hardware")
     @patch("mlx_stack.cli.recommend.load_catalog")
     @patch("mlx_stack.cli.recommend.load_profile")
@@ -610,10 +609,9 @@ class TestProfileResolution:
         mock_load_profile: object,
         mock_load_catalog: object,
         mock_detect: object,
-        mock_save: object,
         mlx_stack_home: Path,
     ) -> None:
-        """When no profile.json, auto-detect and save."""
+        """When no profile.json, auto-detect in memory (no file write)."""
         mock_load_profile.return_value = None  # type: ignore[attr-defined]
         mock_detect.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
         mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
@@ -623,7 +621,9 @@ class TestProfileResolution:
         assert result.exit_code == 0
         assert "detecting hardware" in result.output.lower()
         mock_detect.assert_called_once()  # type: ignore[attr-defined]
-        mock_save.assert_called_once()  # type: ignore[attr-defined]
+        # Recommend is display-only — profile.json must NOT be written
+        profile_path = mlx_stack_home / "profile.json"
+        assert not profile_path.exists(), "recommend must not persist profile.json"
 
     @patch("mlx_stack.cli.recommend.detect_hardware")
     @patch("mlx_stack.cli.recommend.load_catalog")
@@ -1098,3 +1098,140 @@ class TestHelpText:
         result = runner.invoke(cli, ["recommend", "--help"])
         assert "balanced" in result.output
         assert "agent-fleet" in result.output
+
+
+# --------------------------------------------------------------------------- #
+# Regression: recommend does not write profile.json
+# --------------------------------------------------------------------------- #
+
+
+class TestRecommendNoFileWrites:
+    """Regression: recommend is display-only and must not persist profile.json."""
+
+    @patch("mlx_stack.cli.recommend.detect_hardware")
+    @patch("mlx_stack.cli.recommend.load_catalog")
+    @patch("mlx_stack.cli.recommend.load_profile")
+    def test_no_profile_written_on_auto_detect(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mock_detect: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Auto-detection during recommend must NOT write profile.json."""
+        mock_load_profile.return_value = None  # type: ignore[attr-defined]
+        mock_detect.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["recommend"])
+        assert result.exit_code == 0
+
+        # No profile.json should be written
+        profile_path = mlx_stack_home / "profile.json"
+        assert not profile_path.exists()
+
+    @patch("mlx_stack.cli.recommend.load_catalog")
+    @patch("mlx_stack.cli.recommend.load_profile")
+    def test_no_files_written_any_flag_combo(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """No files created under any recommend flag combination."""
+        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+
+        import os
+
+        files_before = set()
+        for root, _dirs, files in os.walk(str(mlx_stack_home)):
+            for f in files:
+                files_before.add(os.path.join(root, f))
+
+        runner = CliRunner()
+        # Test multiple flag combos
+        for flags in [
+            ["recommend"],
+            ["recommend", "--show-all"],
+            ["recommend", "--intent", "agent-fleet"],
+            ["recommend", "--budget", "30gb"],
+        ]:
+            result = runner.invoke(cli, flags)
+            assert result.exit_code == 0
+
+        files_after = set()
+        for root, _dirs, files in os.walk(str(mlx_stack_home)):
+            for f in files:
+                files_after.add(os.path.join(root, f))
+
+        new_files = files_after - files_before
+        assert not new_files, f"recommend must not write files, but created: {new_files}"
+
+
+# --------------------------------------------------------------------------- #
+# Regression: malformed saved benchmarks produce warning, not traceback
+# --------------------------------------------------------------------------- #
+
+
+class TestMalformedSavedBenchmarks:
+    """Regression: malformed saved benchmark data handled gracefully."""
+
+    @patch("mlx_stack.cli.recommend.load_catalog")
+    @patch("mlx_stack.cli.recommend.load_profile")
+    def test_malformed_benchmark_json_warning(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Malformed numeric values in saved benchmarks fall through gracefully."""
+        profile = _make_profile(memory_gb=128)
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+
+        # Write malformed saved benchmarks with non-numeric gen_tps
+        benchmarks_dir = mlx_stack_home / "benchmarks"
+        benchmarks_dir.mkdir(parents=True)
+        saved_data = {
+            "medium-8b": {
+                "gen_tps": "not_a_number",
+                "prompt_tps": 200.0,
+                "memory_gb": 5.5,
+            }
+        }
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text(
+            json.dumps(saved_data)
+        )
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["recommend", "--show-all"])
+        # Must not crash with ValueError traceback
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output
+        # Should still show recommendations from catalog data
+        assert "Medium 8B" in result.output
+
+    @patch("mlx_stack.cli.recommend.load_catalog")
+    @patch("mlx_stack.cli.recommend.load_profile")
+    def test_corrupt_benchmark_file_warning(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Corrupt JSON file in benchmarks produces warning, not traceback."""
+        profile = _make_profile(memory_gb=128)
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+
+        # Write corrupt JSON
+        benchmarks_dir = mlx_stack_home / "benchmarks"
+        benchmarks_dir.mkdir(parents=True)
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text("{{{invalid json")
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["recommend", "--show-all"])
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output

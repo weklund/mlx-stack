@@ -325,6 +325,21 @@ class TestNormalization:
         result = _normalize_gen_tps_log(195.0)
         assert 0.9 < result <= 1.0
 
+    def test_log_gen_tps_clamped_above_max_ref(self) -> None:
+        """Regression: gen_tps above max_ref (200) must be clamped to 1.0.
+
+        High-bandwidth unknown hardware can produce gen_tps > 200 via
+        bandwidth-ratio estimation, which would otherwise push the
+        normalized score above 1.0 and distort composite rankings.
+        """
+        result = _normalize_gen_tps_log(500.0)
+        assert result == 1.0
+
+    def test_log_gen_tps_clamped_extreme_bandwidth(self) -> None:
+        """Regression: extreme gen_tps (e.g., 1000 tok/s) stays clamped."""
+        result = _normalize_gen_tps_log(1000.0)
+        assert result == 1.0
+
     def test_log_gen_tps_monotonic(self) -> None:
         """Faster models get higher scores but log scaling compresses differences."""
         slow = _normalize_gen_tps_log(12.0)
@@ -496,6 +511,41 @@ class TestBenchmarkResolution:
         assert is_estimated is True
         assert gen_tps == pytest.approx(100.0, rel=0.01)  # 50 * (1092/546)
 
+    def test_malformed_saved_benchmark_falls_through(
+        self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
+    ) -> None:
+        """Regression: malformed saved benchmark values fall through gracefully.
+
+        If saved benchmark JSON has non-numeric values (e.g., 'NaN-string'),
+        _resolve_benchmark should log a warning and fall through to catalog
+        data instead of raising a ValueError traceback.
+        """
+        saved = {
+            "test-model": {"gen_tps": "not_a_number", "memory_gb": 5.5},
+        }
+        gen_tps, memory_gb, is_estimated = _resolve_benchmark(
+            basic_entry, m4_max_128_profile, saved_benchmarks=saved
+        )
+        # Should fall through to direct catalog match for m4-max-128
+        assert gen_tps == 77.0
+        assert memory_gb == 5.5
+        assert is_estimated is False
+
+    def test_malformed_saved_benchmark_none_value(
+        self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
+    ) -> None:
+        """Regression: saved benchmark with None value falls through."""
+        saved = {
+            "test-model": {"gen_tps": None, "memory_gb": None},
+        }
+        gen_tps, memory_gb, is_estimated = _resolve_benchmark(
+            basic_entry, m4_max_128_profile, saved_benchmarks=saved
+        )
+        # Should fall through to direct catalog match for m4-max-128
+        assert gen_tps == 77.0
+        assert memory_gb == 5.5
+        assert is_estimated is False
+
     def test_model_without_benchmarks_raises(self, unknown_profile: HardwareProfile) -> None:
         entry = _make_entry(benchmarks={})
         with pytest.raises(ScoringError, match="no benchmark data"):
@@ -549,6 +599,40 @@ class TestScoreModel:
             + weights.memory_efficiency * scored.memory_efficiency_score
         )
         assert scored.composite_score == pytest.approx(expected)
+
+    def test_high_bandwidth_hardware_speed_score_clamped(self) -> None:
+        """Regression: bandwidth-ratio estimation on high-bandwidth hardware.
+
+        When hardware has much higher bandwidth than reference profiles,
+        estimated gen_tps can exceed 200 (the normalization reference).
+        The speed_score must still be clamped to [0, 1].
+        """
+        entry = _make_entry(
+            model_id="fast-model",
+            benchmarks={
+                "m4-max-128": BenchmarkResult(
+                    prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8
+                ),
+            },
+        )
+        # Very high bandwidth hardware — 4x the reference m4-max-128 (546 GB/s)
+        high_bw_profile = _make_profile(
+            chip="Apple M99 Ultra",
+            gpu_cores=128,
+            memory_gb=512,
+            bandwidth_gbps=2184.0,  # 4x m4-max-128
+            is_estimate=True,
+        )
+        weights = INTENT_WEIGHTS["balanced"]
+        scored = score_model(entry, high_bw_profile, weights, 200.0)
+
+        # gen_tps should be estimated as ~740 (185 * 2184/546)
+        assert scored.gen_tps > 200.0
+        assert scored.is_estimated is True
+        # Speed score must be clamped to 1.0
+        assert scored.speed_score == 1.0
+        # Composite score must remain in [0, 1]
+        assert 0.0 <= scored.composite_score <= 1.0
 
     def test_tool_calling_model_scores_higher_for_agent_fleet(
         self, m4_max_128_profile: HardwareProfile
