@@ -62,10 +62,15 @@ def _display_summary(result: dict) -> None:
     # Hardware and memory summary
     out.print()
     budget_gb = result["memory_budget_gb"]
+    total_memory_gb = result.get("total_memory_gb", 0.0)
     out.print(
         f"[dim]Hardware: {profile.chip} ({profile.memory_gb} GB) · "
         f"Budget: {budget_gb:.1f} GB[/dim]"
     )
+    if total_memory_gb > 0:
+        out.print(
+            f"[dim]Total estimated memory: {total_memory_gb:.1f} GB[/dim]"
+        )
 
     # Warnings (e.g., memory budget exceeded with --add)
     init_warnings = result.get("warnings", [])

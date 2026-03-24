@@ -111,25 +111,30 @@ def _load_active_stack() -> dict[str, Any] | None:
     return None
 
 
-def _get_active_stack_models(stack: dict[str, Any] | None) -> dict[str, dict[str, str]]:
+def _get_active_stack_models(stack: dict[str, Any] | None) -> list[dict[str, str]]:
     """Extract model info from the active stack definition.
 
+    Returns a list (not a dict) because the same model_id could appear
+    with different quants in different tiers. Each entry contains
+    model_id, quant, source, and tier name.
+
     Returns:
-        Dict mapping model_id to {quant, source, tier_name}.
+        List of dicts with keys: model_id, quant, source, tier.
     """
     if stack is None:
-        return {}
+        return []
 
     tiers = stack.get("tiers", [])
-    result: dict[str, dict[str, str]] = {}
+    result: list[dict[str, str]] = []
     for tier in tiers:
         model_id = tier.get("model", "")
         if model_id:
-            result[model_id] = {
+            result.append({
+                "model_id": model_id,
                 "quant": tier.get("quant", ""),
                 "source": tier.get("source", ""),
                 "tier": tier.get("name", ""),
-            }
+            })
     return result
 
 
@@ -277,7 +282,7 @@ def scan_local_models(
     if stack is None:
         stack = _load_active_stack()
 
-    active_models = _get_active_stack_models(stack)
+    active_stack_entries = _get_active_stack_models(stack)
 
     results: list[LocalModel] = []
     try:
@@ -298,19 +303,51 @@ def scan_local_models(
         catalog_entry = _match_to_catalog(dirname, catalog)
         catalog_name = catalog_entry.name if catalog_entry else None
 
-        # Check if this model is active in the stack
-        # Match by checking if any active model's source dir matches
+        # Check if this model is active in the stack using
+        # source+quant-aware identity matching.
         is_active = False
-        for model_id, info in active_models.items():
-            source = info.get("source", "")
-            source_dir = source.rsplit("/", 1)[-1] if "/" in source else source
-            if source_dir == dirname or model_id == dirname:
-                is_active = True
-                break
-            # Also check catalog entry match
-            if catalog_entry and catalog_entry.id == model_id:
-                is_active = True
-                break
+        for stack_entry in active_stack_entries:
+            stack_source = stack_entry.get("source", "")
+            stack_quant = stack_entry.get("quant", "")
+            stack_model_id = stack_entry.get("model_id", "")
+            source_dir = (
+                stack_source.rsplit("/", 1)[-1]
+                if "/" in stack_source
+                else stack_source
+            )
+
+            # Primary match: source directory name matches AND quant matches
+            if source_dir and source_dir == dirname:
+                # Source dir match found — verify quant compatibility
+                if not stack_quant or quant == "unknown" or stack_quant == quant:
+                    is_active = True
+                    break
+
+            # Secondary match: model_id matches dirname AND quant matches
+            if stack_model_id == dirname:
+                if not stack_quant or quant == "unknown" or stack_quant == quant:
+                    is_active = True
+                    break
+
+            # Tertiary match: catalog entry ID matches stack model ID,
+            # AND the local model's source matches the catalog source for
+            # the stack's quant
+            if catalog_entry and catalog_entry.id == stack_model_id:
+                # Verify quant-aware source match
+                if stack_quant in catalog_entry.sources:
+                    expected_source = catalog_entry.sources[stack_quant]
+                    expected_dir = (
+                        expected_source.hf_repo.rsplit("/", 1)[-1]
+                        if "/" in expected_source.hf_repo
+                        else expected_source.hf_repo
+                    )
+                    if expected_dir == dirname:
+                        is_active = True
+                        break
+                elif not stack_quant or quant == "unknown" or stack_quant == quant:
+                    # Fallback: catalog match with compatible quant
+                    is_active = True
+                    break
 
         results.append(
             LocalModel(
@@ -339,6 +376,9 @@ def get_remote_stack_models(
 ) -> list[dict[str, Any]]:
     """Find models referenced in the active stack but not downloaded locally.
 
+    Uses source+quant-aware matching to determine whether a stack model
+    is available locally.
+
     Args:
         local_models: Already-scanned local models.
         stack: Pre-loaded stack definition (loads from file if None).
@@ -359,42 +399,68 @@ def get_remote_stack_models(
         except Exception:
             catalog = []
 
-    active_models = _get_active_stack_models(stack)
-    local_names = {m.name for m in local_models}
+    active_stack_entries = _get_active_stack_models(stack)
 
     remote_models: list[dict[str, Any]] = []
-    for model_id, info in active_models.items():
-        source = info.get("source", "")
-        source_dir = source.rsplit("/", 1)[-1] if "/" in source else source
+    for stack_entry in active_stack_entries:
+        model_id = stack_entry["model_id"]
+        stack_source = stack_entry.get("source", "")
+        stack_quant = stack_entry.get("quant", "int4")
+        source_dir = (
+            stack_source.rsplit("/", 1)[-1]
+            if "/" in stack_source
+            else stack_source
+        )
 
-        # Check if locally available
-        is_local = source_dir in local_names or model_id in local_names
+        # Check if locally available using source+quant-aware matching
+        is_local = False
 
-        # Also check by catalog entry ID
-        if not is_local:
-            for lm in local_models:
-                if lm.catalog_name and _find_catalog_entry(catalog, model_id):
-                    match_entry = _find_catalog_entry(catalog, model_id)
-                    if match_entry and match_entry.name == lm.catalog_name:
+        for lm in local_models:
+            # Match by source directory name + quant
+            if source_dir and source_dir == lm.name:
+                if not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant:
+                    is_local = True
+                    break
+
+            # Match by model_id as dirname + quant
+            if model_id == lm.name:
+                if not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant:
+                    is_local = True
+                    break
+
+            # Match by catalog entry with quant-aware source matching
+            cat_entry = _find_catalog_entry(catalog, model_id)
+            if cat_entry and lm.catalog_name and cat_entry.name == lm.catalog_name:
+                # Verify quant-aware source match
+                if stack_quant in cat_entry.sources:
+                    expected_source = cat_entry.sources[stack_quant]
+                    expected_dir = (
+                        expected_source.hf_repo.rsplit("/", 1)[-1]
+                        if "/" in expected_source.hf_repo
+                        else expected_source.hf_repo
+                    )
+                    if expected_dir == lm.name:
                         is_local = True
                         break
+                elif not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant:
+                    is_local = True
+                    break
 
         if not is_local:
             # Find estimated download size from catalog
             entry = _find_catalog_entry(catalog, model_id)
-            quant = info.get("quant", "int4")
             est_size_gb: float | None = None
             catalog_name: str | None = None
             if entry:
                 catalog_name = entry.name
-                if quant in entry.sources:
-                    est_size_gb = entry.sources[quant].disk_size_gb
+                if stack_quant in entry.sources:
+                    est_size_gb = entry.sources[stack_quant].disk_size_gb
 
             remote_models.append(
                 {
                     "model_id": model_id,
-                    "tier": info.get("tier", ""),
-                    "quant": quant,
+                    "tier": stack_entry.get("tier", ""),
+                    "quant": stack_quant,
                     "source": "remote",
                     "catalog_name": catalog_name or model_id,
                     "est_size_gb": est_size_gb,

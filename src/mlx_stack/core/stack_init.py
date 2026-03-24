@@ -80,7 +80,9 @@ def allocate_ports(
 ) -> list[int]:
     """Allocate unique ports for vllm-mlx instances.
 
-    Ensures no port conflicts with the LiteLLM port.
+    Ensures no port conflicts with the LiteLLM port and skips ports
+    that are already in use (detected via socket binding). Selects
+    deterministic alternates by incrementing the port number.
 
     Args:
         num_tiers: Number of tiers needing ports.
@@ -91,15 +93,24 @@ def allocate_ports(
         List of unique port numbers, one per tier.
 
     Raises:
-        InitError: If not enough ports can be allocated.
+        InitError: If not enough ports can be allocated within a
+            reasonable range (base_port .. base_port + 100).
     """
     ports: list[int] = []
     port = base_port
+    max_port = base_port + 100  # Safety limit to prevent infinite loops
 
     for _ in range(num_tiers):
-        # Skip the LiteLLM port
-        while port == litellm_port:
+        # Skip the LiteLLM port and ports already in use
+        while port == litellm_port or not _is_port_available(port):
             port += 1
+            if port > max_port:
+                msg = (
+                    f"Could not allocate {num_tiers} free ports starting "
+                    f"from {base_port}. All ports in range "
+                    f"{base_port}–{max_port} are in use or reserved."
+                )
+                raise InitError(msg)
         ports.append(port)
         port += 1
 
@@ -483,6 +494,9 @@ def run_init(
     # --- Detect missing models ---
     missing_models = detect_missing_models(stack["tiers"])
 
+    # --- Compute total estimated memory for selected tiers ---
+    total_memory_gb = sum(t.model.memory_gb for t in tiers)
+
     return {
         "stack_path": stack_path,
         "litellm_path": litellm_path,
@@ -492,6 +506,7 @@ def run_init(
         "warnings": warnings,
         "profile": profile,
         "memory_budget_gb": recommendation.memory_budget_gb,
+        "total_memory_gb": total_memory_gb,
     }
 
 

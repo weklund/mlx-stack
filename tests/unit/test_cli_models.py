@@ -984,3 +984,222 @@ class TestModelsEdgeCases:
         assert by_name["Model-A-4bit"].quant == "int4"
         assert by_name["Model-A-8bit"].quant == "int8"
         assert by_name["Model-B-bf16"].quant == "bf16"
+
+
+# =========================================================================== #
+# Source+quant-aware active model detection tests
+# =========================================================================== #
+
+
+class TestSourceQuantAwareActiveDetection:
+    """Tests for source+quant-aware identity matching in active model detection.
+
+    Verifies that models are only marked as active when both the source
+    directory and quantization match what the stack definition specifies.
+    """
+
+    def test_same_model_different_quant_not_active(self, mlx_stack_home: Path) -> None:
+        """Model with different quant than stack should NOT be marked active."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        # Stack specifies int4 quant for qwen3.5-8b
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        # Local directory is the int8 variant — should NOT match
+        _create_model_dir(models_dir, "qwen3.5-8b-8bit", size_bytes=1000)
+
+        result = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        assert len(result) == 1
+        assert result[0].name == "qwen3.5-8b-8bit"
+        assert result[0].quant == "int8"
+        assert result[0].is_active is False
+
+    def test_same_model_same_quant_is_active(self, mlx_stack_home: Path) -> None:
+        """Model with matching source dir and quant IS marked active."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        # Local directory matches source dir — should be active
+        _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
+
+        result = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        assert len(result) == 1
+        assert result[0].is_active is True
+
+    def test_multiple_quants_only_matching_active(self, mlx_stack_home: Path) -> None:
+        """With both int4 and int8 local, only the int4 matching the stack is active."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
+        _create_model_dir(models_dir, "qwen3.5-8b-8bit", size_bytes=2000)
+
+        result = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        active_map = {m.name: m.is_active for m in result}
+
+        assert active_map["qwen3.5-8b-4bit"] is True
+        assert active_map["qwen3.5-8b-8bit"] is False
+
+    def test_unknown_quant_fallback_matches(self, mlx_stack_home: Path) -> None:
+        """Model with unknown quant is treated as matching (conservative)."""
+        models_dir = mlx_stack_home / "models"
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "mystery-model",
+                    "quant": "int4",
+                    "source": "mlx-community/mystery-model",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        # Dir matches source but has no quant indicator
+        _create_model_dir(models_dir, "mystery-model", size_bytes=1000)
+
+        result = scan_local_models(models_dir=models_dir, catalog=[], stack=stack)
+        assert len(result) == 1
+        assert result[0].quant == "unknown"
+        assert result[0].is_active is True
+
+
+class TestSourceQuantAwareRemoteDetection:
+    """Tests for source+quant-aware matching in remote model detection.
+
+    Verifies that models are only considered locally available when the
+    source and quant match what the stack specifies.
+    """
+
+    def test_wrong_quant_local_model_is_remote(self, mlx_stack_home: Path) -> None:
+        """Stack with int4 quant, local has int8 -> model shows as remote."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        # Local has the int8 variant, not int4
+        _create_model_dir(models_dir, "qwen3.5-8b-8bit", size_bytes=1000)
+
+        local_models = scan_local_models(
+            models_dir=models_dir, catalog=catalog, stack=stack
+        )
+        remote = get_remote_stack_models(
+            local_models=local_models, stack=stack, catalog=catalog
+        )
+
+        # The int4 model should show as remote since only int8 is local
+        assert len(remote) == 1
+        assert remote[0]["model_id"] == "qwen3.5-8b"
+        assert remote[0]["quant"] == "int4"
+
+    def test_correct_quant_local_model_not_remote(self, mlx_stack_home: Path) -> None:
+        """Stack with int4 quant, local has int4 -> model not remote."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                }
+            ]
+        }
+
+        _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
+
+        local_models = scan_local_models(
+            models_dir=models_dir, catalog=catalog, stack=stack
+        )
+        remote = get_remote_stack_models(
+            local_models=local_models, stack=stack, catalog=catalog
+        )
+
+        assert len(remote) == 0
+
+    def test_multi_tier_mixed_availability(self, mlx_stack_home: Path) -> None:
+        """Multiple tiers: one locally available, one not."""
+        models_dir = mlx_stack_home / "models"
+        catalog = _make_test_catalog()
+
+        stack = {
+            "tiers": [
+                {
+                    "name": "fast",
+                    "model": "qwen3.5-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/qwen3.5-8b-4bit",
+                    "port": 8000,
+                },
+                {
+                    "name": "standard",
+                    "model": "nemotron-8b",
+                    "quant": "int4",
+                    "source": "mlx-community/nemotron-8b-4bit",
+                    "port": 8001,
+                },
+            ]
+        }
+
+        # Only qwen is downloaded locally
+        _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
+
+        local_models = scan_local_models(
+            models_dir=models_dir, catalog=catalog, stack=stack
+        )
+        remote = get_remote_stack_models(
+            local_models=local_models, stack=stack, catalog=catalog
+        )
+
+        assert len(remote) == 1
+        assert remote[0]["model_id"] == "nemotron-8b"
