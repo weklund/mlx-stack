@@ -55,7 +55,10 @@ Testing surface, required testing skills/tools, resource cost classification per
 
 ## Tooling milestone run notes (2026-03-24)
 
+- Tooling rerun round 4 confirms `bench qwen3-8b` now passes tool-calling validation (`✓ Valid tool call — round-trip: 5.89s`), resolving VAL-BENCH-008.
+
 - Catalog repository availability has drifted: `qwen3.5-*` int4 repos referenced in catalog returned `RepositoryNotFound` during live pull testing. `gemma3-*`, `deepseek-r1-8b`, and `qwen3-8b` int4 repos were reachable.
 - The current Hugging Face CLI package installs `hf` (not `huggingface-cli`). For live pull validation, a local wrapper script (`/tmp/huggingface-cli -> hf`) was used so `mlx-stack pull` subprocess invocation could execute.
-- `pull --bench` currently fails in benchmark phase because temporary bench instance startup never becomes healthy; bench-temp logs show the CLI is invoking `vllm-mlx` with an argument shape incompatible with modern `vllm-mlx` (`serve` subcommand required).
-- `bench <running-tier>` works when the tier is started with `vllm-mlx serve ...`, but `bench <model-id>` temporary-instance flows fail with the same startup incompatibility noted above.
+- Tooling rerun (round 2) confirms pull progress is now user-visible with incremental percent updates (`0% ... 100%`) and temp bench-instance flows now start successfully (`bench <model-id>` and `bench --save` pass, including non-conflicting temp-port binding evidence).
+- Remaining tooling gaps after tooling rerun round 2 were: (1) network-error pull still surfaced long upstream traceback output before the concise error summary, and (2) tool-calling benchmark still reported `No tool calls in response` for `qwen3-8b`.
+- Tooling rerun round 3 confirmed network-error pull output is now traceback-free for users (VAL-PULL-008 passed); tool-calling benchmark still fails for `qwen3-8b` with `No tool calls in response` (VAL-BENCH-008).

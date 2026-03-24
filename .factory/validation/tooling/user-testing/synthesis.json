@@ -1,127 +1,44 @@
 {
   "milestone": "tooling",
-  "round": 1,
-  "status": "fail",
+  "round": 4,
+  "status": "pass",
   "assertionsSummary": {
-    "total": 21,
-    "passed": 14,
-    "failed": 5,
-    "blocked": 2
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "blocked": 0
   },
   "passedAssertions": [
-    "VAL-PULL-001",
-    "VAL-PULL-002",
-    "VAL-PULL-003",
-    "VAL-PULL-004",
-    "VAL-PULL-006",
-    "VAL-PULL-007",
-    "VAL-PULL-009",
-    "VAL-PULL-010",
-    "VAL-PULL-011",
-    "VAL-BENCH-001",
-    "VAL-BENCH-003",
-    "VAL-BENCH-005",
-    "VAL-BENCH-006",
-    "VAL-BENCH-007"
+    "VAL-BENCH-008"
   ],
-  "failedAssertions": [
-    {
-      "id": "VAL-PULL-008",
-      "reason": "Network-error path includes a long raw traceback from underlying HF CLI, violating clean user-facing error quality."
-    },
-    {
-      "id": "VAL-CROSS-014",
-      "reason": "`pull --bench` download succeeded but benchmark phase failed with temporary instance health timeout; no benchmark artifact was saved."
-    },
-    {
-      "id": "VAL-BENCH-002",
-      "reason": "`bench <model-id>` temporary-instance flow fails in this build before benchmark execution completes."
-    },
-    {
-      "id": "VAL-BENCH-004",
-      "reason": "`bench --save` for model target fails before completion and does not create benchmarks file."
-    },
-    {
-      "id": "VAL-BENCH-008",
-      "reason": "Tool-calling benchmark for qwen3-8b returns `No tool calls in response` instead of validating a proper tool-call structure."
-    }
-  ],
-  "blockedAssertions": [
-    {
-      "id": "VAL-PULL-005",
-      "blockedBy": "Could not conclusively observe continuous progress update output (percentage/rate) in successful pull runs on this host; only start/finish lines were emitted by underlying HF CLI."
-    },
-    {
-      "id": "VAL-BENCH-009",
-      "blockedBy": "Temp-instance benchmark path failed before healthy startup and did not surface observable temp bind details, preventing direct user-surface confirmation of non-conflicting port selection."
-    }
-  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
   "appliedUpdates": [
     {
       "target": "user-testing.md",
-      "description": "Added tooling-run notes: catalog repo drift, huggingface-cli/hf wrapper requirement, and temp benchmark startup incompatibility observations.",
+      "description": "Added tooling rerun round 4 note confirming VAL-BENCH-008 now passes with a valid tool-call round-trip for qwen3-8b.",
       "source": "flow-report"
     }
   ],
   "flowReports": [
-    ".factory/validation/tooling/user-testing/flows/g1-pull-core.json",
-    ".factory/validation/tooling/user-testing/flows/g2-pull-errors.json",
-    ".factory/validation/tooling/user-testing/flows/g3-bench-core.json",
-    ".factory/validation/tooling/user-testing/flows/g4-bench-advanced.json"
+    ".factory/validation/tooling/user-testing/flows/r4-g1-bench.json"
   ],
   "toolsUsed": [
     "Execute (shell)",
     "uv run mlx-stack",
-    "vllm-mlx",
-    "curl",
-    "python3"
+    "Task:user-testing-flow-validator"
   ],
   "frictions": [
     {
-      "description": "Dedicated `user-testing-flow-validator` subagent execution was blocked by permissions gate (`insufficient permission to proceed`).",
+      "description": "Model pull briefly waited on a Hugging Face cache lock (.gitignore.lock).",
       "resolved": true,
-      "resolution": "Validation was completed directly in this validator session using strict per-group MLX_STACK_HOME isolation and per-flow evidence logs.",
+      "resolution": "Waited for lock release; pull finished successfully without manual intervention.",
       "affectedAssertions": [
-        "VAL-PULL-001",
-        "VAL-PULL-002",
-        "VAL-PULL-003",
-        "VAL-PULL-004",
-        "VAL-PULL-005",
-        "VAL-PULL-006",
-        "VAL-PULL-007",
-        "VAL-PULL-008",
-        "VAL-PULL-009",
-        "VAL-PULL-010",
-        "VAL-PULL-011",
-        "VAL-CROSS-014",
-        "VAL-BENCH-001",
-        "VAL-BENCH-002",
-        "VAL-BENCH-003",
-        "VAL-BENCH-004",
-        "VAL-BENCH-005",
-        "VAL-BENCH-006",
-        "VAL-BENCH-007",
-        "VAL-BENCH-008",
-        "VAL-BENCH-009"
-      ]
-    },
-    {
-      "description": "Current pull implementation shells out to `huggingface-cli`, while modern package install provides `hf` binary.",
-      "resolved": true,
-      "resolution": "Created temporary `/tmp/huggingface-cli` wrapper to continue user-surface validation without modifying product code.",
-      "affectedAssertions": [
-        "VAL-PULL-001",
-        "VAL-PULL-002",
-        "VAL-PULL-008",
-        "VAL-PULL-011",
-        "VAL-CROSS-014"
+        "VAL-BENCH-008"
       ]
     }
   ],
-  "dedupedBlockers": [
-    "Model-target benchmark temp-instance startup is broken in this build, affecting VAL-BENCH-002, VAL-BENCH-004, VAL-BENCH-009, and VAL-CROSS-014 benchmark stage.",
-    "Observable download-progress detail from underlying HF CLI is insufficient for conclusive VAL-PULL-005 verification on this host."
-  ],
-  "generatedAt": "2026-03-24T12:50:30.295673+00:00",
-  "previousRound": null
+  "dedupedBlockers": [],
+  "generatedAt": "2026-03-24T13:47:45.560686+00:00",
+  "previousRound": ".factory/validation/tooling/user-testing/synthesis.round3.json"
 }

@@ -1,0 +1,55 @@
+{
+  "groupId": "r4-g1-bench",
+  "testedAt": "2026-03-24T13:46:02Z",
+  "isolation": {
+    "MLX_STACK_HOME": "/private/tmp/mlx-stack-user-testing/tooling-r4-g1-bench",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/r4-g1-bench",
+    "notes": "Used only the assigned isolated MLX_STACK_HOME and kept evidence under the assigned mission evidence directory."
+  },
+  "toolsUsed": [
+    "terminal",
+    "uv",
+    "mlx-stack CLI"
+  ],
+  "commands": [
+    {
+      "command": "PATH=/private/tmp:$PATH MLX_STACK_HOME=/private/tmp/mlx-stack-user-testing/tooling-r4-g1-bench uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack pull qwen3-8b --quant int4",
+      "exitCode": 0,
+      "evidence": "tooling/r4-g1-bench/commands.log"
+    },
+    {
+      "command": "PATH=/private/tmp:$PATH MLX_STACK_HOME=/private/tmp/mlx-stack-user-testing/tooling-r4-g1-bench uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack bench qwen3-8b",
+      "exitCode": 0,
+      "evidence": "tooling/r4-g1-bench/commands.log"
+    },
+    {
+      "command": "cp /private/tmp/mlx-stack-user-testing/tooling-r4-g1-bench/logs/bench-temp-qwen3-8b.log /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/r4-g1-bench/",
+      "exitCode": 0,
+      "evidence": "tooling/r4-g1-bench/bench-temp-qwen3-8b.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-BENCH-008",
+      "title": "Tool-calling benchmark for capable models",
+      "status": "pass",
+      "reason": "Bench output for qwen3-8b included \"✓ Valid tool call — round-trip: 5.89s\", confirming valid tool-call structure verification and round-trip timing reporting.",
+      "evidence": [
+        "tooling/r4-g1-bench/commands.log",
+        "tooling/r4-g1-bench/bench-temp-qwen3-8b.log"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Model pull briefly waited on a Hugging Face cache lock (.gitignore.lock).",
+      "resolved": true,
+      "resolution": "Waited for lock release; pull finished successfully without manual intervention.",
+      "affectedAssertions": [
+        "VAL-BENCH-008"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "VAL-BENCH-008 passed on current HEAD: qwen3-8b bench validated tool-calling behavior and reported round-trip timing."
+}
