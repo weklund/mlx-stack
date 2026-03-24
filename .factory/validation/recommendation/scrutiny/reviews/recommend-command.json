@@ -1,0 +1,39 @@
+{
+  "featureId": "recommend-command",
+  "reviewedAt": "2026-03-24T02:33:49Z",
+  "commitId": "2c5fbc7",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The command covers most required behavior (intent/budget flags, tiered output, show-all mode, cloud fallback visibility, and edge-case handling), but two blocking gaps remain: it performs an unintended file write in a display-only command path and it can emit a raw Python traceback when saved benchmark data is malformed.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/recommend.py",
+        "line": 101,
+        "severity": "blocking",
+        "description": "The no-profile path calls save_profile(profile), which writes ~/.mlx-stack/profile.json. The feature is specified as display-only/no files written, so recommend should not persist profile data as a side effect."
+      },
+      {
+        "file": "src/mlx_stack/core/scoring.py",
+        "line": 195,
+        "severity": "blocking",
+        "description": "Saved benchmark values are cast with float(...) without validation or error handling. If benchmark JSON contains non-numeric values (e.g., \"gen_tps\": \"abc\"), ValueError propagates past recommend's ScoringError-only handler and prints a full traceback. Reproduced by running recommend with MLX_STACK_HOME pointing to a profile plus benchmarks/<profile_id>.json containing invalid numeric strings."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata uses skillName \"cli-feature\", but the worker runtime could not invoke that skill even though the skill file exists in-repo.",
+      "evidence": "worker-transcripts.jsonl entry for session 289031bd-8c76-4a27-84e6-fb441fc4c2c1 shows: Tool Result Error: Skill \"cli-feature\" not found; file present at .factory/skills/cli-feature/SKILL.md."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Validation contract expectation for the zero-model edge case is stale versus current catalog/hardware behavior.",
+      "evidence": "validation-contract.md line 183 expects `recommend --budget 1gb` to produce no-fit error, but the worker transcript/handoff notes 1GB still fits the 0.8B model and used 0.5GB to trigger the no-fit path."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, and commit 2c5fbc7 for recommend-command. The feature is close, but fails review due to a display-only contract violation (auto-saving profile) and a reproducible traceback path on malformed saved benchmark data."
+}

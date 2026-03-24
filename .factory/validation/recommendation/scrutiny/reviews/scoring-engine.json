@@ -1,0 +1,39 @@
+{
+  "featureId": "scoring-engine",
+  "reviewedAt": "2026-03-24T02:34:10Z",
+  "commitId": "dfdb79e092315028e7e75c5e239ae6d9927f27b1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The scoring engine implementation covers most requested behaviors, but there is a blocking defect in unknown-hardware scoring: speed normalization can exceed 1.0 and distort weighted composite scoring.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/scoring.py",
+        "line": 293,
+        "severity": "blocking",
+        "description": "_normalize_gen_tps_log() returns an unclamped ratio `log(1+gen_tps)/log(1+200)`. In unknown-hardware mode, _estimate_from_bandwidth_ratio() can produce gen_tps values above 200 (lines 262-266), which makes speed_score > 1.0 (e.g., 185 * 1000/546 ≈ 339 => log(340)/log(201) ≈ 1.10). This over-weights speed beyond configured intent weights and skews ranking."
+      },
+      {
+        "file": "src/mlx_stack/core/scoring.py",
+        "line": 196,
+        "severity": "non_blocking",
+        "description": "Saved benchmark parsing defaults missing `memory_gb` to 0.0 (`saved.get(\"memory_gb\", 0.0)`), and budget filtering later only checks `model.memory_gb <= budget` (line 437). Incomplete/malformed saved benchmark records can bypass memory-budget filtering and produce misleading recommendations."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata references `cli-feature`, but the skill was not available to the worker at runtime; the worker proceeded without it and implemented production code before tests.",
+      "evidence": "features.json:619-622 shows `scoring-engine` uses `skillName: cli-feature`; transcript skeleton for session e40384a0-f338-467d-a037-901f67cd9801 line 268 shows `Error: Skill \"cli-feature\" not found`; lines 283-286 create `src/mlx_stack/core/scoring.py` before lines 300-303 create tests, while `.factory/skills/cli-feature/SKILL.md:65-67` requires tests before production code."
+    },
+    {
+      "area": "knowledge",
+      "observation": "Shared schema expectations for saved benchmarks are inconsistent between scoring logic and the mission validation contract.",
+      "evidence": "src/mlx_stack/core/scoring.py:184-196 expects saved benchmark entries to include `memory_gb`; validation-contract.md:466-468 (VAL-BENCH-004) documents saved output fields as model ID, quant, prompt_tps, and gen_tps (no memory_gb)."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, and commit dfdb79e092315028e7e75c5e239ae6d9927f27b1 for feature `scoring-engine`. Implementation is close to spec, but unknown-hardware speed normalization can exceed the intended 0-1 range and distort weighted scoring, so this review fails with one blocking and one non-blocking issue."
+}

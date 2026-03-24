@@ -1,0 +1,39 @@
+{
+  "featureId": "init-command",
+  "reviewedAt": "2026-03-24T02:34:03Z",
+  "commitId": "2578b6d94a58f347922e2cb9b01b06cead753c59",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature implements most init-command behavior (file generation, add/remove, cloud fallback, overwrite guard, and LiteLLM config structure), but two required behaviors are missing: real port-collision handling and the required total-memory value in the success summary output.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/stack_init.py",
+        "line": 99,
+        "severity": "blocking",
+        "description": "Port collision detection is not implemented. `allocate_ports` only skips the LiteLLM port and allocates sequential ports without checking whether ports are already in use, despite `_is_port_available` being defined. This misses the feature requirement to handle port collisions."
+      },
+      {
+        "file": "src/mlx_stack/cli/init.py",
+        "line": 64,
+        "severity": "blocking",
+        "description": "The success summary does not show total estimated memory usage across selected tiers. It prints hardware and budget only (`Budget: ...`), but VAL-INIT-012/feature expectations require displaying total estimated memory in the terminal summary."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata requires `skillName: cli-feature`, and the project has `.factory/skills/cli-feature/SKILL.md`, but the worker reported that `cli-feature` was unavailable to invoke and proceeded without it.",
+      "evidence": "Handoff `skillFeedback.deviations` says \"cli-feature... doesn't exist in the available skills\" while feature entry specifies `skillName: cli-feature` and the file exists at `.factory/skills/cli-feature/SKILL.md`."
+    },
+    {
+      "area": "conventions",
+      "observation": "Validation contract requires init success output to include total estimated memory, but test coverage for CLI summary content does not assert that requirement.",
+      "evidence": "Validation contract `VAL-INIT-012` explicitly requires total estimated memory; `tests/unit/test_cli_init.py` checks paths/tier text/next steps but has no assertion for total-memory output."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill file, and commit `2578b6d`. Result is FAIL due to two blocking requirement gaps: missing true port-collision handling in port allocation and missing total-estimated-memory display in init success output."
+}

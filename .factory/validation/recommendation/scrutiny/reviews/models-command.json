@@ -1,0 +1,45 @@
+{
+  "featureId": "models-command",
+  "reviewedAt": "2026-03-24T02:33:50Z",
+  "commitId": "932a218",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature is close, but core stack-model matching logic is incorrect for quant/source-specific stack selections. This causes false active indicators and can hide remote-only stack models when a different quant of the same model is present locally.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/models.py",
+        "line": 311,
+        "severity": "blocking",
+        "description": "scan_local_models marks a local model active when catalog_entry.id == model_id, even if the stack points to a different source/quant. Example: local has qwen3.5-8b-8bit, stack uses qwen3.5-8b int4 source qwen3.5-8b-4bit; current logic marks the int8 directory active. This violates the requirement that active stack models be accurately indicated."
+      },
+      {
+        "file": "src/mlx_stack/core/models.py",
+        "line": 376,
+        "severity": "blocking",
+        "description": "get_remote_stack_models treats any local model with the same catalog name as 'local' for a stack model ID, regardless of whether the stack's selected source/quant exists locally. In the same int8-local/int4-stack scenario, remote_models becomes empty, so the required remote-only stack row (with remote source and estimated size) is not shown."
+      },
+      {
+        "file": "src/mlx_stack/core/models.py",
+        "line": 245,
+        "severity": "non_blocking",
+        "description": "_match_to_catalog requires exact equality with repo basename and does not normalize common directory forms like 'mlx-community--<repo>'. This can prevent human-readable catalog names from showing for locally downloaded models that use org-prefixed directory names."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Mission metadata assigns skillName 'cli-feature' and the repository has .factory/skills/cli-feature/SKILL.md, but the worker could not invoke that skill from the runtime and had to proceed without it.",
+      "evidence": "worker-transcripts.jsonl entry for session ec9eda56-9133-499b-b3d5-8821176bc911 includes 'Skill 'cli-feature' not found'; handoff.skillFeedback.deviations repeats this reason."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill guidance is missing practical mocking guidance for this codebase (patching at import site vs definition site) and Rich/CliRunner width behavior; the worker spent substantial transcript time debugging these test pitfalls.",
+      "evidence": "handoff.skillFeedback.suggestedChanges explicitly calls out: mock at mlx_stack.cli.models.load_catalog (not mlx_stack.core.models.load_catalog) and account for Rich table truncation at 80-column CliRunner width."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed models-command (commit 932a218) with handoff, diff, and transcript skeleton. Result: fail due to blocking quant/source matching bugs in active/remote stack model logic; these can mislabel active models and suppress required remote-only stack entries."
+}
