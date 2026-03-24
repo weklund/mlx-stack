@@ -14,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from mlx_stack import __version__
+from mlx_stack.cli.config import config as config_group
 from mlx_stack.cli.profile import profile as profile_command
 
 console = Console(stderr=True)
@@ -221,39 +222,4 @@ def bench(target: str | None, save: bool) -> None:
     raise SystemExit(1)
 
 
-@cli.group()
-def config() -> None:
-    """Manage mlx-stack configuration."""
-
-
-@config.command("set")
-@click.argument("key")
-@click.argument("value")
-def config_set(key: str, value: str) -> None:
-    """Set a configuration value."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the configuration feature.")
-    raise SystemExit(1)
-
-
-@config.command("get")
-@click.argument("key")
-def config_get(key: str) -> None:
-    """Get a configuration value."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the configuration feature.")
-    raise SystemExit(1)
-
-
-@config.command("list")
-def config_list() -> None:
-    """List all configuration values."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the configuration feature.")
-    raise SystemExit(1)
-
-
-@config.command("reset")
-@click.option("--yes", is_flag=True, help="Confirm reset without prompting.")
-@click.option("--force", is_flag=True, help="Alias for --yes.")
-def config_reset(yes: bool, force: bool) -> None:
-    """Reset configuration to defaults."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the configuration feature.")
-    raise SystemExit(1)
+cli.add_command(config_group, "config")
