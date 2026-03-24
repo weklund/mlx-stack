@@ -69,10 +69,10 @@ class TestFindBinary:
     """Tests for _find_binary PATH lookup."""
 
     def test_finds_vllm_binary(self, mock_which: MagicMock) -> None:
-        mock_which.return_value = "/usr/local/bin/vllm"
+        mock_which.return_value = "/usr/local/bin/vllm-mlx"
         result = _find_binary("vllm-mlx")
-        mock_which.assert_called_once_with("vllm")
-        assert result == "/usr/local/bin/vllm"
+        mock_which.assert_called_once_with("vllm-mlx")
+        assert result == "/usr/local/bin/vllm-mlx"
 
     def test_finds_litellm_binary(self, mock_which: MagicMock) -> None:
         mock_which.return_value = "/usr/local/bin/litellm"
@@ -181,6 +181,42 @@ class TestGetInstalledVersion:
         mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="")
         result = _get_installed_version("vllm-mlx")
         assert result is None
+
+    def test_passes_no_color_env_to_subprocess(
+        self, mock_which: MagicMock, mock_subprocess_run: MagicMock
+    ) -> None:
+        """Verify NO_COLOR=1 is passed to prevent ANSI codes in output."""
+        mock_which.return_value = "/usr/local/bin/uv"
+        mock_subprocess_run.return_value = MagicMock(
+            returncode=0,
+            stdout="vllm-mlx v0.2.6\n",
+        )
+        _get_installed_version("vllm-mlx")
+
+        call_kwargs = mock_subprocess_run.call_args
+        assert "env" in call_kwargs.kwargs or (
+            len(call_kwargs.args) > 1 and isinstance(call_kwargs.args[1], dict)
+        )
+        env = call_kwargs.kwargs.get("env", {})
+        assert env.get("NO_COLOR") == "1"
+
+    def test_handles_realistic_uv_tool_list_output(
+        self, mock_which: MagicMock, mock_subprocess_run: MagicMock
+    ) -> None:
+        """Parse realistic uv tool list output with indented binary lines."""
+        mock_which.return_value = "/usr/local/bin/uv"
+        # Real uv tool list output includes indented binary entries below each tool
+        mock_subprocess_run.return_value = MagicMock(
+            returncode=0,
+            stdout=(
+                "vllm-mlx v0.2.6\n"
+                "- vllm-mlx\n"
+                "litellm v1.67.2\n"
+                "- litellm\n"
+            ),
+        )
+        assert _get_installed_version("vllm-mlx") == "0.2.6"
+        assert _get_installed_version("litellm") == "1.67.2"
 
 
 # --------------------------------------------------------------------------- #
@@ -296,7 +332,7 @@ class TestVerifyPostInstall:
     """Tests for post-install verification."""
 
     def test_returns_true_when_binary_found(self, mock_which: MagicMock) -> None:
-        mock_which.return_value = "/usr/local/bin/vllm"
+        mock_which.return_value = "/usr/local/bin/vllm-mlx"
         assert _verify_post_install("vllm-mlx") is True
 
     def test_returns_false_when_binary_not_found(self, mock_which: MagicMock) -> None:
@@ -316,7 +352,7 @@ class TestCheckDependency:
         self, mock_which: MagicMock, mock_subprocess_run: MagicMock
     ) -> None:
         # First call for _find_binary, second for _get_installed_version's uv lookup
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="vllm-mlx v0.2.6\n",
@@ -331,7 +367,7 @@ class TestCheckDependency:
     def test_installed_with_mismatched_version(
         self, mock_which: MagicMock, mock_subprocess_run: MagicMock
     ) -> None:
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="vllm-mlx v0.2.5\n",
@@ -351,7 +387,7 @@ class TestCheckDependency:
     def test_installed_but_version_unknown(
         self, mock_which: MagicMock, mock_subprocess_run: MagicMock
     ) -> None:
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="othertool v1.0.0\n",
@@ -393,7 +429,7 @@ class TestEnsureDependency:
         self, mock_which: MagicMock, mock_subprocess_run: MagicMock
     ) -> None:
         """When tool is already installed and version matches, no install occurs."""
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="vllm-mlx v0.2.6\n",
@@ -418,11 +454,11 @@ class TestEnsureDependency:
         # 4. check_dependency (re-check) -> _find_binary: found
         # 5. check_dependency (re-check) -> _get_installed_version -> uv found
         mock_which.side_effect = [
-            None,               # _find_binary: tool not found
-            "/usr/local/bin/uv",  # _install_tool: uv found
-            "/usr/local/bin/vllm",  # _verify_post_install: tool found
-            "/usr/local/bin/vllm",  # re-check _find_binary
-            "/usr/local/bin/uv",    # re-check _get_installed_version
+            None,                    # _find_binary: tool not found
+            "/usr/local/bin/uv",     # _install_tool: uv found
+            "/usr/local/bin/vllm-mlx",  # _verify_post_install: tool found
+            "/usr/local/bin/vllm-mlx",  # re-check _find_binary
+            "/usr/local/bin/uv",        # re-check _get_installed_version
         ]
         # First run = install, second run = uv tool list for version check
         mock_subprocess_run.side_effect = [
@@ -477,7 +513,7 @@ class TestEnsureDependency:
         mock_console: MagicMock,
     ) -> None:
         """When installed version doesn't match pinned, a warning is shown."""
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="vllm-mlx v0.2.5\n",
@@ -519,7 +555,7 @@ class TestEnsureDependency:
         mock_console: MagicMock,
     ) -> None:
         """When versions match, no warning is shown."""
-        mock_which.side_effect = ["/usr/local/bin/vllm", "/usr/local/bin/uv"]
+        mock_which.side_effect = ["/usr/local/bin/vllm-mlx", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
             stdout="vllm-mlx v0.2.6\n",
@@ -607,8 +643,8 @@ class TestErrorMessages:
     ) -> None:
         """Error messages should not contain Python tracebacks."""
         mock_which.side_effect = [
-            None,                 # _find_binary
-            "/usr/local/bin/uv",  # _install_tool
+            None,                  # _find_binary
+            "/usr/local/bin/uv",   # _install_tool
         ]
         mock_subprocess_run.return_value = MagicMock(
             returncode=1,

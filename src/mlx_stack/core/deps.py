@@ -13,6 +13,7 @@ dependency checks.
 
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import subprocess
@@ -31,7 +32,7 @@ PINNED_VERSIONS: dict[str, str] = {
 
 # Map tool name to the CLI binary name used for PATH lookup
 _TOOL_BINARY_MAP: dict[str, str] = {
-    "vllm-mlx": "vllm",
+    "vllm-mlx": "vllm-mlx",
     "litellm": "litellm",
 }
 
@@ -104,11 +105,13 @@ def _get_installed_version(tool: str) -> str | None:
         return None
 
     try:
+        env = {**os.environ, "NO_COLOR": "1"}
         result = subprocess.run(
             [uv_path, "tool", "list"],
             capture_output=True,
             text=True,
             timeout=30,
+            env=env,
         )
     except (subprocess.TimeoutExpired, OSError):
         return None
