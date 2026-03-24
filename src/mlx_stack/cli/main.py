@@ -16,6 +16,7 @@ from rich.text import Text
 from mlx_stack import __version__
 from mlx_stack.cli.config import config as config_group
 from mlx_stack.cli.init import init as init_command
+from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.core.paths import ensure_data_home
@@ -169,12 +170,7 @@ def pull(model: str | None, quant: str | None, bench: bool, force: bool) -> None
     raise SystemExit(1)
 
 
-@cli.command()
-@click.option("--catalog", is_flag=True, help="Show full catalog with benchmark data.")
-def models(catalog: bool) -> None:
-    """List local models or browse the catalog."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the models-command feature.")
-    raise SystemExit(1)
+cli.add_command(models_command, "models")
 
 
 @cli.command()

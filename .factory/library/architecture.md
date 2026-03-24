@@ -15,6 +15,7 @@ Architectural decisions, patterns discovered, and conventions.
   - `cli/config.py` — `mlx-stack config` commands
   - `cli/init.py` — `mlx-stack init` command (stack + LiteLLM config generation)
   - `cli/recommend.py` — `mlx-stack recommend` command
+  - `cli/models.py` — `mlx-stack models` command (local model listing + catalog browsing)
 - `src/mlx_stack/core/` — shared business logic modules
   - `core/hardware.py` — hardware detection (Apple Silicon profiling)
   - `core/config.py` — configuration management (YAML-based)
@@ -24,6 +25,7 @@ Architectural decisions, patterns discovered, and conventions.
   - `core/scoring.py` — recommendation scoring engine (intent-weighted composite scoring)
   - `core/litellm_gen.py` — LiteLLM proxy config generation (model_list, router_settings, fallbacks)
   - `core/stack_init.py` — stack initialization logic (port allocation, vllm_flags, overwrite protection)
+  - `core/models.py` — local model scanning, catalog listing, size formatting
 - `src/mlx_stack/data/` — static data files
   - `data/catalog/` — shipped YAML catalog files (15 models)
 - `src/mlx_stack/utils/` — utility modules
