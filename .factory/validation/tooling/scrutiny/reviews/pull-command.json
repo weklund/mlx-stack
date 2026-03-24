@@ -1,0 +1,51 @@
+{
+  "featureId": "pull-command",
+  "reviewedAt": "2026-03-24T12:08:28Z",
+  "commitId": "c71e55bd861615c8a706ee376106599532ae1b91",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The commit adds a substantial pull pipeline and broad test coverage, but two contract-critical behaviors are not implemented at this revision: functional inline benchmarking for --bench and a live download progress indicator.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/pull.py",
+        "line": 124,
+        "severity": "blocking",
+        "description": "`--bench` is implemented as a placeholder: after ensure_dependency(\"vllm-mlx\"), it only prints that benchmark support will arrive later instead of running a quick benchmark and reporting prompt_tps/gen_tps. This misses VAL-CROSS-014 and the feature expectedBehavior for `pull --bench`."
+      },
+      {
+        "file": "src/mlx_stack/core/pull.py",
+        "line": 329,
+        "severity": "blocking",
+        "description": "Download execution uses subprocess.run(..., capture_output=True), which suppresses HuggingFace CLI progress output. The user only sees static start/complete messages, so live progress indication required by VAL-PULL-005 is not met."
+      },
+      {
+        "file": "tests/unit/test_cli_pull.py",
+        "line": 1023,
+        "severity": "non_blocking",
+        "description": "The VAL-PULL-005 test checks only generic text (`Pulling` or model name), so it cannot detect absence of real progress updates."
+      },
+      {
+        "file": "tests/unit/test_cli_pull.py",
+        "line": 1048,
+        "severity": "non_blocking",
+        "description": "The VAL-CROSS-014 test only verifies `_run_post_download_bench` is invoked and does not assert benchmark metrics output, dependency auto-install outcome, or temporary runtime cleanup behavior."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `cli-feature` skill instructs command registration in `src/mlx_stack/cli/__init__.py`, but this repo's established pattern is command registration in `src/mlx_stack/cli/main.py`.",
+      "evidence": ".factory/skills/cli-feature/SKILL.md:189-193 vs command wiring in src/mlx_stack/cli/main.py; transcript session 69d585c0-c9c2-442c-a41f-1006fa0c9d0c shows worker correctly editing main.py."
+    },
+    {
+      "area": "skills",
+      "observation": "Skill workflow requires tests-first TDD, but the transcript shows production code files were created before test files while handoff reported followedProcedure=true.",
+      "evidence": ".factory/skills/cli-feature/SKILL.md:65-67; worker-transcripts.jsonl entry for session 69d585c0-c9c2-442c-a41f-1006fa0c9d0c shows Create for src/mlx_stack/core/pull.py and src/mlx_stack/cli/pull.py before creating tests/unit/test_cli_pull.py."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review of commit c71e55bd861615c8a706ee376106599532ae1b91 for feature pull-command: core pull/inventory functionality was added, but required behaviors for live download progress and real inline benchmark execution are not implemented at this commit, so the review is marked fail."
+}

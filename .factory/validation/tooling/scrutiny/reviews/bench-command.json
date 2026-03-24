@@ -1,0 +1,40 @@
+{
+  "featureId": "bench-command",
+  "reviewedAt": "2026-03-24T12:09:35Z",
+  "commitId": "3c19e20b034e5a756d522280c1dc74e20c00d9f4",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds substantial bench functionality and tests, but there is a blocking correctness flaw in TPS computation that makes per-metric benchmark reporting/comparison unreliable.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/benchmark.py",
+        "line": 401,
+        "severity": "blocking",
+        "description": "Prompt/gen TPS are mathematically forced to the same value: `prompt_tps` and `gen_tps` are computed by dividing token counts by proportional slices of the same `total_time` (`prompt_fraction`/`gen_fraction`), which simplifies both metrics to `total_tokens / total_time`. This breaks the required per-metric benchmark reporting and PASS/WARN/FAIL comparison behavior."
+      },
+      {
+        "file": "src/mlx_stack/cli/bench.py",
+        "line": 218,
+        "severity": "non_blocking",
+        "description": "CLI always prints \"✓ Results saved\" when `--save` is passed, but core persistence is conditional (`src/mlx_stack/core/benchmark.py:1143` only saves when a hardware profile is available). In profile-detection failure paths, users can be told results were saved even though no file was written."
+      },
+      {
+        "file": "src/mlx_stack/cli/pull.py",
+        "line": 115,
+        "severity": "non_blocking",
+        "description": "`pull --bench` now calls full `run_benchmark()` (3 iterations of 1024+100 and optional tool-calling), while command/help text still describe a \"quick benchmark\". This risks runtime regression against the quick-benchmark expectation in VAL-CROSS-014."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Mission feature metadata points workers to `cli-feature`, but that skill was not invokable in the worker environment, and the implementation then diverged from the skill's tests-first procedure.",
+      "evidence": "features.json for `bench-command` sets `skillName` to `cli-feature`; transcript skeleton shows `Error: Skill \"cli-feature\" not found` and then code creation (`core/benchmark.py`, `cli/bench.py`) before test creation; `.factory/skills/cli-feature/SKILL.md` explicitly requires Step 2/3 tests-first workflow."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, diff, transcript skeleton, and shared-state artifacts for `bench-command`. Result: fail due to a blocking TPS-computation bug that invalidates per-metric benchmark comparison; additional non-blocking UX/regression risks were noted."
+}
