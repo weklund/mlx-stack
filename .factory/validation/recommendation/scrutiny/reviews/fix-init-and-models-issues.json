@@ -1,0 +1,26 @@
+{
+  "featureId": "fix-init-and-models-issues",
+  "reviewedAt": "2026-03-24T03:06:14Z",
+  "commitId": "ecbd8cc",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit adequately addresses both prior failing reviews. Init now performs real port-in-use checks with deterministic alternate selection, init summary now includes total estimated memory, and models active/remote detection is now source+quant-aware instead of model-id-only matching.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Workers are repeatedly unable to invoke the required `cli-feature` skill at runtime even though the skill file exists in the repository, creating procedure drift from feature metadata expectations.",
+      "evidence": "Fix transcript skeleton includes `Error: Skill \"cli-feature\" not found`; handoff `skillFeedback.deviations` says the worker proceeded without the skill. The same mismatch appears in prior init/models handoffs and reviews."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The recommendation/init memory-budget behavior (models filtered individually by budget, while total selected tier memory may exceed budget) is not clearly captured in shared guidance, which caused test expectation churn during this fix.",
+      "evidence": "Fix transcript skeleton notes a failed expectation and correction: \"total memory ... exceeds the budget ... expected behavior — models are individually budget-eligible.\" This nuance is not explicit in mission AGENTS.md or .factory/library files."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/recommendation/scrutiny/reviews/init-command.json, .factory/validation/recommendation/scrutiny/reviews/models-command.json",
+  "summary": "Reviewed prior failing reviews (init-command and models-command), original feature diffs, fix handoff/transcript skeleton, and fix diff in commit ecbd8cc. Result is PASS: all three blocking failures were addressed with corresponding code and regression tests."
+}

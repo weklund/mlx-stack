@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-recommendation-scoring-issues",
+  "reviewedAt": "2026-03-24T03:05:30Z",
+  "commitId": "f78add2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed prior failed features (`scoring-engine`, `recommend-command`) and the fix commit. The fix directly resolves the original blocking failures: speed normalization is now clamped to [0,1], recommend no longer persists profile.json in auto-detect flow, and malformed numeric benchmark values are caught and gracefully fall back instead of surfacing a traceback. Added regression tests in both scoring and recommend suites cover these corrected paths.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Worker transcripts continue to show `cli-feature` unavailable at runtime even though features reference it and the skill file exists; this causes procedural drift risk and inconsistent skillFeedback reporting.",
+      "evidence": "Fix transcript skeleton for worker session f57f37d3-00b3-4469-9212-8ff74ab42a84 includes `Error: Skill \"cli-feature\" not found`; feature metadata sets `skillName: cli-feature`; `.factory/skills/cli-feature/SKILL.md` is present; fix handoff skillFeedback reports followedProcedure=true with no deviations."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/recommendation/scrutiny/reviews/scoring-engine.json; .factory/validation/recommendation/scrutiny/reviews/recommend-command.json",
+  "summary": "Pass. The fix commit adequately addresses the original review failures from both scoring-engine and recommend-command, and regression coverage was added for each corrected behavior."
+}

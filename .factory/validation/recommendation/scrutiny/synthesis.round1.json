@@ -1,0 +1,108 @@
+{
+  "milestone": "recommendation",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 5,
+    "passed": 1,
+    "failed": 4,
+    "failedFeatures": [
+      "scoring-engine",
+      "recommend-command",
+      "init-command",
+      "models-command"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "scoring-engine",
+      "severity": "blocking",
+      "description": "Unknown-hardware scoring can exceed normalized speed bounds: _normalize_gen_tps_log does not clamp to 1.0, and bandwidth-ratio estimation can produce gen_tps > 200, distorting weighted ranking."
+    },
+    {
+      "featureId": "recommend-command",
+      "severity": "blocking",
+      "description": "recommend writes profile.json via save_profile(profile) when no profile exists, violating display-only behavior for recommend."
+    },
+    {
+      "featureId": "recommend-command",
+      "severity": "blocking",
+      "description": "Malformed saved benchmark numeric values can raise uncaught ValueError in scoring path, allowing raw traceback output during recommend."
+    },
+    {
+      "featureId": "init-command",
+      "severity": "blocking",
+      "description": "Port collision handling is incomplete: allocate_ports skips LiteLLM port but does not enforce actual in-use port availability despite helper existing."
+    },
+    {
+      "featureId": "init-command",
+      "severity": "blocking",
+      "description": "Init success summary omits total estimated memory across selected tiers, which is required by the feature/validation contract."
+    },
+    {
+      "featureId": "models-command",
+      "severity": "blocking",
+      "description": "Active stack indicator can be incorrect because matching is catalog-id based and not strict to stack-selected source/quant."
+    },
+    {
+      "featureId": "models-command",
+      "severity": "blocking",
+      "description": "Remote-only stack model rows can be suppressed when a different quant/source of the same catalog model exists locally."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add an explicit mission rule that all declared feature skillName values must be invokable in worker runtime, or fallback behavior must be declared up front.",
+      "evidence": "Four recommendation features (scoring-engine, recommend-command, init-command, models-command) report runtime error 'Skill \"cli-feature\" not found' despite metadata requiring skillName: cli-feature.",
+      "isSystemic": true
+    },
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Add guidance to keep validation-contract examples synchronized with live catalog realities (e.g., recommend no-fit edge case budget values) and keep persisted benchmark schema expectations aligned across code and contract.",
+      "evidence": "Reviews flagged stale zero-fit example (`--budget 1gb`) and mismatch between contract benchmark fields and scoring's expectation of `memory_gb`.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Update cli-feature skill with concrete Python mocking guidance (patch at import site) and Rich CliRunner width/truncation caveats for CLI output assertions.",
+      "evidence": "models-command review notes significant time spent on patch target and Rich width pitfalls not covered by current skill guidance.",
+      "isSystemic": false
+    },
+    {
+      "target": "skills",
+      "suggestion": "Add a lightweight execution path in cli-feature for trivial lint-only or import-cleanup fixes to avoid unnecessary heavy workflow overhead.",
+      "evidence": "fix-scoring-lint review passed cleanly but recorded that full feature workflow is disproportionate for small lint-only patches.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Repeated cli-feature-unavailable observations from recommend-command/init-command/models-command",
+      "reason": "duplicate"
+    },
+    {
+      "observation": "Convention gap note that VAL-INIT-012 total-memory output is not asserted in tests",
+      "reason": "feature-specific and already captured as a blocking issue under init-command"
+    }
+  ],
+  "previousRound": null
+}

@@ -49,3 +49,4 @@ Architectural decisions, patterns discovered, and conventions.
 - Catalog schema: no int6, disk_size_gb per quant source, min_mlx_lm_version top-level, verified_on in separate data/verification.yaml
 - 2 intents for MVP: balanced, agent-fleet (architecture supports more)
 - 40% default memory budget of total unified memory
+- Recommendation/init budget behavior: budget filtering is per-model eligibility (`model.memory_gb <= budget`); the combined memory of selected tiers can exceed the budget
