@@ -553,8 +553,27 @@ def start_service(
         msg = f"Could not start service '{service_name}': {exc}"
         raise ProcessError(msg) from None
 
-    # Write PID file
-    pid_path = write_pid_file(service_name, proc.pid)
+    # Write PID file — if this fails, kill the spawned process to prevent
+    # leaked unmanaged subprocesses (scrutiny fix: orphan prevention).
+    try:
+        pid_path = write_pid_file(service_name, proc.pid)
+    except ProcessError:
+        # Kill the orphaned process before re-raising
+        try:
+            proc.terminate()
+            proc.wait(timeout=5)
+        except Exception:
+            try:
+                proc.kill()
+            except Exception:
+                pass
+        log_file.close()
+        msg = (
+            f"Could not write PID file for '{service_name}' after "
+            f"starting process (PID {proc.pid}). "
+            f"The process has been terminated to prevent orphans."
+        )
+        raise ProcessError(msg) from None
 
     # Detach: close the log file handle in the parent process
     # The child process has its own file descriptors
@@ -581,8 +600,8 @@ def stop_service(
     """Stop a managed service by its PID file.
 
     Sends SIGTERM first with a grace period. If the process hasn't exited
-    after the grace period, sends SIGKILL. Cleans up the PID file after
-    termination.
+    after the grace period, sends SIGKILL. Only removes the PID file once
+    process termination is confirmed (scrutiny fix: verified termination).
 
     Args:
         service_name: Name of the service to stop.
@@ -610,37 +629,43 @@ def stop_service(
         remove_pid_file(service_name)
         return None
 
-    # Send SIGTERM
-    graceful = _terminate_process(pid, grace_period)
+    # Send SIGTERM, escalate to SIGKILL if needed
+    graceful, confirmed = _terminate_process(pid, grace_period)
 
-    # Clean up PID file
-    remove_pid_file(service_name)
+    # Only remove PID file once termination is confirmed
+    if confirmed:
+        remove_pid_file(service_name)
 
     return ShutdownResult(name=service_name, pid=pid, graceful=graceful)
 
 
-def _terminate_process(pid: int, grace_period: float) -> bool:
+def _terminate_process(pid: int, grace_period: float) -> tuple[bool, bool]:
     """Terminate a process with SIGTERM, escalating to SIGKILL if needed.
+
+    Verifies process termination after SIGKILL before returning
+    (scrutiny fix: confirmed termination).
 
     Args:
         pid: Process ID to terminate.
         grace_period: Seconds to wait after SIGTERM.
 
     Returns:
-        True if shutdown was graceful (SIGTERM only), False if SIGKILL
-        was required.
+        A tuple of (graceful, confirmed):
+        - graceful: True if SIGTERM was sufficient, False if SIGKILL used.
+        - confirmed: True if the process is confirmed dead, False if it
+          may still be running after SIGKILL.
     """
     try:
         os.kill(pid, signal.SIGTERM)
     except OSError:
         # Process may have already exited
-        return True
+        return True, True
 
     # Wait for process to exit
     deadline = time.monotonic() + grace_period
     while time.monotonic() < deadline:
         if not is_process_alive(pid):
-            return True
+            return True, True
         time.sleep(0.2)
 
     # Grace period expired — send SIGKILL
@@ -648,15 +673,16 @@ def _terminate_process(pid: int, grace_period: float) -> bool:
         os.kill(pid, signal.SIGKILL)
     except OSError:
         # Process may have exited between check and kill
-        return True
+        return True, True
 
-    # Brief wait for SIGKILL to take effect
-    for _ in range(10):
+    # Wait for SIGKILL to take effect — verify process is actually dead
+    for _ in range(25):
         if not is_process_alive(pid):
-            return False
+            return False, True
         time.sleep(0.1)
 
-    return False
+    # Process is still alive after SIGKILL — not confirmed dead
+    return False, False
 
 
 # --------------------------------------------------------------------------- #

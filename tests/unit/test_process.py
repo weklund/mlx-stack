@@ -582,7 +582,7 @@ class TestStartService:
 class TestStopService:
     """Tests for stop_service."""
 
-    @patch("mlx_stack.core.process._terminate_process", return_value=True)
+    @patch("mlx_stack.core.process._terminate_process", return_value=(True, True))
     @patch("mlx_stack.core.process.is_process_alive", return_value=True)
     def test_graceful_shutdown(
         self,
@@ -596,10 +596,10 @@ class TestStopService:
         assert result.graceful is True
         assert result.pid == 12345
         assert result.name == "fast"
-        # PID file should be removed
+        # PID file should be removed (termination confirmed)
         assert read_pid_file("fast") is None
 
-    @patch("mlx_stack.core.process._terminate_process", return_value=False)
+    @patch("mlx_stack.core.process._terminate_process", return_value=(False, True))
     @patch("mlx_stack.core.process.is_process_alive", return_value=True)
     def test_forced_shutdown(
         self,
@@ -647,8 +647,9 @@ class TestTerminateProcess:
 
         # Process dies after first alive check
         mock_alive.return_value = False
-        result = _terminate_process(123, grace_period=10)
-        assert result is True
+        graceful, confirmed = _terminate_process(123, grace_period=10)
+        assert graceful is True
+        assert confirmed is True
         mock_kill.assert_called_once_with(123, signal.SIGTERM)
 
     @patch("mlx_stack.core.process.time.sleep")
@@ -672,8 +673,9 @@ class TestTerminateProcess:
             11.0,  # past grace → SIGKILL
         ]
 
-        result = _terminate_process(123, grace_period=10)
-        assert result is False
+        graceful, confirmed = _terminate_process(123, grace_period=10)
+        assert graceful is False
+        assert confirmed is True
         # Should have been called with SIGTERM then SIGKILL
         assert mock_kill.call_count == 2
         mock_kill.assert_any_call(123, signal.SIGTERM)
@@ -683,8 +685,9 @@ class TestTerminateProcess:
     def test_already_dead_on_sigterm(self, mock_kill: MagicMock) -> None:
         from mlx_stack.core.process import _terminate_process
 
-        result = _terminate_process(123, grace_period=10)
-        assert result is True
+        graceful, confirmed = _terminate_process(123, grace_period=10)
+        assert graceful is True
+        assert confirmed is True
 
 
 class TestShutdownResult:

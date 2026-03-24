@@ -31,11 +31,13 @@ from mlx_stack.core.paths import get_data_home, get_stacks_dir
 from mlx_stack.core.process import (
     HealthCheckError,
     LockError,
+    ProcessError,
     acquire_lock,
     check_port_conflict,
     cleanup_stale_pid,
     is_process_alive,
     read_pid_file,
+    remove_pid_file,
     start_service,
     wait_for_healthy,
 )
@@ -574,7 +576,13 @@ def _run_startup(
 
     for tier in tiers:
         tier_name = tier["name"]
-        pid = read_pid_file(tier_name)
+        try:
+            pid = read_pid_file(tier_name)
+        except ProcessError:
+            # Corrupt PID file — treat as stale, clean up gracefully
+            remove_pid_file(tier_name)
+            any_stale = True
+            continue
 
         if pid is not None:
             if is_process_alive(pid):
@@ -594,7 +602,14 @@ def _run_startup(
             pass  # Tier needs to be started
 
     # Check LiteLLM
-    litellm_pid = read_pid_file(LITELLM_SERVICE_NAME)
+    try:
+        litellm_pid = read_pid_file(LITELLM_SERVICE_NAME)
+    except ProcessError:
+        # Corrupt LiteLLM PID file — treat as stale, clean up gracefully
+        remove_pid_file(LITELLM_SERVICE_NAME)
+        litellm_pid = None
+        any_stale = True
+
     litellm_already_running = False
     if litellm_pid is not None:
         if is_process_alive(litellm_pid):
