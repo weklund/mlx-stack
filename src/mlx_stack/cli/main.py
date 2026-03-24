@@ -20,6 +20,7 @@ from mlx_stack.cli.init import init as init_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.recommend import recommend as recommend_command
+from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
 from mlx_stack.core.paths import ensure_data_home
 
@@ -175,14 +176,7 @@ def pull(model: str | None, quant: str | None, bench: bool, force: bool) -> None
 cli.add_command(models_command, "models")
 cli.add_command(up_command, "up")
 cli.add_command(down_command, "down")
-
-
-@cli.command()
-@click.option("--json", "json_output", is_flag=True, help="Output in JSON format.")
-def status(json_output: bool) -> None:
-    """Show health and status of all services."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the status-command feature.")
-    raise SystemExit(1)
+cli.add_command(status_command, "status")
 
 
 @cli.command()
