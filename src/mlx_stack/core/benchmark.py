@@ -348,8 +348,9 @@ def _run_single_iteration(
 ) -> IterationResult:
     """Run a single benchmark iteration against a vllm-mlx instance.
 
-    Sends a chat completion request and measures tokens/second from
-    the usage data in the response.
+    Uses streaming to separately measure prompt processing time (time to
+    first token) and generation time (first token to last token). This
+    gives distinct prompt_tps and gen_tps measurements.
 
     Args:
         port: Port of the vllm-mlx instance.
@@ -370,39 +371,63 @@ def _run_single_iteration(
         "messages": [{"role": "user", "content": prompt}],
         "max_tokens": max_tokens,
         "temperature": 0.0,
+        "stream": True,
+        "stream_options": {"include_usage": True},
     }
 
     try:
         start_time = time.monotonic()
-        response = httpx.post(url, json=payload, timeout=300.0)
-        total_time = time.monotonic() - start_time
+        first_token_time: float | None = None
+        completion_tokens = 0
+        prompt_tokens = 0
+        chunk_count = 0
 
-        if response.status_code != 200:
-            msg = (
-                f"API request failed with status {response.status_code}: "
-                f"{response.text[:200]}"
-            )
-            raise BenchmarkRunError(msg)
+        with httpx.stream("POST", url, json=payload, timeout=300.0) as response:
+            if response.status_code != 200:
+                body = response.read().decode("utf-8", errors="replace")[:200]
+                msg = (
+                    f"API request failed with status {response.status_code}: "
+                    f"{body}"
+                )
+                raise BenchmarkRunError(msg)
 
-        data = response.json()
-        usage = data.get("usage", {})
-        prompt_tokens = usage.get("prompt_tokens", 0)
-        completion_tokens = usage.get("completion_tokens", 0)
+            for line in response.iter_lines():
+                if not line.startswith("data: "):
+                    continue
+                data_str = line[6:].strip()
+                if data_str == "[DONE]":
+                    break
 
-        # Calculate tokens per second from usage data
-        # prompt_tps = prompt_tokens / time_to_first_token
-        # gen_tps = completion_tokens / generation_time
-        # Since vllm-mlx doesn't expose these directly, we estimate from
-        # total time and token counts
-        if prompt_tokens > 0 and completion_tokens > 0 and total_time > 0:
-            # Rough split: assume prompt processing takes
-            # proportional time to token count ratio
-            total_tokens = prompt_tokens + completion_tokens
-            prompt_fraction = prompt_tokens / total_tokens
-            gen_fraction = completion_tokens / total_tokens
+                try:
+                    chunk = json.loads(data_str)
+                except json.JSONDecodeError:
+                    continue
 
-            prompt_time = total_time * prompt_fraction
-            gen_time = total_time * gen_fraction
+                # Check for usage in the final chunk
+                usage = chunk.get("usage")
+                if usage:
+                    prompt_tokens = usage.get("prompt_tokens", prompt_tokens)
+                    completion_tokens = usage.get("completion_tokens", completion_tokens)
+
+                # Track first content token for TTFT measurement
+                choices = chunk.get("choices", [])
+                if choices:
+                    delta = choices[0].get("delta", {})
+                    content = delta.get("content")
+                    if content and first_token_time is None:
+                        first_token_time = time.monotonic()
+                    if content:
+                        chunk_count += 1
+
+        end_time = time.monotonic()
+        total_time = end_time - start_time
+
+        # Calculate distinct prompt_tps and gen_tps from timing phases:
+        # - prompt_time = time from request start to first generated token
+        # - gen_time = time from first generated token to last token
+        if first_token_time is not None and prompt_tokens > 0:
+            prompt_time = first_token_time - start_time
+            gen_time = end_time - first_token_time
 
             prompt_tps = prompt_tokens / prompt_time if prompt_time > 0 else 0.0
             gen_tps = completion_tokens / gen_time if gen_time > 0 else 0.0
@@ -418,6 +443,8 @@ def _run_single_iteration(
             total_time=total_time,
         )
 
+    except BenchmarkRunError:
+        raise
     except httpx.TimeoutException:
         msg = "Benchmark request timed out after 300s"
         raise BenchmarkRunError(msg) from None

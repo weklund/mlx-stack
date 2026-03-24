@@ -516,20 +516,24 @@ class TestTierResolution:
 
 
 class TestSingleIteration:
-    """Tests for _run_single_iteration with mocked HTTP."""
+    """Tests for _run_single_iteration with mocked HTTP streaming."""
 
-    @patch("mlx_stack.core.benchmark.httpx.post")
-    def test_successful_iteration(self, mock_post: MagicMock) -> None:
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_successful_iteration(self, mock_stream: MagicMock) -> None:
+        """Streaming iteration correctly measures prompt_tps and gen_tps."""
+        # Build SSE lines: content chunks then a final usage chunk
+        sse_lines = [
+            'data: {"choices":[{"delta":{"content":"Hello"}}]}',
+            'data: {"choices":[{"delta":{"content":" world"}}]}',
+            'data: {"choices":[{"delta":{"content":"!"}}],'
+            '"usage":{"prompt_tokens":1000,"completion_tokens":100}}',
+            "data: [DONE]",
+        ]
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "Hello"}}],
-            "usage": {
-                "prompt_tokens": 1000,
-                "completion_tokens": 100,
-            },
-        }
-        mock_post.return_value = mock_response
+        mock_response.iter_lines.return_value = iter(sse_lines)
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
 
         result = _run_single_iteration(
             port=8000,
@@ -544,12 +548,13 @@ class TestSingleIteration:
         assert result.prompt_tps > 0
         assert result.gen_tps > 0
 
-    @patch("mlx_stack.core.benchmark.httpx.post")
-    def test_api_error_raises(self, mock_post: MagicMock) -> None:
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_api_error_raises(self, mock_stream: MagicMock) -> None:
         mock_response = MagicMock()
         mock_response.status_code = 500
-        mock_response.text = "Internal Server Error"
-        mock_post.return_value = mock_response
+        mock_response.read.return_value = b"Internal Server Error"
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
 
         with pytest.raises(BenchmarkRunError, match="status 500"):
             _run_single_iteration(
@@ -558,11 +563,11 @@ class TestSingleIteration:
                 prompt="test",
             )
 
-    @patch("mlx_stack.core.benchmark.httpx.post")
-    def test_timeout_raises(self, mock_post: MagicMock) -> None:
-        import httpx
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_timeout_raises(self, mock_stream: MagicMock) -> None:
+        import httpx as httpx_mod
 
-        mock_post.side_effect = httpx.TimeoutException("timeout")
+        mock_stream.side_effect = httpx_mod.TimeoutException("timeout")
 
         with pytest.raises(BenchmarkRunError, match="timed out"):
             _run_single_iteration(
@@ -571,18 +576,19 @@ class TestSingleIteration:
                 prompt="test",
             )
 
-    @patch("mlx_stack.core.benchmark.httpx.post")
-    def test_zero_tokens_returns_zero_tps(self, mock_post: MagicMock) -> None:
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_no_content_returns_zero_tps(self, mock_stream: MagicMock) -> None:
+        """When no content chunks arrive, TPS should be zero."""
+        sse_lines = [
+            'data: {"choices":[{"delta":{}}],'
+            '"usage":{"prompt_tokens":0,"completion_tokens":0}}',
+            "data: [DONE]",
+        ]
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": ""}}],
-            "usage": {
-                "prompt_tokens": 0,
-                "completion_tokens": 0,
-            },
-        }
-        mock_post.return_value = mock_response
+        mock_response.iter_lines.return_value = iter(sse_lines)
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
 
         result = _run_single_iteration(
             port=8000,
@@ -591,6 +597,54 @@ class TestSingleIteration:
         )
         assert result.prompt_tps == 0.0
         assert result.gen_tps == 0.0
+
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_prompt_tps_and_gen_tps_are_distinct(self, mock_stream: MagicMock) -> None:
+        """Verify prompt_tps and gen_tps compute to different values.
+
+        With 1000 prompt tokens processed in ~0.1s and 3 gen tokens in ~0.1s,
+        prompt_tps (~10000) should be much higher than gen_tps (~30).
+        """
+        # We'll control timing by patching time.monotonic to simulate:
+        # - start_time = 0.0
+        # - first_token_time = 0.1 (prompt took 0.1s for 1000 tokens)
+        # - end_time = 0.2 (generation took 0.1s for 3 tokens)
+        call_count = 0
+        times = [0.0, 0.1, 0.2]
+
+        def mock_monotonic() -> float:
+            nonlocal call_count
+            if call_count < len(times):
+                val = times[call_count]
+                call_count += 1
+                return val
+            return times[-1]
+
+        sse_lines = [
+            'data: {"choices":[{"delta":{"content":"a"}}]}',
+            'data: {"choices":[{"delta":{"content":"b"}}]}',
+            'data: {"choices":[{"delta":{"content":"c"}}],'
+            '"usage":{"prompt_tokens":1000,"completion_tokens":3}}',
+            "data: [DONE]",
+        ]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.iter_lines.return_value = iter(sse_lines)
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        with patch("mlx_stack.core.benchmark.time.monotonic", side_effect=mock_monotonic):
+            result = _run_single_iteration(
+                port=8000,
+                model_name="test-model",
+                prompt="test",
+            )
+
+        # prompt_tps = 1000 / 0.1 = 10000
+        # gen_tps = 3 / 0.1 = 30
+        assert result.prompt_tps == pytest.approx(10000.0)
+        assert result.gen_tps == pytest.approx(30.0)
+        assert result.prompt_tps != result.gen_tps
 
 
 # --------------------------------------------------------------------------- #

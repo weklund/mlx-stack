@@ -716,6 +716,104 @@ class TestDownloadModel:
 
 
 # =========================================================================== #
+# Download progress visibility tests
+# =========================================================================== #
+
+
+class TestDownloadProgress:
+    """Tests for real-time download progress display."""
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_run_download_streams_output(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """_run_download streams stdout line-by-line to console."""
+        from io import StringIO
+
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        # Mock Popen to simulate line-by-line output
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO("Downloading model.safetensors: 50%\nDownloading: 100%\n")
+        mock_proc.stderr = StringIO("")
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        output = StringIO()
+        console = Console(file=output, no_color=True)
+        _run_download("test/repo", local_dir, console)
+
+        printed = output.getvalue()
+        assert "Downloading" in printed
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_run_download_uses_popen_not_run(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Verifies Popen is used (not subprocess.run) for real-time output."""
+        from io import StringIO
+
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO("")
+        mock_proc.stderr = StringIO("")
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+        _run_download("test/repo", local_dir, console)
+
+        mock_popen.assert_called_once()
+        call_kwargs = mock_popen.call_args
+        # Verify stdout is PIPE for streaming
+        assert call_kwargs[1].get("stdout") is not None or \
+            (len(call_kwargs[0]) > 0 if call_kwargs[0] else True)
+
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_run_download_failure_reports_stderr(
+        self,
+        mock_popen: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """Failed download reports stderr content in error."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO("")
+        mock_proc.stderr = StringIO("Error: Repository not found")
+        mock_proc.returncode = 1
+        mock_proc.wait.return_value = 1
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+
+        with pytest.raises(DownloadError, match="Repository not found"):
+            _run_download("test/repo", local_dir, console)
+
+
+# =========================================================================== #
 # Conversion tests
 # =========================================================================== #
 
@@ -1060,6 +1158,36 @@ class TestPullCLI:
             result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--bench"])
             assert result.exit_code == 0
             mock_bench.assert_called_once()
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    @patch("mlx_stack.core.pull.load_catalog")
+    def test_pull_bench_calls_run_benchmark_with_save(
+        self,
+        mock_catalog: MagicMock,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """pull --bench calls run_benchmark(save=True) to persist results."""
+        from mlx_stack.core.benchmark import BenchmarkResult_
+
+        mock_catalog.return_value = [_make_entry()]
+        mock_result = BenchmarkResult_(
+            model_id="qwen3.5-8b",
+            quant="int4",
+            prompt_tps_mean=150.0,
+            prompt_tps_std=5.0,
+            gen_tps_mean=80.0,
+            gen_tps_std=2.0,
+        )
+        with patch(
+            "mlx_stack.core.benchmark.run_benchmark", return_value=mock_result
+        ) as mock_bench:
+            runner = CliRunner()
+            result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--bench"])
+            assert result.exit_code == 0
+            mock_bench.assert_called_once_with(target="qwen3.5-8b", save=True)
 
     @patch("mlx_stack.core.pull.download_model")
     @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))

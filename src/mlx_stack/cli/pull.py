@@ -71,9 +71,7 @@ def pull(model: str, quant: str | None, bench: bool, force: bool) -> None:
             console=out,
         )
 
-        if bench and not result.already_existed:
-            _run_post_download_bench(model, result.quant, out)
-        elif bench and result.already_existed:
+        if bench:
             _run_post_download_bench(model, result.quant, out)
 
     except InvalidModelError as exc:
@@ -112,7 +110,7 @@ def _run_post_download_bench(model_id: str, quant: str, out: Console) -> None:
     try:
         from mlx_stack.core.benchmark import BenchmarkError, run_benchmark
 
-        result = run_benchmark(target=model_id, save=False)
+        result = run_benchmark(target=model_id, save=True)
         out.print(
             f"  Prompt TPS: {result.prompt_tps_mean:.1f} ± {result.prompt_tps_std:.1f} tok/s"
         )
@@ -121,8 +119,7 @@ def _run_post_download_bench(model_id: str, quant: str, out: Console) -> None:
         )
         out.print()
         out.print(
-            f"[dim]Run 'mlx-stack bench {model_id} --save' "
-            "to persist results for scoring.[/dim]"
+            "[dim]Results saved for use by 'recommend' and 'init' scoring.[/dim]"
         )
     except BenchmarkError as exc:
         out.print(

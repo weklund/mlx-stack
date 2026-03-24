@@ -302,7 +302,11 @@ def _run_download(
     local_dir: Path,
     console: Console,
 ) -> None:
-    """Run the huggingface-cli download command.
+    """Run the huggingface-cli download command with real-time output.
+
+    Uses subprocess.Popen to stream stdout line-by-line so the user can
+    see download progress in real-time, while still capturing stderr for
+    error reporting on failure.
 
     Args:
         hf_repo: The HuggingFace repo to download.
@@ -324,11 +328,11 @@ def _run_download(
     ]
 
     try:
-        result = subprocess.run(
+        proc = subprocess.Popen(
             cmd,
-            capture_output=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
             text=True,
-            timeout=3600,  # 1 hour timeout
         )
     except FileNotFoundError:
         msg = (
@@ -337,15 +341,30 @@ def _run_download(
             "Or: uv pip install huggingface_hub"
         )
         raise DownloadError(msg) from None
-    except subprocess.TimeoutExpired:
-        msg = "Download timed out after 1 hour."
-        raise DownloadError(msg) from None
     except OSError as exc:
         msg = f"Failed to start download: {exc}"
         raise DownloadError(msg) from None
 
-    if result.returncode != 0:
-        stderr = result.stderr.strip()
+    # Stream stdout line-by-line to show download progress to the user
+    assert proc.stdout is not None
+    assert proc.stderr is not None
+    try:
+        for line in proc.stdout:
+            stripped = line.rstrip("\n")
+            if stripped:
+                console.print(f"  {stripped}")
+
+        # Wait for process to complete and capture stderr
+        proc.wait(timeout=3600)
+        stderr_output = proc.stderr.read()
+    except subprocess.TimeoutExpired:
+        proc.kill()
+        proc.wait()
+        msg = "Download timed out after 1 hour."
+        raise DownloadError(msg) from None
+
+    if proc.returncode != 0:
+        stderr = stderr_output.strip() if stderr_output else ""
         msg = f"Download failed for {hf_repo}:\n{stderr}"
         raise DownloadError(msg)
 
