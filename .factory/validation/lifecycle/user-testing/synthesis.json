@@ -1,0 +1,88 @@
+{
+  "milestone": "lifecycle",
+  "round": 2,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 6,
+    "passed": 2,
+    "failed": 1,
+    "blocked": 3
+  },
+  "passedAssertions": [
+    "VAL-DOWN-002",
+    "VAL-UP-009"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-UP-012",
+      "reason": "`up` now takes the preflight port-conflict path (tier was skipped and did not enter health-check timeout), but owner resolution reported `PID 0 (<unknown>)` instead of the actual owning PID/process."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "blockedBy": "First-time flow cannot complete because `mlx-stack pull` is still unimplemented (all pull attempts return `Not yet implemented. Coming in the pull-command feature.`). As a result no models are downloaded, `up` skips all tiers and LiteLLM, and `http://localhost:4000/v1/models` is unreachable."
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "blockedBy": "Config propagation is partially verified (`litellm-port` persisted to config/init and up summary uses port 5000; `memory-budget-pct 60` is reflected in recommend/init budget; `model-dir` is reflected by `models`). Full assertion remains blocked because `pull` is unimplemented, so default-quant/model-dir pull behavior cannot be validated and `up` skips model servers/LiteLLM due missing local models."
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "blockedBy": "Cross-command consistency is only partially testable in this build: profile->recommend->init linkage, schema_version rejection, and vllm_flags->dry-run flag translation are validated, but required benchmark/models artifact consistency cannot be completed because `bench --save` and `pull` are both unimplemented placeholders."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Documented lifecycle rerun friction where macOS permissions can cause port-owner lookup to return PID 0 (<unknown>) via psutil.net_connections AccessDenied.",
+      "source": "flow-report"
+    }
+  ],
+  "flowReports": [
+    ".factory/validation/lifecycle/user-testing/flows/r2-g1-fixes.json",
+    ".factory/validation/lifecycle/user-testing/flows/r2-g2-cross-blockers.json"
+  ],
+  "toolsUsed": [
+    "Execute (shell)",
+    "curl",
+    "python3",
+    "shell",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "frictions": [
+    {
+      "description": "On this macOS host, psutil.net_connections(kind=\"inet\") raised AccessDenied, so conflict owner lookup can appear as PID 0 (<unknown>) during port-conflict detection checks.",
+      "resolved": false,
+      "resolution": "Captured diagnostics and retained VAL-UP-012 as failed until owner PID/process can be resolved reliably.",
+      "affectedAssertions": [
+        "VAL-UP-012"
+      ],
+      "evidence": [
+        "lifecycle/r2-g1-fixes/02e-port-diagnostic.txt",
+        "lifecycle/r2-g1-fixes/02c-up-port-conflict.txt"
+      ]
+    },
+    {
+      "description": "Lifecycle cross-flow assertions remain gated by unimplemented pull/bench surfaces.",
+      "resolved": false,
+      "resolution": "Confirmed placeholders across multiple targets and config states; kept affected assertions blocked for tooling milestone.",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-007",
+        "VAL-CROSS-013"
+      ],
+      "evidence": [
+        "lifecycle/r2-g2-cross-blockers/03-cross001-pull-qwen3.5-8b.txt",
+        "lifecycle/r2-g2-cross-blockers/28-cross013-bench-fast-save.txt"
+      ]
+    }
+  ],
+  "dedupedBlockers": [
+    "mlx-stack pull is not yet implemented in this build, blocking first-time journey and pull-dependent cross-flow checks.",
+    "mlx-stack bench --save is not yet implemented in this build, blocking benchmark-artifact consistency checks."
+  ],
+  "generatedAt": "2026-03-24T11:35:36.512923+00:00",
+  "previousRound": ".factory/validation/lifecycle/user-testing/synthesis.round1.json"
+}

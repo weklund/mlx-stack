@@ -1,0 +1,238 @@
+{
+  "milestone": "lifecycle",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 43,
+    "passed": 37,
+    "failed": 2,
+    "blocked": 4
+  },
+  "passedAssertions": [
+    "VAL-CROSS-002",
+    "VAL-CROSS-006",
+    "VAL-CROSS-009",
+    "VAL-CROSS-010",
+    "VAL-CROSS-011",
+    "VAL-CROSS-015",
+    "VAL-CROSS-016",
+    "VAL-DEPS-001",
+    "VAL-DEPS-002",
+    "VAL-DEPS-004",
+    "VAL-DOWN-001",
+    "VAL-DOWN-003",
+    "VAL-DOWN-004",
+    "VAL-DOWN-005",
+    "VAL-DOWN-006",
+    "VAL-STATUS-001",
+    "VAL-STATUS-002",
+    "VAL-STATUS-003",
+    "VAL-STATUS-004",
+    "VAL-STATUS-005",
+    "VAL-STATUS-006",
+    "VAL-STATUS-007",
+    "VAL-UP-001",
+    "VAL-UP-002",
+    "VAL-UP-003",
+    "VAL-UP-004",
+    "VAL-UP-005",
+    "VAL-UP-006",
+    "VAL-UP-007",
+    "VAL-UP-008",
+    "VAL-UP-010",
+    "VAL-UP-011",
+    "VAL-UP-013",
+    "VAL-UP-014",
+    "VAL-UP-015",
+    "VAL-UP-016",
+    "VAL-UP-017"
+  ],
+  "failedAssertions": [
+    {
+      "id": "VAL-DOWN-002",
+      "reason": "Did not observe forced SIGKILL path with confirmed process termination."
+    },
+    {
+      "id": "VAL-UP-012",
+      "reason": "With tier port 8101 occupied, startup did not emit `Port ... already in use by PID ...`; it attempted tier launch and later reported health-check timeout instead of explicit port-owner detection."
+    }
+  ],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "blockedBy": "End-to-end first-time journey is blocked in this milestone because `mlx-stack pull` is not implemented (`Not yet implemented. Coming in the pull-command feature.`), so required model acquisition step cannot be executed."
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "blockedBy": "Config propagation was confirmed for `litellm-port` (up/status on 5000), `memory-budget-pct` (recommend/init budget 76.8 GB), and `model-dir` (models command used custom directory), but validation of `default-quant -> pull` and `model-dir -> pull` could not be completed because `mlx-stack pull` is currently a placeholder (`Not yet implemented`)."
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "blockedBy": "Profile/recommend/init flow, schema_version rejection, and `vllm_flags -> up --dry-run` translation were validated, but full cross-command data consistency could not be completed because `bench --save` and `pull` are placeholder commands and do not create benchmark/models inventory artifacts required by the assertion."
+    },
+    {
+      "id": "VAL-UP-009",
+      "blockedBy": "Tier-start behavior requiring running services could not be validated because no local model files exist in isolated MLX_STACK_HOME; command consistently skipped fast tier with pull instruction. Invalid-tier error path was validated."
+    }
+  ],
+  "appliedUpdates": [],
+  "flowReports": [
+    ".factory/validation/lifecycle/user-testing/flows/r1-g1-deps-up-basics.json",
+    ".factory/validation/lifecycle/user-testing/flows/r1-g2-up-startup.json",
+    ".factory/validation/lifecycle/user-testing/flows/r1-g3-up-resilience.json",
+    ".factory/validation/lifecycle/user-testing/flows/r1-g4-down.json",
+    ".factory/validation/lifecycle/user-testing/flows/r1-g5-status.json",
+    ".factory/validation/lifecycle/user-testing/flows/r1-g6-cross.json"
+  ],
+  "toolsUsed": [
+    "Execute (shell)",
+    "curl",
+    "python3",
+    "shell",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "frictions": [
+    {
+      "description": "Using UV_INDEX_URL to force dependency-install failure broke outer 'uv run' resolution before mlx-stack executed.",
+      "resolved": true,
+      "resolution": "Switched to a local uv shim for inner dependency-install failure simulation while keeping outer '/opt/homebrew/bin/uv run' intact.",
+      "affectedAssertions": [
+        "VAL-DEPS-002",
+        "VAL-UP-010"
+      ],
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/06-up-tier-fast-auto-install-failure.txt",
+        "lifecycle/r1-g1-deps-up-basics/06b-up-tier-fast-auto-install-failure-via-shim.txt"
+      ]
+    },
+    {
+      "description": "uv emitted a non-fatal warning about malformed tool 'bin' when using a nested UV_TOOL_DIR path.",
+      "resolved": true,
+      "resolution": "Warning did not affect installs; proceeded and verified binaries in isolated tool bin.",
+      "affectedAssertions": [
+        "VAL-DEPS-001",
+        "VAL-UP-010"
+      ],
+      "evidence": [
+        "lifecycle/r1-g1-deps-up-basics/05-up-tier-fast-auto-install-success-attempt.txt"
+      ]
+    },
+    {
+      "description": "Environment had litellm version mismatch warning (installed v1.82.6 vs pinned v1.67.2) printed on each up run.",
+      "resolved": true,
+      "resolution": "Warning was non-blocking for assigned startup-flow assertions; proceeded with isolated shim-backed startup checks.",
+      "affectedAssertions": [
+        "VAL-UP-001",
+        "VAL-UP-003",
+        "VAL-UP-005",
+        "VAL-UP-006"
+      ],
+      "evidence": [
+        "lifecycle/r1-g2-up-startup/01-up-success.txt",
+        "lifecycle/r1-g2-up-startup/06-up-timeout-continue.txt",
+        "lifecycle/r1-g2-up-startup/09-up-all-fail.txt"
+      ]
+    },
+    {
+      "description": "Port-conflict simulation required a longer timeout because startup attempted to launch on the occupied port and only failed after health-check timeout, rather than immediate conflict skip.",
+      "resolved": true,
+      "resolution": "Increased test command timeout to allow full failure path completion and captured explicit timeout behavior for assertion adjudication.",
+      "affectedAssertions": [
+        "VAL-UP-012",
+        "VAL-UP-013"
+      ],
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/03e-up-port-conflict-longrun.txt",
+        "lifecycle/r1-g3-up-resilience/03g-port-conflict-analysis.json"
+      ]
+    },
+    {
+      "description": "Dependency check emits non-blocking litellm version mismatch warning on each up run (installed v1.82.6 vs pinned v1.67.2).",
+      "resolved": true,
+      "resolution": "Treated warning as informational and proceeded because it did not prevent exercising assigned lifecycle assertions.",
+      "affectedAssertions": [
+        "VAL-UP-007",
+        "VAL-UP-013",
+        "VAL-UP-014",
+        "VAL-UP-016",
+        "VAL-UP-017"
+      ],
+      "evidence": [
+        "lifecycle/r1-g3-up-resilience/02a-up-lock-holder.txt",
+        "lifecycle/r1-g3-up-resilience/05b-up-memory-warning.txt",
+        "lifecycle/r1-g3-up-resilience/06d-up-api-key.txt"
+      ]
+    },
+    {
+      "description": "Dedicated flow-validator subagent for this group returned an insufficient-permission error twice.",
+      "resolved": true,
+      "resolution": "Executed the assigned down-flow assertions directly in validator session with strict MLX_STACK_HOME isolation and captured evidence artifacts.",
+      "affectedAssertions": [
+        "VAL-DOWN-001",
+        "VAL-DOWN-002",
+        "VAL-DOWN-003",
+        "VAL-DOWN-004",
+        "VAL-DOWN-005",
+        "VAL-DOWN-006",
+        "VAL-CROSS-001"
+      ]
+    },
+    {
+      "description": "Initial init invocation failed because PATH omitted /usr/sbin, so sysctl lookup failed during hardware detection.",
+      "resolved": true,
+      "resolution": "Re-ran commands with system path entries (/usr/sbin:/sbin) included in PATH.",
+      "affectedAssertions": [
+        "VAL-STATUS-005",
+        "VAL-CROSS-002"
+      ],
+      "evidence": [
+        "lifecycle/r1-g5-status/01-init.txt"
+      ]
+    },
+    {
+      "description": "Python http.server-based shim responders were non-responsive in this environment for health checks, causing false down states.",
+      "resolved": true,
+      "resolution": "Replaced isolation-only shim implementations with socket-based HTTP responders and re-ran all affected status lifecycle checks.",
+      "affectedAssertions": [
+        "VAL-STATUS-001",
+        "VAL-STATUS-002",
+        "VAL-STATUS-003",
+        "VAL-STATUS-004",
+        "VAL-STATUS-006",
+        "VAL-CROSS-002"
+      ],
+      "evidence": [
+        "lifecycle/r1-g5-status/08-up-healthy.txt",
+        "lifecycle/r1-g5-status/09-status-after-up-json.txt",
+        "lifecycle/r1-g5-status/12-status-mixed-json.txt"
+      ]
+    },
+    {
+      "description": "litellm version mismatch warning (`installed v1.82.6, expected v1.67.2`) appears on lifecycle runs and adds noise to startup output.",
+      "resolved": true,
+      "resolution": "Treated as non-blocking because assertions are cross-flow behavior checks and startup still completed successfully.",
+      "affectedAssertions": [
+        "VAL-CROSS-007",
+        "VAL-CROSS-009",
+        "VAL-CROSS-010",
+        "VAL-CROSS-015",
+        "VAL-CROSS-016"
+      ],
+      "evidence": [
+        "lifecycle/r1-g6-cross/07-up-after-port-5000.txt",
+        "lifecycle/r1-g6-cross/22-cross009-up-partial-failure.txt",
+        "lifecycle/r1-g6-cross/61-cross015-up-full-rerun.txt",
+        "lifecycle/r1-g6-cross/70a-cross016-interrupted-up.txt"
+      ]
+    }
+  ],
+  "dedupedBlockers": [
+    "No local model artifacts were present in isolated MLX_STACK_HOME, so 'up --tier fast' skipped service startup and LiteLLM never started.",
+    "pull command unavailable in current milestone blocks full first-time journey validation.",
+    "`mlx-stack pull` is not implemented in this build, blocking end-to-end validation of default-quant/model-dir propagation into actual downloads.",
+    "`mlx-stack bench --save` is not implemented in this build, blocking validation that benchmark artifacts are consumed across commands for data consistency."
+  ],
+  "generatedAt": "2026-03-24T07:27:35.918669+00:00",
+  "previousRound": null
+}

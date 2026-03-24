@@ -48,3 +48,7 @@ Testing surface, required testing skills/tools, resource cost classification per
 - `models --catalog` currently does not expose filter flags for family/tag/capability on the CLI surface.
 - `pull` and `bench` remain placeholder commands in this build, which blocks benchmark-save recommendation validation flows.
 - For validator fixture scripting, prefer `uv run python` over system `python3` so project dependencies (e.g., PyYAML) are available.
+
+## Lifecycle milestone rerun notes (2026-03-24)
+
+- In isolated lifecycle rerun flow `r2-g1-fixes`, macOS denied `psutil.net_connections(kind='inet')` with `AccessDenied`; port conflict output fell back to `PID 0 (<unknown>)` even though preflight conflict skipping worked. Treat owner-resolution checks as potentially permission-sensitive on this host.

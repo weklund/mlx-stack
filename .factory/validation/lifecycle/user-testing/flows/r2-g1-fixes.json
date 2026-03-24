@@ -1,0 +1,107 @@
+{
+  "groupId": "r2-g1-fixes",
+  "testedAt": "2026-03-24T11:33:18.716834Z",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r2-g1-fixes",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r2-g1-fixes",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "Execute (shell)",
+    "uv run mlx-stack",
+    "python3"
+  ],
+  "commands": [
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack config set litellm-port 14100",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/01-config-set-litellm-port.txt"
+    },
+    {
+      "command": "python3 -m http.server 18111 --bind 127.0.0.1 (background) + uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/02c-up-port-conflict.txt"
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/02d-down-after-port-conflict.txt"
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier fast",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/03a-up-tier-fast.txt"
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack up --tier nope",
+      "exitCode": 1,
+      "artifact": "lifecycle/r2-g1-fixes/03d-up-tier-invalid.txt"
+    },
+    {
+      "command": "python3 stubborn process (ignores SIGTERM) + uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down --tier fast",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/04g-down-tier-fast-forced.txt"
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack down",
+      "exitCode": 0,
+      "artifact": "lifecycle/r2-g1-fixes/05-final-down.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-UP-012",
+      "status": "fail",
+      "reason": "`up` now takes the preflight port-conflict path (tier was skipped and did not enter health-check timeout), but owner resolution reported `PID 0 (<unknown>)` instead of the actual owning PID/process.",
+      "evidence": [
+        "lifecycle/r2-g1-fixes/02b-port-blocker-ps.txt",
+        "lifecycle/r2-g1-fixes/02c-up-port-conflict.txt",
+        "lifecycle/r2-g1-fixes/02c-up-port-conflict-launch.jsonl",
+        "lifecycle/r2-g1-fixes/02e-port-diagnostic.txt",
+        "lifecycle/r2-g1-fixes/02f-up012-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-DOWN-002",
+      "status": "pass",
+      "reason": "For a `fast` tier PID that ignored SIGTERM, `down --tier fast` escalated and reported explicit `forced (SIGKILL)` wording.",
+      "evidence": [
+        "lifecycle/r2-g1-fixes/04e-stubborn-process.log",
+        "lifecycle/r2-g1-fixes/04f-stubborn-ps-before.txt",
+        "lifecycle/r2-g1-fixes/04g-down-tier-fast-forced.txt",
+        "lifecycle/r2-g1-fixes/04i-down002-analysis.json"
+      ]
+    },
+    {
+      "id": "VAL-UP-009",
+      "status": "pass",
+      "reason": "`up --tier fast` started only `fast` (+ `litellm`), and invalid tier input returned non-zero with a valid-tier list.",
+      "evidence": [
+        "lifecycle/r2-g1-fixes/03a-up-tier-fast.txt",
+        "lifecycle/r2-g1-fixes/03a-up-tier-fast-launch.jsonl",
+        "lifecycle/r2-g1-fixes/03b-pids-after-up-tier-fast.txt",
+        "lifecycle/r2-g1-fixes/03d-up-tier-invalid.txt",
+        "lifecycle/r2-g1-fixes/03e-up009-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "On this macOS host, `psutil.net_connections(kind='inet')` raised `AccessDenied`, so port-owner lookup fell back to `PID 0 (<unknown>)` during conflict detection.",
+      "resolved": false,
+      "resolution": "Captured diagnostic evidence and adjudicated VAL-UP-012 based on observed CLI behavior.",
+      "affectedAssertions": [
+        "VAL-UP-012"
+      ],
+      "evidence": [
+        "lifecycle/r2-g1-fixes/02e-port-diagnostic.txt",
+        "lifecycle/r2-g1-fixes/02c-up-port-conflict.txt"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 3 assigned assertions: 2 passed (VAL-DOWN-002, VAL-UP-009), 1 failed (VAL-UP-012: owner reported as PID 0/<unknown> despite correct preflight skip behavior)."
+}

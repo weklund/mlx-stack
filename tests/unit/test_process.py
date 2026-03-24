@@ -387,8 +387,9 @@ class TestSocketBindCheck:
 
     def test_available_port(self) -> None:
         """Available port returns False (not in use)."""
-        from mlx_stack.core.process import _socket_bind_check
         import socket
+
+        from mlx_stack.core.process import _socket_bind_check
 
         # Find a free port
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -400,8 +401,9 @@ class TestSocketBindCheck:
 
     def test_occupied_port(self) -> None:
         """Occupied port returns True (in use)."""
-        from mlx_stack.core.process import _socket_bind_check
         import socket
+
+        from mlx_stack.core.process import _socket_bind_check
 
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 0)

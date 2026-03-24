@@ -1,0 +1,127 @@
+{
+  "groupId": "r2-g2-cross-blockers",
+  "testedAt": "2026-03-24T11:33:03.055535+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/lifecycle/r2-g2-cross-blockers",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/lifecycle/r2-g2-cross-blockers",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "uv run python",
+    "curl"
+  ],
+  "commands": [
+    {
+      "name": "cross001_first_time_journey_rerun",
+      "command": "init --accept-defaults; pull each configured model; up; curl localhost:4000/v1/models; down; post-down artifact/port checks",
+      "exitCode": 0,
+      "evidence": "lifecycle/r2-g2-cross-blockers/01-cross001-init.txt"
+    },
+    {
+      "name": "cross007_config_propagation_rerun",
+      "command": "config set litellm-port/memory-budget-pct/default-quant/model-dir with init/recommend/up/models/pull checks",
+      "exitCode": 0,
+      "evidence": "lifecycle/r2-g2-cross-blockers/10-cross007-config-set-litellm-port-5000.txt"
+    },
+    {
+      "name": "cross013_data_consistency_rerun",
+      "command": "profile; recommend; init --force; bench fast --save; pull; up --dry-run; unsupported schema_version check",
+      "exitCode": 0,
+      "evidence": "lifecycle/r2-g2-cross-blockers/25-cross013-profile.txt"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-CROSS-001",
+      "status": "blocked",
+      "reason": "First-time flow cannot complete because `mlx-stack pull` is still unimplemented (all pull attempts return `Not yet implemented. Coming in the pull-command feature.`). As a result no models are downloaded, `up` skips all tiers and LiteLLM, and `http://localhost:4000/v1/models` is unreachable.",
+      "evidence": [
+        "lifecycle/r2-g2-cross-blockers/00-setup-clean-state.json",
+        "lifecycle/r2-g2-cross-blockers/01-cross001-init.txt",
+        "lifecycle/r2-g2-cross-blockers/02-cross001-stack-models.json",
+        "lifecycle/r2-g2-cross-blockers/03-cross001-pull-qwen3.5-8b.txt",
+        "lifecycle/r2-g2-cross-blockers/04-cross001-pull-qwen3.5-0.8b.txt",
+        "lifecycle/r2-g2-cross-blockers/05-cross001-pull-deepseek-r1-8b.txt",
+        "lifecycle/r2-g2-cross-blockers/06-cross001-up.txt",
+        "lifecycle/r2-g2-cross-blockers/07-cross001-curl-4000-v1-models.txt",
+        "lifecycle/r2-g2-cross-blockers/08-cross001-down.txt",
+        "lifecycle/r2-g2-cross-blockers/09-cross001-post-down-checks.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "status": "blocked",
+      "reason": "Config propagation is partially verified (`litellm-port` persisted to config/init and up summary uses port 5000; `memory-budget-pct 60` is reflected in recommend/init budget; `model-dir` is reflected by `models`). Full assertion remains blocked because `pull` is unimplemented, so default-quant/model-dir pull behavior cannot be validated and `up` skips model servers/LiteLLM due missing local models.",
+      "evidence": [
+        "lifecycle/r2-g2-cross-blockers/10-cross007-config-set-litellm-port-5000.txt",
+        "lifecycle/r2-g2-cross-blockers/11-cross007-init-force-after-port5000.txt",
+        "lifecycle/r2-g2-cross-blockers/12-cross007-port-propagation-config-analysis.json",
+        "lifecycle/r2-g2-cross-blockers/13-cross007-up-after-port5000.txt",
+        "lifecycle/r2-g2-cross-blockers/14-cross007-curl-5000-v1-models.txt",
+        "lifecycle/r2-g2-cross-blockers/15-cross007-curl-4000-v1-models.txt",
+        "lifecycle/r2-g2-cross-blockers/16-cross007-down-after-port5000-up.txt",
+        "lifecycle/r2-g2-cross-blockers/17-cross007-config-set-memory-budget-60.txt",
+        "lifecycle/r2-g2-cross-blockers/18-cross007-recommend-after-budget60.txt",
+        "lifecycle/r2-g2-cross-blockers/19-cross007-init-force-after-budget60.txt",
+        "lifecycle/r2-g2-cross-blockers/20-cross007-config-set-default-quant-int8.txt",
+        "lifecycle/r2-g2-cross-blockers/21-cross007-pull-with-default-quant-int8.txt",
+        "lifecycle/r2-g2-cross-blockers/22-cross007-config-set-model-dir-custom.txt",
+        "lifecycle/r2-g2-cross-blockers/23-cross007-models-after-custom-model-dir.txt",
+        "lifecycle/r2-g2-cross-blockers/24-cross007-pull-after-custom-model-dir.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "blocked",
+      "reason": "Cross-command consistency is only partially testable in this build: profile->recommend->init linkage, schema_version rejection, and vllm_flags->dry-run flag translation are validated, but required benchmark/models artifact consistency cannot be completed because `bench --save` and `pull` are both unimplemented placeholders.",
+      "evidence": [
+        "lifecycle/r2-g2-cross-blockers/25-cross013-profile.txt",
+        "lifecycle/r2-g2-cross-blockers/26-cross013-recommend.txt",
+        "lifecycle/r2-g2-cross-blockers/27-cross013-init-force.txt",
+        "lifecycle/r2-g2-cross-blockers/28-cross013-bench-fast-save.txt",
+        "lifecycle/r2-g2-cross-blockers/29-cross013-pull-qwen3.5-0.8b.txt",
+        "lifecycle/r2-g2-cross-blockers/30-cross013-up-dry-run.txt",
+        "lifecycle/r2-g2-cross-blockers/31b-cross013-up-unsupported-schema.txt",
+        "lifecycle/r2-g2-cross-blockers/32-cross013-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "`mlx-stack up` repeatedly emits a LiteLLM version mismatch warning (`installed v1.82.6, expected v1.67.2`) before summary output.",
+      "resolved": true,
+      "resolution": "Treated as non-blocking for these assertions; behavior under test remained observable.",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-007"
+      ],
+      "evidence": [
+        "lifecycle/r2-g2-cross-blockers/06-cross001-up.txt",
+        "lifecycle/r2-g2-cross-blockers/13-cross007-up-after-port5000.txt"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "`mlx-stack pull` is still unimplemented and returns `Not yet implemented. Coming in the pull-command feature.`",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-007",
+        "VAL-CROSS-013"
+      ],
+      "quickFixAttempted": "Retried pull across multiple targets and config states (`qwen3.5-8b`, `qwen3.5-0.8b`, `deepseek-r1-8b`); each returned the same not-implemented message."
+    },
+    {
+      "description": "`mlx-stack bench --save` is still unimplemented and returns `Not yet implemented. Coming in the bench-command feature.`",
+      "affectedAssertions": [
+        "VAL-CROSS-013"
+      ],
+      "quickFixAttempted": "Ran `mlx-stack bench fast --save`; command returned placeholder message and produced no benchmark artifact."
+    }
+  ],
+  "summary": "Retested 3 assigned lifecycle cross-flow assertions (VAL-CROSS-001, VAL-CROSS-007, VAL-CROSS-013): 0 passed, 0 failed, 3 blocked due unimplemented pull/bench save surfaces, with partial non-blocked sub-checks captured as evidence."
+}
