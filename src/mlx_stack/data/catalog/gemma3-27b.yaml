@@ -1,0 +1,45 @@
+id: gemma3-27b
+name: Gemma 3 27B
+family: Gemma 3
+params_b: 27.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/gemma-3-27b-it-4bit
+    disk_size_gb: 15.0
+  int8:
+    hf_repo: mlx-community/gemma-3-27b-it-8bit
+    disk_size_gb: 28.0
+  bf16:
+    hf_repo: google/gemma-3-27b-it
+    disk_size_gb: 54.0
+    convert_from: true
+capabilities:
+  tool_calling: false
+  tool_call_parser: null
+  thinking: false
+  reasoning_parser: null
+  vision: true
+quality:
+  overall: 80
+  coding: 76
+  reasoning: 78
+  instruction_following: 83
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 30.0
+    gen_tps: 18.0
+    memory_gb: 17.0
+  m4-max-128:
+    prompt_tps: 45.0
+    gen_tps: 26.0
+    memory_gb: 17.0
+  m5-max-128:
+    prompt_tps: 50.0
+    gen_tps: 29.0
+    memory_gb: 17.0
+tags:
+  - vision
+  - quality
+  - multimodal

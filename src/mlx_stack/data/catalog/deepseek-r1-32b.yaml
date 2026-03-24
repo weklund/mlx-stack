@@ -1,0 +1,46 @@
+id: deepseek-r1-32b
+name: DeepSeek R1 32B
+family: DeepSeek R1
+params_b: 32.0
+architecture: mamba2-hybrid
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/DeepSeek-R1-0528-Qwen3-32B-4bit
+    disk_size_gb: 18.0
+  int8:
+    hf_repo: mlx-community/DeepSeek-R1-0528-Qwen3-32B-8bit
+    disk_size_gb: 34.0
+  bf16:
+    hf_repo: deepseek-ai/DeepSeek-R1-0528-Qwen3-32B
+    disk_size_gb: 65.0
+    convert_from: true
+capabilities:
+  tool_calling: false
+  tool_call_parser: null
+  thinking: true
+  reasoning_parser: deepseek_r1
+  vision: false
+quality:
+  overall: 85
+  coding: 86
+  reasoning: 90
+  instruction_following: 80
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 26.0
+    gen_tps: 15.0
+    memory_gb: 20.0
+  m4-max-128:
+    prompt_tps: 40.0
+    gen_tps: 23.0
+    memory_gb: 20.0
+  m5-max-128:
+    prompt_tps: 44.0
+    gen_tps: 25.0
+    memory_gb: 20.0
+tags:
+  - reasoning
+  - thinking
+  - quality
+  - long-context

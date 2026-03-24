@@ -1,0 +1,44 @@
+id: qwen3.5-3b
+name: Qwen 3.5 3B
+family: Qwen 3.5
+params_b: 3.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Qwen3.5-3B-4bit
+    disk_size_gb: 1.8
+  int8:
+    hf_repo: mlx-community/Qwen3.5-3B-8bit
+    disk_size_gb: 3.4
+  bf16:
+    hf_repo: Qwen/Qwen3.5-3B
+    disk_size_gb: 6.5
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: false
+  reasoning_parser: null
+  vision: false
+quality:
+  overall: 55
+  coding: 50
+  reasoning: 48
+  instruction_following: 60
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 180.0
+    gen_tps: 88.0
+    memory_gb: 2.5
+  m4-max-128:
+    prompt_tps: 260.0
+    gen_tps: 130.0
+    memory_gb: 2.5
+  m5-max-128:
+    prompt_tps: 280.0
+    gen_tps: 140.0
+    memory_gb: 2.5
+tags:
+  - fast-inference
+  - agent-ready

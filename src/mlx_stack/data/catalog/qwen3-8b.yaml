@@ -1,0 +1,45 @@
+id: qwen3-8b
+name: Qwen 3 8B
+family: Qwen 3
+params_b: 8.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Qwen3-8B-4bit
+    disk_size_gb: 4.5
+  int8:
+    hf_repo: mlx-community/Qwen3-8B-8bit
+    disk_size_gb: 8.5
+  bf16:
+    hf_repo: Qwen/Qwen3-8B
+    disk_size_gb: 16.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: true
+  reasoning_parser: qwen3
+  vision: false
+quality:
+  overall: 64
+  coding: 62
+  reasoning: 60
+  instruction_following: 68
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 96.0
+    gen_tps: 53.0
+    memory_gb: 5.5
+  m4-max-128:
+    prompt_tps: 142.0
+    gen_tps: 78.0
+    memory_gb: 5.5
+  m5-max-128:
+    prompt_tps: 156.0
+    gen_tps: 86.0
+    memory_gb: 5.5
+tags:
+  - balanced
+  - agent-ready
+  - thinking

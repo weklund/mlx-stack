@@ -1,0 +1,46 @@
+id: qwen3.5-14b
+name: Qwen 3.5 14B
+family: Qwen 3.5
+params_b: 14.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Qwen3.5-14B-4bit
+    disk_size_gb: 8.0
+  int8:
+    hf_repo: mlx-community/Qwen3.5-14B-8bit
+    disk_size_gb: 15.0
+  bf16:
+    hf_repo: Qwen/Qwen3.5-14B
+    disk_size_gb: 28.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: true
+  reasoning_parser: qwen3
+  vision: false
+quality:
+  overall: 76
+  coding: 74
+  reasoning: 72
+  instruction_following: 80
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 55.0
+    gen_tps: 32.0
+    memory_gb: 9.5
+  m4-max-128:
+    prompt_tps: 82.0
+    gen_tps: 48.0
+    memory_gb: 9.5
+  m5-max-128:
+    prompt_tps: 90.0
+    gen_tps: 53.0
+    memory_gb: 9.5
+tags:
+  - balanced
+  - agent-ready
+  - thinking
+  - quality

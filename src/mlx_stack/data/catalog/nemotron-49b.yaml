@@ -1,0 +1,41 @@
+id: nemotron-49b
+name: Nemotron 49B
+family: Nemotron
+params_b: 49.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Nemotron-Ultra-49B-4bit
+    disk_size_gb: 27.0
+  int8:
+    hf_repo: mlx-community/Nemotron-Ultra-49B-8bit
+    disk_size_gb: 52.0
+  bf16:
+    hf_repo: nvidia/Nemotron-Ultra-49B
+    disk_size_gb: 100.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: true
+  reasoning_parser: nemotron
+  vision: false
+quality:
+  overall: 87
+  coding: 85
+  reasoning: 88
+  instruction_following: 88
+benchmarks:
+  m4-max-128:
+    prompt_tps: 22.0
+    gen_tps: 13.0
+    memory_gb: 30.0
+  m5-max-128:
+    prompt_tps: 25.0
+    gen_tps: 15.0
+    memory_gb: 30.0
+tags:
+  - quality
+  - thinking
+  - agent-ready

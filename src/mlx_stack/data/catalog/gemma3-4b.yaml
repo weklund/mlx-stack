@@ -1,0 +1,45 @@
+id: gemma3-4b
+name: Gemma 3 4B
+family: Gemma 3
+params_b: 4.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/gemma-3-4b-it-4bit
+    disk_size_gb: 2.3
+  int8:
+    hf_repo: mlx-community/gemma-3-4b-it-8bit
+    disk_size_gb: 4.4
+  bf16:
+    hf_repo: google/gemma-3-4b-it
+    disk_size_gb: 8.5
+    convert_from: true
+capabilities:
+  tool_calling: false
+  tool_call_parser: null
+  thinking: false
+  reasoning_parser: null
+  vision: true
+quality:
+  overall: 52
+  coding: 45
+  reasoning: 48
+  instruction_following: 58
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 160.0
+    gen_tps: 78.0
+    memory_gb: 3.2
+  m4-max-128:
+    prompt_tps: 230.0
+    gen_tps: 115.0
+    memory_gb: 3.2
+  m5-max-128:
+    prompt_tps: 250.0
+    gen_tps: 125.0
+    memory_gb: 3.2
+tags:
+  - vision
+  - fast-inference
+  - multimodal

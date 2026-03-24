@@ -1,0 +1,44 @@
+id: llama3.3-8b
+name: Llama 3.3 8B
+family: Llama 3.3
+params_b: 8.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Llama-3.3-8B-Instruct-4bit
+    disk_size_gb: 4.5
+  int8:
+    hf_repo: mlx-community/Llama-3.3-8B-Instruct-8bit
+    disk_size_gb: 8.5
+  bf16:
+    hf_repo: meta-llama/Llama-3.3-8B-Instruct
+    disk_size_gb: 16.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: llama3_json
+  thinking: false
+  reasoning_parser: null
+  vision: false
+quality:
+  overall: 63
+  coding: 60
+  reasoning: 58
+  instruction_following: 67
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 100.0
+    gen_tps: 55.0
+    memory_gb: 5.5
+  m4-max-128:
+    prompt_tps: 148.0
+    gen_tps: 82.0
+    memory_gb: 5.5
+  m5-max-128:
+    prompt_tps: 162.0
+    gen_tps: 90.0
+    memory_gb: 5.5
+tags:
+  - balanced
+  - agent-ready

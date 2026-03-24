@@ -1,0 +1,45 @@
+id: qwen3.5-32b
+name: Qwen 3.5 32B
+family: Qwen 3.5
+params_b: 32.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Qwen3.5-32B-4bit
+    disk_size_gb: 18.0
+  int8:
+    hf_repo: mlx-community/Qwen3.5-32B-8bit
+    disk_size_gb: 34.0
+  bf16:
+    hf_repo: Qwen/Qwen3.5-32B
+    disk_size_gb: 65.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: true
+  reasoning_parser: qwen3
+  vision: false
+quality:
+  overall: 84
+  coding: 82
+  reasoning: 83
+  instruction_following: 86
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 28.0
+    gen_tps: 16.0
+    memory_gb: 20.0
+  m4-max-128:
+    prompt_tps: 42.0
+    gen_tps: 24.0
+    memory_gb: 20.0
+  m5-max-128:
+    prompt_tps: 46.0
+    gen_tps: 27.0
+    memory_gb: 20.0
+tags:
+  - quality
+  - agent-ready
+  - thinking

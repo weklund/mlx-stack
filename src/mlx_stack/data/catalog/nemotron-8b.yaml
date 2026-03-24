@@ -1,0 +1,44 @@
+id: nemotron-8b
+name: Nemotron 8B
+family: Nemotron
+params_b: 8.0
+architecture: transformer
+min_mlx_lm_version: "0.22.0"
+sources:
+  int4:
+    hf_repo: mlx-community/Nemotron-Mini-8B-4bit
+    disk_size_gb: 4.5
+  int8:
+    hf_repo: mlx-community/Nemotron-Mini-8B-8bit
+    disk_size_gb: 8.5
+  bf16:
+    hf_repo: nvidia/Nemotron-Mini-8B
+    disk_size_gb: 16.0
+    convert_from: true
+capabilities:
+  tool_calling: true
+  tool_call_parser: hermes
+  thinking: false
+  reasoning_parser: null
+  vision: false
+quality:
+  overall: 65
+  coding: 60
+  reasoning: 58
+  instruction_following: 70
+benchmarks:
+  m4-pro-48:
+    prompt_tps: 98.0
+    gen_tps: 54.0
+    memory_gb: 5.5
+  m4-max-128:
+    prompt_tps: 145.0
+    gen_tps: 80.0
+    memory_gb: 5.5
+  m5-max-128:
+    prompt_tps: 160.0
+    gen_tps: 88.0
+    memory_gb: 5.5
+tags:
+  - balanced
+  - agent-ready
