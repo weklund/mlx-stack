@@ -1,0 +1,26 @@
+{
+  "featureId": "fix-lifecycle-preflight-and-readonly",
+  "reviewedAt": "2026-03-24T05:18:16Z",
+  "commitId": "5f008e0",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed original failed `up-command` and `status-command` diffs/reports plus fix commit `5f008e0`. The fix correctly adds preflight local-model checks before tier startup (`src/mlx_stack/core/stack_up.py:250`, invoked at `:708`) with clear pull guidance and skipped-tier behavior, and it removes global CLI data-home creation so read-only commands no longer create state (`src/mlx_stack/cli/main.py:148` now has no `ensure_data_home()` call). No remaining blocking gaps were found for the scoped rerun failures.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The configured `cli-feature` skill remains unavailable at runtime, so workers continue deviating from intended guided procedure despite the feature metadata requiring that skill.",
+      "evidence": "worker-transcripts.jsonl:31 for session `90ecdfed-da73-4610-8084-c2b2f1a301f1` contains `Tool: Skill {\"skill\": \"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; handoff.skillFeedback.deviations reports the same."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill instructions are still out of sync with this repo's actual command-registration location.",
+      "evidence": ".factory/skills/cli-feature/SKILL.md:189 instructs registering commands in `src/mlx_stack/cli/__init__.py`, while this repo registers in `src/mlx_stack/cli/main.py` (e.g., lines 158-177)."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/lifecycle/scrutiny/reviews/up-command.json; .factory/validation/lifecycle/scrutiny/reviews/status-command.json",
+  "summary": "PASS: rerun fix feature addresses the scoped prior scrutiny failures (up missing-model preflight + status/read-only data-home side effect) with no new blocking issues found."
+}

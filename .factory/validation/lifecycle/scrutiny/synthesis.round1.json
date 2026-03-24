@@ -1,0 +1,82 @@
+{
+  "milestone": "lifecycle",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 4,
+    "passed": 0,
+    "failed": 4,
+    "failedFeatures": [
+      "process-management",
+      "up-command",
+      "down-command",
+      "status-command"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "process-management",
+      "severity": "blocking",
+      "description": "start_service() can leave an unmanaged orphan subprocess if PID file write fails after process launch (src/mlx_stack/core/process.py:557)."
+    },
+    {
+      "featureId": "up-command",
+      "severity": "blocking",
+      "description": "Startup flow lacks explicit missing-model handling and can degrade into generic launch/health failures instead of clear missing-model errors (src/mlx_stack/core/stack_up.py:637)."
+    },
+    {
+      "featureId": "up-command",
+      "severity": "blocking",
+      "description": "Corrupt PID files can trigger uncaught ProcessError during startup probing, leaving a traceback path rather than graceful cleanup/error handling (src/mlx_stack/core/stack_up.py:577; src/mlx_stack/core/process.py:167-194; src/mlx_stack/cli/up.py:146-150)."
+    },
+    {
+      "featureId": "down-command",
+      "severity": "blocking",
+      "description": "down can clear PID tracking and report completion without confirming process termination in all forced-stop outcomes (src/mlx_stack/core/process.py:617)."
+    },
+    {
+      "featureId": "status-command",
+      "severity": "blocking",
+      "description": "status is not read-only end-to-end because global CLI callback creates data home via ensure_data_home() when missing (src/mlx_stack/cli/main.py:151)."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "skills",
+      "suggestion": "Fix skill registry availability so `cli-feature` is invokable in worker runtime when features declare `skillName: cli-feature`.",
+      "evidence": "All four lifecycle feature transcript skeletons show Skill invocation failure (`Skill \"cli-feature\" not found`) despite the skill file existing at .factory/skills/cli-feature/SKILL.md.",
+      "isSystemic": true
+    },
+    {
+      "target": "skills",
+      "suggestion": "Update `.factory/skills/cli-feature/SKILL.md` command-registration guidance to match the repository pattern that registers commands in `src/mlx_stack/cli/main.py`.",
+      "evidence": "status-command review notes SKILL.md points to `cli/__init__.py` while actual registration happens in `cli/main.py`.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Repeated reports that `cli-feature` skill is unavailable at runtime.",
+      "reason": "duplicate"
+    }
+  ],
+  "previousRound": null
+}

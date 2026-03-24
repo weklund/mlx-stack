@@ -1,0 +1,28 @@
+{
+  "featureId": "fix-lifecycle-process-robustness",
+  "reviewedAt": "2026-03-24T05:18:08Z",
+  "commitId": "086f2ec",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix commit addresses the three targeted lifecycle robustness failures: start_service now terminates spawned children when PID-file write fails, startup PID probing now handles corrupt PID files without uncaught ProcessError tracebacks, and shutdown logic now verifies post-SIGKILL liveness before removing PID tracking.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/stack_down.py",
+        "line": 179,
+        "severity": "non_blocking",
+        "description": "_stop_single_service() reports status=\"stopped\" for any non-None stop_service() result, but stop_service() can return a result even when termination is unconfirmed (`_terminate_process` -> `(False, False)` in src/mlx_stack/core/process.py:685). This preserves PID tracking correctly, but user-facing down results can still overstate shutdown success in that edge case."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata specifies `skillName: cli-feature`, but runtime skill invocation still fails in worker sessions despite the skill file being present in-repo.",
+      "evidence": "Fix transcript skeleton (session f83be4a0-242c-4bdb-994e-11f3b376fc78) shows `Tool: Skill {\"skill\":\"cli-feature\"}` -> `Error: Skill \"cli-feature\" not found`; handoff `skillFeedback.suggestedChanges` repeats this mismatch. Skill file exists at .factory/skills/cli-feature/SKILL.md."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/lifecycle/scrutiny/reviews/process-management.json, .factory/validation/lifecycle/scrutiny/reviews/up-command.json, .factory/validation/lifecycle/scrutiny/reviews/down-command.json",
+  "summary": "Reviewed prior failed lifecycle reviews, original diffs (eb151f1, 1ceaf73, b377667), fix transcript skeleton/handoff, and fix diff in commit 086f2ec. Result: PASS for targeted fixes, with one remaining non-blocking shutdown-status reporting edge case noted."
+}

@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-lifecycle-typecheck",
+  "reviewedAt": "2026-03-24T05:15:42Z",
+  "commitId": "8da8c0f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix cleanly addresses the pyright failure by guarding the optional tier error string before substring membership. The assertion semantics remain intact (it still fails if the expected diagnostic is absent), and the change is narrowly scoped to the failing test path without introducing behavioral regressions in the lifecycle remediation chain.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata declares `skillName: cli-feature`, but this worker session transcript shows only `mission-worker-base` invocation and no `cli-feature` invocation.",
+      "evidence": "features.json entry `fix-lifecycle-typecheck` sets `skillName` to `cli-feature`; worker-transcripts session `dc3b2de3-a066-4783-98d1-c6e4ad8e3204` skeleton begins with `Tool: Skill {\"skill\": \"mission-worker-base\"}` and does not show a `cli-feature` call."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "PASS: commit 8da8c0f resolves the line-336 `str | None` membership type error in `tests/unit/test_lifecycle_fixes.py` and preserves the up/status remediation intent established by the prior lifecycle fixes."
+}
