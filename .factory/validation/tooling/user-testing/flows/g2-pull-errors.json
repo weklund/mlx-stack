@@ -1,0 +1,91 @@
+{
+  "groupId": "g2-pull-errors",
+  "testedAt": "2026-03-24T12:49:21.739276+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/tooling-g2",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/g2-pull-errors"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "commands": [
+    {
+      "name": "pull_error_and_inline_bench_flow",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-g2 uv run mlx-stack pull scenarios (invalid model, network failure/retry, bf16 conversion failure, pull --bench)",
+      "exitCode": 0,
+      "evidence": "tooling/g2-pull-errors/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-002",
+      "status": "pass",
+      "reason": "int4 pull used mlx-community source and bf16 pull resolved to convert-from source (`google/gemma-3-4b-it`) with `Type: converted`.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-008",
+      "status": "fail",
+      "reason": "Network failure path did clean up partial download directory, but user-facing output included a long raw traceback from underlying HF CLI rather than a concise clean error.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-009",
+      "status": "pass",
+      "reason": "Invalid model ID returned clear non-zero error and suggested `mlx-stack models --catalog`.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-010",
+      "status": "pass",
+      "reason": "Conversion failure produced explicit mlx_lm module error output and removed partial target directory.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-011",
+      "status": "pass",
+      "reason": "Transient failure simulation showed automatic second attempt and final message suggesting network/HF authentication checks when retry also failed.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-014",
+      "status": "fail",
+      "reason": "`pull --bench` downloaded model but benchmark phase timed out waiting for temporary vllm instance health and produced no saved benchmark artifact.",
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "`huggingface-cli` binary name no longer present in modern huggingface_hub; only `hf` exists by default.",
+      "resolved": true,
+      "resolution": "Created temporary `/tmp/huggingface-cli` wrapper delegating to `hf` to continue validation.",
+      "affectedAssertions": [
+        "VAL-PULL-001",
+        "VAL-PULL-002",
+        "VAL-PULL-008",
+        "VAL-PULL-011",
+        "VAL-CROSS-014"
+      ],
+      "evidence": [
+        "tooling/g2-pull-errors/commands.log"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 4 passed, 2 failed, 0 blocked."
+}

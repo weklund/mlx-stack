@@ -1,0 +1,98 @@
+{
+  "groupId": "g1-pull-core",
+  "testedAt": "2026-03-24T12:49:21.739276+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/tooling-g1",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/g1-pull-core"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "commands": [
+    {
+      "name": "pull_and_quant_and_inventory_flow",
+      "command": "MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-g1 uv run mlx-stack pull/config/models flows (gemma3-4b int4/int8/fp32 + low-disk image test)",
+      "exitCode": 0,
+      "evidence": "tooling/g1-pull-core/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-001",
+      "status": "pass",
+      "reason": "`pull gemma3-4b --quant int4` created model directory under isolated models dir with expected files.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-003",
+      "status": "pass",
+      "reason": "Default quant from config was used (`int8`), explicit `--quant int4` override was honored, and invalid quant `fp32` was rejected with valid values.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-004",
+      "status": "pass",
+      "reason": "Using a temporary 600MB mounted disk image as model-dir caused pull to fail pre-download with required vs available disk space details.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-005",
+      "status": "blocked",
+      "reason": "CLI showed download start lines, but this environment completed transfers via `hf` without granular progress percentages/rates, so continuous progress updates could not be conclusively observed.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-006",
+      "status": "pass",
+      "reason": "Re-running pull for existing int4 model reported already exists and suggested `--force` without re-downloading.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-PULL-007",
+      "status": "pass",
+      "reason": "Successful pulls updated `models.json` and models listing reflected downloaded model metadata.",
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Catalog small model `qwen3.5-0.8b` repository no longer exists publicly; switched validation to `gemma3-4b`.",
+      "resolved": true,
+      "resolution": "Validated assertions with an available catalog model to continue user-surface testing.",
+      "affectedAssertions": [
+        "VAL-PULL-001",
+        "VAL-PULL-003",
+        "VAL-PULL-006",
+        "VAL-PULL-007"
+      ],
+      "evidence": [
+        "tooling/g1-pull-core/commands.log"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Progress-bar style updates were not emitted by underlying HF CLI in this run, limiting observability for VAL-PULL-005.",
+      "affectedAssertions": [
+        "VAL-PULL-005"
+      ],
+      "quickFixAttempted": "Captured full stdout from pull commands and retried with multiple model pulls; only start/finish lines were emitted."
+    }
+  ],
+  "summary": "Tested 6 assertions: 5 passed, 0 failed, 1 blocked."
+}

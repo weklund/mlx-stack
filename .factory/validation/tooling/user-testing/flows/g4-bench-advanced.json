@@ -1,0 +1,68 @@
+{
+  "groupId": "g4-bench-advanced",
+  "testedAt": "2026-03-24T12:49:21.739276+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/tooling-g4",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/g4-bench-advanced"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "vllm-mlx"
+  ],
+  "commands": [
+    {
+      "name": "bench_advanced_flow",
+      "command": "Manual qwen running-tier benchmark + model-target benchmark failure + simulated missing vllm-mlx auto-install check",
+      "exitCode": 0,
+      "evidence": "tooling/g4-bench-advanced/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-BENCH-006",
+      "status": "pass",
+      "reason": "When model-target benchmark failed, no bench-temp process or stale PID file remained; only manually started tier process was present.",
+      "evidence": [
+        "tooling/g4-bench-advanced/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-007",
+      "status": "pass",
+      "reason": "After temporarily removing `vllm-mlx` binary from PATH location, bench auto-installed pinned v0.2.6 and proceeded to target resolution.",
+      "evidence": [
+        "tooling/g4-bench-advanced/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-008",
+      "status": "fail",
+      "reason": "Tool-calling benchmark ran for tool-capable qwen3-8b but reported `No tool calls in response` instead of validating a proper tool call structure.",
+      "evidence": [
+        "tooling/g4-bench-advanced/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-009",
+      "status": "blocked",
+      "reason": "Temp-instance benchmark path failed before successful startup/visible bind details, preventing direct user-surface verification of chosen non-conflicting temporary port.",
+      "evidence": [
+        "tooling/g4-bench-advanced/commands.log"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Temp-instance startup path aborts early, limiting observability of bound temporary port in CLI output for BENCH-009.",
+      "affectedAssertions": [
+        "VAL-BENCH-009"
+      ],
+      "quickFixAttempted": "Inspected bench-temp logs and process list; startup failed before healthy service lifecycle could be observed."
+    }
+  ],
+  "summary": "Tested 4 assertions: 2 passed, 1 failed, 1 blocked."
+}

@@ -1,0 +1,77 @@
+{
+  "groupId": "g3-bench-core",
+  "testedAt": "2026-03-24T12:49:21.739276+00:00",
+  "isolation": {
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/tooling-g3",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/tooling/g3-bench-core"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "vllm-mlx"
+  ],
+  "commands": [
+    {
+      "name": "bench_core_flow",
+      "command": "Manual running-tier server + MLX_STACK_HOME=/tmp/mlx-stack-user-testing/tooling-g3 uv run mlx-stack bench fast|gemma3-4b|gemma3-4b --save|does-not-exist",
+      "exitCode": 0,
+      "evidence": "tooling/g3-bench-core/commands.log"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-BENCH-001",
+      "status": "pass",
+      "reason": "`bench fast` against running tier executed 3 iterations and reported prompt/gen TPS mean \u00b1 stddev with iteration table.",
+      "evidence": [
+        "tooling/g3-bench-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-002",
+      "status": "fail",
+      "reason": "`bench gemma3-4b` failed to start healthy temporary instance; command errored instead of completing benchmark for model target.",
+      "evidence": [
+        "tooling/g3-bench-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-003",
+      "status": "pass",
+      "reason": "`bench fast` displayed catalog comparison table with PASS/WARN/FAIL classification labels and delta percentages.",
+      "evidence": [
+        "tooling/g3-bench-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-004",
+      "status": "fail",
+      "reason": "`bench gemma3-4b --save` failed before benchmark completion; no benchmarks file was created.",
+      "evidence": [
+        "tooling/g3-bench-core/commands.log"
+      ]
+    },
+    {
+      "id": "VAL-BENCH-005",
+      "status": "pass",
+      "reason": "Missing target emitted non-zero error including valid tier names and suggestion to use `models --catalog`.",
+      "evidence": [
+        "tooling/g3-bench-core/commands.log"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [
+    {
+      "description": "Temporary benchmark instance startup path invokes vllm-mlx with incompatible arguments in this build, causing consistent health timeouts for model-target benchmarks.",
+      "affectedAssertions": [
+        "VAL-BENCH-002",
+        "VAL-BENCH-004"
+      ],
+      "quickFixAttempted": "Validated running-tier path separately with manual `vllm-mlx serve`; only temp-instance path remained broken."
+    }
+  ],
+  "summary": "Tested 5 assertions: 3 passed, 2 failed, 0 blocked."
+}

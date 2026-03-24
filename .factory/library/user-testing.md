@@ -52,3 +52,10 @@ Testing surface, required testing skills/tools, resource cost classification per
 ## Lifecycle milestone rerun notes (2026-03-24)
 
 - In isolated lifecycle rerun flow `r2-g1-fixes`, macOS denied `psutil.net_connections(kind='inet')` with `AccessDenied`; port conflict output fell back to `PID 0 (<unknown>)` even though preflight conflict skipping worked. Treat owner-resolution checks as potentially permission-sensitive on this host.
+
+## Tooling milestone run notes (2026-03-24)
+
+- Catalog repository availability has drifted: `qwen3.5-*` int4 repos referenced in catalog returned `RepositoryNotFound` during live pull testing. `gemma3-*`, `deepseek-r1-8b`, and `qwen3-8b` int4 repos were reachable.
+- The current Hugging Face CLI package installs `hf` (not `huggingface-cli`). For live pull validation, a local wrapper script (`/tmp/huggingface-cli -> hf`) was used so `mlx-stack pull` subprocess invocation could execute.
+- `pull --bench` currently fails in benchmark phase because temporary bench instance startup never becomes healthy; bench-temp logs show the CLI is invoking `vllm-mlx` with an argument shape incompatible with modern `vllm-mlx` (`serve` subcommand required).
+- `bench <running-tier>` works when the tier is started with `vllm-mlx serve ...`, but `bench <model-id>` temporary-instance flows fail with the same startup incompatibility noted above.
