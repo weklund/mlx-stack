@@ -15,6 +15,7 @@ from rich.text import Text
 
 from mlx_stack import __version__
 from mlx_stack.cli.config import config as config_group
+from mlx_stack.cli.down import down as down_command
 from mlx_stack.cli.init import init as init_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
@@ -173,14 +174,7 @@ def pull(model: str | None, quant: str | None, bench: bool, force: bool) -> None
 
 cli.add_command(models_command, "models")
 cli.add_command(up_command, "up")
-
-
-@cli.command()
-@click.option("--tier", type=str, help="Stop only the specified tier.")
-def down(tier: str | None) -> None:
-    """Stop all managed services."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the down-command feature.")
-    raise SystemExit(1)
+cli.add_command(down_command, "down")
 
 
 @cli.command()
