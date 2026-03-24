@@ -599,6 +599,75 @@ class TestSingleIteration:
         assert result.gen_tps == 0.0
 
     @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_reasoning_content_sets_first_token_time(self, mock_stream: MagicMock) -> None:
+        """Thinking models emit delta.reasoning_content for <think> tokens
+        instead of delta.content. The streaming loop must detect both fields
+        so that first_token_time is set and TPS calculates correctly.
+
+        Without this fix, TPS would be 0.0 for thinking models because
+        first_token_time was never set.
+        """
+        # SSE lines use only reasoning_content (no content field) to simulate
+        # a thinking model that emits <think> tokens before any content.
+        sse_lines = [
+            'data: {"choices":[{"delta":{"reasoning_content":"Let me think..."}}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"The answer is..."}}]}',
+            'data: {"choices":[{"delta":{"content":"Hello"}}],'
+            '"usage":{"prompt_tokens":1000,"completion_tokens":100}}',
+            "data: [DONE]",
+        ]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.iter_lines.return_value = iter(sse_lines)
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = _run_single_iteration(
+            port=8000,
+            model_name="test-model",
+            prompt="test prompt",
+            max_tokens=100,
+        )
+
+        assert isinstance(result, IterationResult)
+        assert result.prompt_tokens == 1000
+        assert result.completion_tokens == 100
+        # Key assertion: TPS should NOT be zero because reasoning_content
+        # should have triggered first_token_time
+        assert result.prompt_tps > 0
+        assert result.gen_tps > 0
+
+    @patch("mlx_stack.core.benchmark.httpx.stream")
+    def test_only_reasoning_content_sets_first_token_time(self, mock_stream: MagicMock) -> None:
+        """When ALL chunks use reasoning_content and none use content,
+        first_token_time should still be set and TPS should be non-zero.
+        """
+        sse_lines = [
+            'data: {"choices":[{"delta":{"reasoning_content":"thinking..."}}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"more thinking..."}}]}',
+            'data: {"choices":[{"delta":{"reasoning_content":"done"}}],'
+            '"usage":{"prompt_tokens":500,"completion_tokens":50}}',
+            "data: [DONE]",
+        ]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.iter_lines.return_value = iter(sse_lines)
+        mock_stream.return_value.__enter__ = MagicMock(return_value=mock_response)
+        mock_stream.return_value.__exit__ = MagicMock(return_value=False)
+
+        result = _run_single_iteration(
+            port=8000,
+            model_name="test-model",
+            prompt="test prompt",
+            max_tokens=100,
+        )
+
+        # Both TPS values should be non-zero since reasoning_content tokens
+        # are detected
+        assert result.prompt_tps > 0
+        assert result.gen_tps > 0
+
+    @patch("mlx_stack.core.benchmark.httpx.stream")
     def test_prompt_tps_and_gen_tps_are_distinct(self, mock_stream: MagicMock) -> None:
         """Verify prompt_tps and gen_tps compute to different values.
 
@@ -765,6 +834,44 @@ class TestToolCallBenchmark:
         result = _run_tool_call_benchmark(port=8000, model_name="test")
         assert result.success is False
         assert "location" in (result.error or "")
+
+    @patch("mlx_stack.core.benchmark.httpx.post")
+    def test_max_tokens_is_1024_for_thinking_models(self, mock_post: MagicMock) -> None:
+        """Tool-call benchmark uses max_tokens=1024 so thinking models have
+        enough budget for <think>...</think> tags before emitting <tool_call>.
+
+        Qwen3 thinking models can consume 150+ tokens during reasoning before
+        producing the actual tool call. A budget of 200 was not enough.
+        """
+        from mlx_stack.core.benchmark import _run_tool_call_benchmark
+
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {
+            "choices": [
+                {
+                    "message": {
+                        "tool_calls": [
+                            {
+                                "function": {
+                                    "name": "get_weather",
+                                    "arguments": '{"location": "San Francisco, CA"}',
+                                }
+                            }
+                        ]
+                    }
+                }
+            ]
+        }
+        mock_post.return_value = mock_response
+
+        _run_tool_call_benchmark(port=8000, model_name="test")
+
+        # Verify the payload sent to the API has max_tokens=1024
+        mock_post.assert_called_once()
+        call_kwargs = mock_post.call_args
+        payload = call_kwargs[1]["json"] if "json" in call_kwargs[1] else call_kwargs[0][1]
+        assert payload["max_tokens"] == 1024
 
 
 # --------------------------------------------------------------------------- #

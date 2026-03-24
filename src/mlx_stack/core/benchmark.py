@@ -409,11 +409,14 @@ def _run_single_iteration(
                     prompt_tokens = usage.get("prompt_tokens", prompt_tokens)
                     completion_tokens = usage.get("completion_tokens", completion_tokens)
 
-                # Track first content token for TTFT measurement
+                # Track first content token for TTFT measurement.
+                # Thinking models (e.g. Qwen3) emit reasoning_content for
+                # <think> tokens instead of content — check both fields so
+                # first_token_time is set and TPS is calculated correctly.
                 choices = chunk.get("choices", [])
                 if choices:
                     delta = choices[0].get("delta", {})
-                    content = delta.get("content")
+                    content = delta.get("content") or delta.get("reasoning_content")
                     if content and first_token_time is None:
                         first_token_time = time.monotonic()
                     if content:
@@ -636,7 +639,7 @@ def _run_tool_call_benchmark(
         ],
         "tools": [TOOL_DEFINITION],
         "tool_choice": "auto",
-        "max_tokens": 200,
+        "max_tokens": 1024,
         "temperature": 0.0,
     }
 
