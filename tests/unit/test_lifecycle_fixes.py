@@ -333,9 +333,10 @@ class TestPreflightInStartup:
         statuses = {t.name: t.status for t in result.tiers}
         # big-model (standard) should be skipped — not on disk
         assert statuses["standard"] == "skipped"
-        assert "not found locally" in next(
+        message = next(
             t.error for t in result.tiers if t.name == "standard"
-        )
+        ) or ""
+        assert "not found locally" in message
         # fast-model (fast) should be healthy — on disk
         assert statuses["fast"] == "healthy"
 
