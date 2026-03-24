@@ -8,11 +8,20 @@ Architectural decisions, patterns discovered, and conventions.
 
 ## Project Structure
 - `src/mlx_stack/` — main package (src layout)
-- `src/mlx_stack/cli.py` — Click CLI entry point with command group
-- `src/mlx_stack/commands/` — one module per CLI command
+- `src/mlx_stack/cli/` — Click CLI package
+  - `cli/__init__.py` — package init
+  - `cli/main.py` — CLI entry point with Click command group
+  - `cli/profile.py` — `mlx-stack profile` command
+  - `cli/config.py` — `mlx-stack config` commands
 - `src/mlx_stack/core/` — shared business logic modules
-- `src/mlx_stack/catalog/` — shipped YAML catalog files (15 models)
-- `src/mlx_stack/data/` — static data files (chip_specs.yaml, benchmarks.json, verification.yaml)
+  - `core/hardware.py` — hardware detection (Apple Silicon profiling)
+  - `core/config.py` — configuration management (YAML-based)
+  - `core/catalog.py` — model catalog system (query API over YAML entries)
+  - `core/deps.py` — dependency management (auto-installing uv tools)
+  - `core/paths.py` — path utilities (`~/.mlx-stack/` and friends)
+- `src/mlx_stack/data/` — static data files
+  - `data/catalog/` — shipped YAML catalog files (15 models)
+- `src/mlx_stack/utils/` — utility modules
 - `tests/` — pytest tests
 - `tests/fixtures/` — mock data (profiles, catalogs, etc.)
 
@@ -24,6 +33,7 @@ Architectural decisions, patterns discovered, and conventions.
 - All state lives in `~/.mlx-stack/` (configurable via `model-dir` for models)
 - Tests use `tmp_path` pytest fixture — NEVER touch real `~/.mlx-stack/`
 - External commands (sysctl, system_profiler, subprocess) are always mocked in unit tests
+- Note: The config module currently sends success output to stderr. Future features should use stdout for successful output and stderr only for errors/warnings.
 
 ## Key Design Decisions
 - One vllm-mlx process per model (ADR-003)

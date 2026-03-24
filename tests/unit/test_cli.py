@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from click.testing import CliRunner
 
 from mlx_stack import __version__
@@ -106,6 +108,45 @@ class TestUnknownCommand:
         runner = CliRunner()
         result = runner.invoke(cli, ["foobar"])
         assert "--help" in result.output
+
+
+class TestDataHomeAutoCreation:
+    """Tests for ensure_data_home() being called in the CLI group callback."""
+
+    def test_bare_command_creates_data_home(
+        self, clean_mlx_stack_home: Path,
+    ) -> None:
+        """Running bare mlx-stack with no args auto-creates the data directory."""
+        assert not clean_mlx_stack_home.exists()
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        assert clean_mlx_stack_home.exists()
+        assert clean_mlx_stack_home.is_dir()
+
+    def test_subcommand_creates_data_home(
+        self, clean_mlx_stack_home: Path,
+    ) -> None:
+        """Running a subcommand on a clean system auto-creates the data directory."""
+        assert not clean_mlx_stack_home.exists()
+        runner = CliRunner()
+        # recommend is a placeholder that exits non-zero, but cli() body still runs
+        runner.invoke(cli, ["recommend"])
+        assert clean_mlx_stack_home.exists()
+        assert clean_mlx_stack_home.is_dir()
+
+    def test_existing_data_home_not_affected(
+        self, mlx_stack_home: Path,
+    ) -> None:
+        """Running CLI when data home already exists doesn't cause errors."""
+        assert mlx_stack_home.exists()
+        marker = mlx_stack_home / "test-marker.txt"
+        marker.write_text("keep me")
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        assert mlx_stack_home.exists()
+        assert marker.read_text() == "keep me"
 
 
 class TestPlaceholderCommands:
