@@ -1,0 +1,140 @@
+{
+  "groupId": "r1-g1-cross-flows",
+  "testedAt": "2026-03-24T14:38:24.939845+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/r1-g1-cross-flows",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/misc-cross-area/r1-g1-cross-flows",
+    "guidanceSection": "Flow Validator Guidance: CLI"
+  },
+  "toolsUsed": [
+    "terminal",
+    "uv run mlx-stack",
+    "curl",
+    "python"
+  ],
+  "commands": [
+    {
+      "name": "cross001_first_time_journey",
+      "command": "reset isolated MLX_STACK_HOME -> mlx-stack init --accept-defaults -> pull each stack model -> mlx-stack up -> curl http://127.0.0.1:4000/v1/models -> mlx-stack down -> verify no pid files and ports closed",
+      "exitCode": 0,
+      "evidence": "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-01-init.txt"
+    },
+    {
+      "name": "cross007_config_propagation",
+      "command": "config set litellm-port 5000; init; pull all; up; curl :5000; down; set memory-budget-pct 60; recommend/init; set default-quant int8; pull without --quant; set model-dir custom; pull/models validation",
+      "exitCode": 0,
+      "evidence": "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-04-up-port5000.txt"
+    },
+    {
+      "name": "cross012_saved_benchmark_override",
+      "command": "write unknown profile m9-max-128 (bandwidth 404) -> recommend --show-all (baseline estimated 77.0 for qwen3.5-8b) -> bench qwen3.5-8b --save -> recommend --show-all",
+      "exitCode": 0,
+      "evidence": "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-03-bench-save.txt"
+    },
+    {
+      "name": "cross013_data_consistency",
+      "command": "profile -> recommend -> init -> bench; pull updates models.json and models output; tamper schema_version to 999 then up (expect reject); init --force; up --dry-run and verify vllm_flags translation",
+      "exitCode": 0,
+      "evidence": "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-10-analysis.json"
+    }
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-CROSS-001",
+      "status": "pass",
+      "reason": "In a clean isolated home, init generated stack/litellm config, all three configured tier models were pulled, up reported healthy services including LiteLLM on port 4000, /v1/models returned HTTP 200 with tier IDs (standard/fast/longctx), and down left no PID files with ports 4000/8000/8001/8002 closed.",
+      "evidence": [
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-00-reset.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-01-init.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-01a-stack-tiers.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-02-pull-all.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-03-up.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-04-models-httpcode.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-04-models-response.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-05-down.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-001-06-post-down-checks.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "status": "blocked",
+      "reason": "Propagation checks passed for memory-budget-pct (recommend/init budget 76.8 GB), default-quant (pull without --quant used int8), and model-dir (pull/models used custom directory). The exact litellm-port 5000 startup requirement was blocked by an external host-level port conflict (up reported 'Port 5000 already in use by PID 0 (<unknown>)' and curl to :5000 returned 403 from non-mlx-stack service). Workaround validation with port 5001 confirmed up starts LiteLLM on configured non-default port.",
+      "evidence": [
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-01-config-set-litellm-port.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-02-init-after-litellm-port.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-03-pull-all-for-up.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-04-up-port5000.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-05-models-port5000-httpcode.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-05-models-port5000-response.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-07-config-set-memory-budget-60.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-08-recommend-budget60.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-09-init-budget60-force.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-10-config-set-default-quant-int8.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-11-pull-default-quant-int8.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-12-config-set-model-dir-custom.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-13-pull-after-custom-model-dir.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-14-models-after-custom-model-dir.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-15-verification.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-18-workaround-up-port5001.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-007-19-workaround-models-port5001-httpcode.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "status": "pass",
+      "reason": "With unknown profile m9-max-128 (bandwidth 404), recommend --show-all initially showed qwen3.5-8b at 77.0 tok/s (est.). After bench qwen3.5-8b --save, saved benchmark recorded gen_tps=84.7386 and subsequent recommend used 84.7 tok/s for qwen3.5-8b without '(est.)', demonstrating saved benchmark override and estimated-label removal for the saved model.",
+      "evidence": [
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-01-write-profile.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-02-recommend-before-bench.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-03-bench-save.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-04-recommend-after-bench.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-012-05-saved-benchmark.json"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "pass",
+      "reason": "profile wrote profile.json (m5-max-128) and downstream recommend/init/bench consumed it successfully; pull created models.json entry that matched models CLI output; up rejected unsupported schema_version=999 with exit code 1; and all tier vllm_flags from stack YAML appeared in up --dry-run command lines.",
+      "evidence": [
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-01-profile.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-01a-profile.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-02-recommend.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-03-init.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-04-bench.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-05-pull.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-06-models.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-06a-models.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-07a-schema-tamper.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-07b-up-unsupported-schema.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-07c-up-unsupported-schema-exitcode.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-09a-stack-vllm-flags.json",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-09b-up-dry-run.txt",
+        "misc-cross-area/r1-g1-cross-flows/VAL-CROSS-013-10-analysis.json"
+      ]
+    }
+  ],
+  "frictions": [
+    {
+      "description": "litellm pinned-version mismatch warning (`installed v1.82.6, expected v1.67.2`) appears in up output and adds noise during flow checks.",
+      "resolved": true,
+      "resolution": "Treated as non-blocking for behavior validation; startup and assertions proceeded normally.",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-007"
+      ]
+    }
+  ],
+  "blockers": [
+    {
+      "description": "Host port 5000 is already occupied by a non-mlx-stack process in this environment, preventing direct validation that `litellm-port 5000` can actually bind and serve.",
+      "affectedAssertions": [
+        "VAL-CROSS-007"
+      ],
+      "quickFixAttempted": "Confirmed config propagation to up (skipped with explicit port-5000 conflict message), then validated same behavior on nearby free port 5001 where up started LiteLLM and /v1/models returned 200."
+    }
+  ],
+  "summary": "Tested 4 assigned misc cross assertions in isolated CLI mode: 3 passed (VAL-CROSS-001, VAL-CROSS-012, VAL-CROSS-013), 0 failed, 1 blocked (VAL-CROSS-007 blocked by external port-5000 conflict despite successful propagation checks for other config fields)."
+}

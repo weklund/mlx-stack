@@ -62,3 +62,10 @@ Testing surface, required testing skills/tools, resource cost classification per
 - Tooling rerun (round 2) confirms pull progress is now user-visible with incremental percent updates (`0% ... 100%`) and temp bench-instance flows now start successfully (`bench <model-id>` and `bench --save` pass, including non-conflicting temp-port binding evidence).
 - Remaining tooling gaps after tooling rerun round 2 were: (1) network-error pull still surfaced long upstream traceback output before the concise error summary, and (2) tool-calling benchmark still reported `No tool calls in response` for `qwen3-8b`.
 - Tooling rerun round 3 confirmed network-error pull output is now traceback-free for users (VAL-PULL-008 passed); tool-calling benchmark still fails for `qwen3-8b` with `No tool calls in response` (VAL-BENCH-008).
+
+## Misc-cross-area milestone run notes (2026-03-24)
+
+- User-testing flow `r1-g1-cross-flows` validated `VAL-CROSS-001`, `VAL-CROSS-012`, and `VAL-CROSS-013` as passing on the real CLI surface in isolated `MLX_STACK_HOME` mode.
+- `VAL-CROSS-007` remained blocked in this environment because host port `5000` was already occupied by a non-mlx-stack service; `up` correctly reported a conflict and skipped LiteLLM at that port.
+- A workaround run with `litellm-port 5001` confirmed the same config-propagation/startup behavior when a free port is used.
+
