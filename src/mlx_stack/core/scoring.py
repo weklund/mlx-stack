@@ -15,7 +15,7 @@ catalog benchmark data is not available.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
 from mlx_stack.core.catalog import BenchmarkResult, CatalogEntry

@@ -28,7 +28,6 @@ from mlx_stack.core.catalog import (
 )
 from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.scoring import (
-    DEFAULT_MEMORY_BUDGET_PCT,
     INTENT_WEIGHTS,
     TIER_FAST,
     TIER_LONGCTX,
@@ -38,17 +37,16 @@ from mlx_stack.core.scoring import (
     RecommendationResult,
     ScoredModel,
     ScoringError,
-    TierAssignment,
-    assign_tiers,
-    compute_memory_budget,
-    recommend,
-    score_and_filter,
-    score_model,
     _normalize_gen_tps_log,
     _normalize_memory_efficiency,
     _normalize_quality,
     _normalize_tool_calling,
     _resolve_benchmark,
+    assign_tiers,
+    compute_memory_budget,
+    recommend,
+    score_and_filter,
+    score_model,
 )
 
 # --------------------------------------------------------------------------- #
