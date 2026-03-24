@@ -1,34 +1,27 @@
 {
   "milestone": "misc-cross-area",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "assertionsSummary": {
-    "total": 4,
-    "passed": 3,
+    "total": 1,
+    "passed": 1,
     "failed": 0,
-    "blocked": 1
+    "blocked": 0
   },
   "passedAssertions": [
-    "VAL-CROSS-001",
-    "VAL-CROSS-012",
-    "VAL-CROSS-013"
+    "VAL-CROSS-007"
   ],
   "failedAssertions": [],
-  "blockedAssertions": [
-    {
-      "id": "VAL-CROSS-007",
-      "blockedBy": "Propagation checks passed for memory-budget-pct (recommend/init budget 76.8 GB), default-quant (pull without --quant used int8), and model-dir (pull/models used custom directory). The exact litellm-port 5000 startup requirement was blocked by an external host-level port conflict (up reported 'Port 5000 already in use by PID 0 (<unknown>)' and curl to :5000 returned 403 from non-mlx-stack service). Workaround validation with port 5001 confirmed up starts LiteLLM on configured non-default port."
-    }
-  ],
+  "blockedAssertions": [],
   "appliedUpdates": [
     {
       "target": "user-testing.md",
-      "description": "Added misc-cross-area run notes documenting pass/blocked outcomes and the host-level port 5000 conflict that blocked VAL-CROSS-007 exact-port verification.",
-      "source": "flow-report"
+      "description": "Documented misc-cross-area rerun outcome and setup fix: litellm proxy runtime required proxy extras/dependencies in the local uv tool environment before port-5050 endpoint validation could pass.",
+      "source": "setup"
     }
   ],
   "flowReports": [
-    ".factory/validation/misc-cross-area/user-testing/flows/r1-g1-cross-flows.json"
+    ".factory/validation/misc-cross-area/user-testing/flows/r2-g4-cross-port5050.json"
   ],
   "toolsUsed": [
     "terminal",
@@ -38,18 +31,15 @@
   ],
   "frictions": [
     {
-      "description": "litellm pinned-version mismatch warning (`installed v1.82.6, expected v1.67.2`) appears in up output and adds noise during flow checks.",
+      "description": "Fresh pull attempts for qwen3.5-0.8b reported missing huggingface-cli under strict-safe constraints.",
       "resolved": true,
-      "resolution": "Treated as non-blocking for behavior validation; startup and assertions proceeded normally.",
+      "resolution": "Used deepseek-r1-8b in isolated home to validate default-quant/model-dir propagation and overall assertion behavior.",
       "affectedAssertions": [
-        "VAL-CROSS-001",
         "VAL-CROSS-007"
       ]
     }
   ],
-  "dedupedBlockers": [
-    "Host port 5000 is already occupied by a non-mlx-stack process in this environment, preventing direct validation that `litellm-port 5000` can actually bind and serve."
-  ],
-  "generatedAt": "2026-03-24T14:40:59.994020+00:00",
-  "previousRound": null
+  "dedupedBlockers": [],
+  "generatedAt": "2026-03-24T15:50:49.928871+00:00",
+  "previousRound": ".factory/validation/misc-cross-area/user-testing/synthesis.round1.json"
 }

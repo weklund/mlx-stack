@@ -1,0 +1,89 @@
+{
+  "groupId": "r2-g4-cross-port5050",
+  "testedAt": "2026-03-24T15:48:10Z",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/r2-g4-cross-port5050-home",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/misc-cross-area/r2-g4-cross-port5050",
+    "mode": "strict-safe"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "curl",
+    "lsof",
+    "rg"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-007",
+      "title": "Config changes propagate to init and up",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set `litellm-port` to 5050 and regenerate stack (`init --accept-defaults --force`), then start `up --tier longctx`",
+          "expected": "LiteLLM starts on 5050 (not 4000)",
+          "observed": "Config get returned 5050; `up` summary showed litellm healthy on 5050; endpoint advertised as `http://localhost:5050/v1`"
+        },
+        {
+          "action": "Call proxy endpoints on 5050 and 4000 with curl",
+          "expected": "5050 responds successfully; 4000 is not the active proxy port",
+          "observed": "GET `http://127.0.0.1:5050/v1/models` returned HTTP 200 JSON; port 4000 connection failed"
+        },
+        {
+          "action": "Set `memory-budget-pct` to 60, run `recommend`, then `init --accept-defaults --force`",
+          "expected": "Recommend/init use 60% memory budget",
+          "observed": "Config get returned 60; both recommend and init outputs showed `Budget: 76.8 GB` on 128 GB hardware"
+        },
+        {
+          "action": "Set `default-quant` to int8 and run `pull` without `--quant`",
+          "expected": "Pull resolves to int8 by default",
+          "observed": "Pull output used `Quantization: int8`; a second pull confirmed `DeepSeek R1 8B (int8)` already exists in configured model-dir"
+        },
+        {
+          "action": "Set `model-dir` to custom path and run `pull`/`models`",
+          "expected": "Pull destination and models listing use custom path",
+          "observed": "Config get returned custom path; pull destination pointed to custom path; models output reported `Models directory: .../custom-models`"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-05-config-get-litellm-port-after.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-06-init-after-port5050.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-09-up-tier-longctx.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-13-config-get-memory-budget.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-14-recommend-after-budget60.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-15-init-after-budget60.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-17-config-get-default-quant.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-18-pull-default-quant-int8.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-21-config-get-model-dir-custom.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-22-pull-after-custom-model-dir.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-22b-pull-deepseek-after-custom-model-dir.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-23-models-after-custom-model-dir.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-24-custom-model-dir-ls.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-25-down-final.txt"
+        ],
+        "network": "curl GET http://127.0.0.1:5050/v1/models -> HTTP 200; curl GET http://127.0.0.1:4000/v1/models -> connection failed",
+        "ports": "lsof showed listener on 127.0.0.1:5050 while stack was up; no listeners on 5050/4000 after down",
+        "portChecks": [
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-10-curl-port-check.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-11-port-listeners.txt",
+          "misc-cross-area/r2-g4-cross-port5050/VAL-CROSS-007-SS-26-port-listeners-after-down.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Fresh pull attempts for `qwen3.5-0.8b` failed with `huggingface-cli not found` under strict-safe constraints (no installs/wrappers).",
+      "resolved": true,
+      "resolution": "Used existing local int8 model (`deepseek-r1-8b`) to validate default-quant and custom model-dir propagation through successful pull resolution and models output.",
+      "affectedAssertions": [
+        "VAL-CROSS-007"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "VAL-CROSS-007 retest in strict-safe mode passed: litellm-port 5050 propagated through config/init/up with live endpoint success on 5050, memory-budget 60 propagated to recommend/init, and default-quant/model-dir settings propagated to pull/models behavior."
+}

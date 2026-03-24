@@ -1,0 +1,55 @@
+{
+  "milestone": "misc-cross-area",
+  "round": 1,
+  "status": "fail",
+  "assertionsSummary": {
+    "total": 4,
+    "passed": 3,
+    "failed": 0,
+    "blocked": 1
+  },
+  "passedAssertions": [
+    "VAL-CROSS-001",
+    "VAL-CROSS-012",
+    "VAL-CROSS-013"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [
+    {
+      "id": "VAL-CROSS-007",
+      "blockedBy": "Propagation checks passed for memory-budget-pct (recommend/init budget 76.8 GB), default-quant (pull without --quant used int8), and model-dir (pull/models used custom directory). The exact litellm-port 5000 startup requirement was blocked by an external host-level port conflict (up reported 'Port 5000 already in use by PID 0 (<unknown>)' and curl to :5000 returned 403 from non-mlx-stack service). Workaround validation with port 5001 confirmed up starts LiteLLM on configured non-default port."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added misc-cross-area run notes documenting pass/blocked outcomes and the host-level port 5000 conflict that blocked VAL-CROSS-007 exact-port verification.",
+      "source": "flow-report"
+    }
+  ],
+  "flowReports": [
+    ".factory/validation/misc-cross-area/user-testing/flows/r1-g1-cross-flows.json"
+  ],
+  "toolsUsed": [
+    "terminal",
+    "uv run mlx-stack",
+    "curl",
+    "python"
+  ],
+  "frictions": [
+    {
+      "description": "litellm pinned-version mismatch warning (`installed v1.82.6, expected v1.67.2`) appears in up output and adds noise during flow checks.",
+      "resolved": true,
+      "resolution": "Treated as non-blocking for behavior validation; startup and assertions proceeded normally.",
+      "affectedAssertions": [
+        "VAL-CROSS-001",
+        "VAL-CROSS-007"
+      ]
+    }
+  ],
+  "dedupedBlockers": [
+    "Host port 5000 is already occupied by a non-mlx-stack process in this environment, preventing direct validation that `litellm-port 5000` can actually bind and serve."
+  ],
+  "generatedAt": "2026-03-24T14:40:59.994020+00:00",
+  "previousRound": null
+}

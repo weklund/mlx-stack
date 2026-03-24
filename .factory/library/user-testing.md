@@ -68,4 +68,6 @@ Testing surface, required testing skills/tools, resource cost classification per
 - User-testing flow `r1-g1-cross-flows` validated `VAL-CROSS-001`, `VAL-CROSS-012`, and `VAL-CROSS-013` as passing on the real CLI surface in isolated `MLX_STACK_HOME` mode.
 - `VAL-CROSS-007` remained blocked in this environment because host port `5000` was already occupied by a non-mlx-stack service; `up` correctly reported a conflict and skipped LiteLLM at that port.
 - A workaround run with `litellm-port 5001` confirmed the same config-propagation/startup behavior when a free port is used.
+- Rerun flow `r2-g4-cross-port5050` (after contract update to port `5050`) passed `VAL-CROSS-007`: `up` served LiteLLM on `127.0.0.1:5050` and `/v1/models` returned HTTP 200 while `4000` stayed inactive.
+- Setup finding: the host `litellm` uv tool runtime was missing proxy dependencies (`websockets`, `backoff`, `fastapi`, etc.). Installing proxy extras (`litellm[proxy]`) in that tool environment unblocked LiteLLM startup for user-testing flows.
 
