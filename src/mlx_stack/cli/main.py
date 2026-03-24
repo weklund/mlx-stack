@@ -14,6 +14,7 @@ from rich.table import Table
 from rich.text import Text
 
 from mlx_stack import __version__
+from mlx_stack.cli.profile import profile as profile_command
 
 console = Console(stderr=True)
 
@@ -147,11 +148,7 @@ def cli(ctx: click.Context) -> None:
 # These will be replaced by real implementations in subsequent features.
 
 
-@cli.command()
-def profile() -> None:
-    """Detect Apple Silicon hardware and write profile."""
-    console.print("[yellow]Not yet implemented.[/yellow] Coming in the hardware-detection feature.")
-    raise SystemExit(1)
+cli.add_command(profile_command, "profile")
 
 
 @cli.command()

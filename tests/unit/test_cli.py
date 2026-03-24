@@ -111,11 +111,6 @@ class TestUnknownCommand:
 class TestPlaceholderCommands:
     """Tests for placeholder commands that are not yet implemented."""
 
-    def test_profile_placeholder(self) -> None:
-        runner = CliRunner()
-        result = runner.invoke(cli, ["profile"])
-        assert result.exit_code != 0
-
     def test_recommend_placeholder(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
