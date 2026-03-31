@@ -18,6 +18,7 @@ from mlx_stack.cli.bench import bench as bench_command
 from mlx_stack.cli.config import config as config_group
 from mlx_stack.cli.down import down as down_command
 from mlx_stack.cli.init import init as init_command
+from mlx_stack.cli.logs import logs as logs_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.pull import pull as pull_command
@@ -79,6 +80,7 @@ class RichGroup(click.Group):
                 "down": "Stack Lifecycle",
                 "status": "Stack Lifecycle",
                 "bench": "Diagnostics",
+                "logs": "Diagnostics",
             }
 
             for cmd_name in commands:
@@ -170,5 +172,6 @@ cli.add_command(status_command, "status")
 
 
 cli.add_command(bench_command, "bench")
+cli.add_command(logs_command, "logs")
 
 cli.add_command(config_group, "config")
