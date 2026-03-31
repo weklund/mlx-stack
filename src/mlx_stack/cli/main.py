@@ -25,6 +25,7 @@ from mlx_stack.cli.pull import pull as pull_command
 from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
+from mlx_stack.cli.watch import watch as watch_command
 
 console = Console(stderr=True)
 
@@ -79,6 +80,7 @@ class RichGroup(click.Group):
                 "up": "Stack Lifecycle",
                 "down": "Stack Lifecycle",
                 "status": "Stack Lifecycle",
+                "watch": "Stack Lifecycle",
                 "bench": "Diagnostics",
                 "logs": "Diagnostics",
             }
@@ -170,6 +172,8 @@ cli.add_command(up_command, "up")
 cli.add_command(down_command, "down")
 cli.add_command(status_command, "status")
 
+
+cli.add_command(watch_command, "watch")
 
 cli.add_command(bench_command, "bench")
 cli.add_command(logs_command, "logs")
