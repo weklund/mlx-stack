@@ -589,7 +589,7 @@ def start_service(
         process_env.update(env)
 
     try:
-        log_file = open(log_path, "w")  # noqa: SIM115
+        log_file = open(log_path, "a")  # noqa: SIM115
     except OSError as exc:
         msg = f"Could not open log file for '{service_name}': {exc}"
         raise ProcessError(msg) from None

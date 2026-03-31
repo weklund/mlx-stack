@@ -3,13 +3,15 @@
 Handles persistent configuration in ~/.mlx-stack/config.yaml with
 type validation, default values, and masking of sensitive data.
 
-Supports 6 configuration keys:
+Supports 8 configuration keys:
 - openrouter-key: OpenRouter API key (masked in display)
 - default-quant: Default quantization level (int4, int8, bf16)
 - memory-budget-pct: Memory budget percentage (1-100)
 - litellm-port: LiteLLM proxy port (1-65535)
 - model-dir: Model storage directory path
 - auto-health-check: Auto health check on startup (true/false)
+- log-max-size-mb: Maximum log file size in MB before rotation (1+)
+- log-max-files: Maximum number of rotated log archives to keep (1+)
 """
 
 from __future__ import annotations
@@ -95,6 +97,20 @@ CONFIG_KEYS: dict[str, ConfigKeyDef] = {
         default=True,
         value_type="bool",
     ),
+    "log-max-size-mb": ConfigKeyDef(
+        name="log-max-size-mb",
+        description="Maximum log file size in MB before rotation",
+        default=50,
+        value_type="int",
+        validator="positive_int",
+    ),
+    "log-max-files": ConfigKeyDef(
+        name="log-max-files",
+        description="Maximum number of rotated log archives to keep",
+        default=5,
+        value_type="int",
+        validator="positive_int",
+    ),
 }
 
 VALID_KEYS: list[str] = sorted(CONFIG_KEYS.keys())
@@ -164,6 +180,18 @@ def _validate_port(value: int) -> int:
     return value
 
 
+def _validate_positive_int(key_name: str, value: int) -> int:
+    """Validate that a value is a positive integer (>= 1).
+
+    Raises:
+        ConfigValidationError: If the value is less than 1.
+    """
+    if value < 1:
+        msg = f"Invalid value '{value}' for '{key_name}'. Must be at least 1."
+        raise ConfigValidationError(msg)
+    return value
+
+
 def parse_value(key_def: ConfigKeyDef, raw_value: str) -> Any:
     """Parse a raw string value into the appropriate type for a config key.
 
@@ -213,6 +241,8 @@ def parse_value(key_def: ConfigKeyDef, raw_value: str) -> Any:
         _validate_memory_pct(int(value))
     elif key_def.validator == "port":
         _validate_port(int(value))
+    elif key_def.validator == "positive_int":
+        _validate_positive_int(key_def.name, int(value))
 
     return value
 

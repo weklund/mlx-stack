@@ -52,7 +52,7 @@ class TestValidateKey:
         for key in VALID_KEYS:
             assert key in error_msg
 
-    def test_all_six_keys_defined(self) -> None:
+    def test_all_keys_defined(self) -> None:
         expected_keys = {
             "openrouter-key",
             "default-quant",
@@ -60,6 +60,8 @@ class TestValidateKey:
             "litellm-port",
             "model-dir",
             "auto-health-check",
+            "log-max-size-mb",
+            "log-max-files",
         }
         assert set(CONFIG_KEYS.keys()) == expected_keys
 
@@ -437,9 +439,9 @@ class TestCorruptConfig:
 class TestGetAllConfig:
     """Tests for get_all_config()."""
 
-    def test_returns_all_six_keys(self, mlx_stack_home: Path) -> None:
+    def test_returns_all_keys(self, mlx_stack_home: Path) -> None:
         entries = get_all_config()
-        assert len(entries) == 6
+        assert len(entries) == 8
         names = {e["name"] for e in entries}
         assert names == set(CONFIG_KEYS.keys())
 
