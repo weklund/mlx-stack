@@ -50,3 +50,39 @@ Architectural decisions, patterns discovered, and conventions.
 - 2 intents for MVP: balanced, agent-fleet (architecture supports more)
 - 40% default memory budget of total unified memory
 - Recommendation/init budget behavior: budget filtering is per-model eligibility (`model.memory_gb <= budget`); the combined memory of selected tiers can exceed the budget
+
+## Ops Layer (Milestone 5)
+
+### New Modules
+- `core/log_rotation.py` — Copytruncate-based log rotation (copy → gzip → truncate)
+- `core/log_viewer.py` — Log viewing/following/listing logic
+- `core/watchdog.py` — Health polling loop, auto-restart, flap detection, daemon mode
+- `core/launchd.py` — Plist generation/loading/unloading via plistlib + launchctl
+- `cli/logs.py` — `mlx-stack logs` command
+- `cli/watch.py` — `mlx-stack watch` command
+- `cli/install.py` — `mlx-stack install` / `mlx-stack uninstall` commands
+
+### Key Integration Points
+- `process.py:start_service` — Log file open mode changed from "w" to "a" for rotation compatibility
+- `core/config.py` — 2 new keys: log-max-size-mb (int, default 50), log-max-files (int, default 5)
+- `process.py:acquire_lock` — Watchdog uses per-restart lock, not held during polling
+- `paths.py` — Watchdog PID at get_pids_dir()/watchdog.pid
+- `stack_status.py:run_status` — Used by watchdog for health polling
+- `process.py:start_service` / `stop_service` — Used by watchdog for restart
+- `cli/main.py` — 3 new commands registered: logs (Diagnostics), watch (Lifecycle), install/uninstall (Lifecycle)
+
+### Log Rotation Strategy
+- Copytruncate: copy log to archive, gzip compress, truncate original in-place
+- Service FDs remain valid (point to same inode, just at offset 0 after truncation)
+- Naming: service.log.1.gz (most recent) → service.log.N.gz (oldest)
+- Archives shifted up before new rotation
+- No cooperation needed from child processes (vllm-mlx, litellm)
+
+### Watchdog Architecture
+- Single foreground loop (or daemonized with --daemon)
+- Polls get_service_status for all services each interval
+- Restart trigger: crashed state only (PID file exists, process dead)
+- NOT restarted: stopped (no PID file), healthy, degraded
+- Flap detection: rolling window of restart timestamps per service
+- Lock: acquire_lock only during actual restart, released immediately
+- Log rotation: triggered as side-effect of each poll cycle
