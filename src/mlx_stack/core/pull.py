@@ -25,7 +25,6 @@ from mlx_stack.core.catalog import CatalogEntry, QuantSource, get_entry_by_id, l
 from mlx_stack.core.config import ConfigCorruptError, get_value
 from mlx_stack.core.paths import ensure_data_home, get_data_home
 
-
 # --------------------------------------------------------------------------- #
 # Exceptions
 # --------------------------------------------------------------------------- #
