@@ -28,6 +28,12 @@ dependencies = [
     "huggingface-hub[cli]>=1.8.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/weklund/mlx-stack"
+Repository = "https://github.com/weklund/mlx-stack"
+Issues = "https://github.com/weklund/mlx-stack/issues"
+Documentation = "https://github.com/weklund/mlx-stack#readme"
+
 [project.scripts]
 mlx-stack = "mlx_stack.cli:cli"
 
