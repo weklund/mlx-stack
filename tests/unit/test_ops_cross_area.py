@@ -24,15 +24,14 @@ import threading
 import time
 from pathlib import Path
 from typing import Any
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 import yaml
 
 from mlx_stack.core.log_rotation import rotate_log
-from mlx_stack.core.log_viewer import follow_log, rotate_all_logs, rotate_service_log
+from mlx_stack.core.log_viewer import follow_log
 from mlx_stack.core.watchdog import (
-    PollResult,
     ServiceTracker,
     WatchdogState,
     poll_cycle,
@@ -346,7 +345,6 @@ class TestFollowSurvivesRotation:
         log.write_text("line1\nline2\nline3\n")
 
         captured: list[str] = []
-        stop_event = threading.Event()
 
         def follow_thread() -> None:
             try:
@@ -954,7 +952,7 @@ class TestDownUpWatchdogInteraction:
         # Phase 1: After `down` — all stopped
         with (
             patch("mlx_stack.core.watchdog.run_status") as mock_status,
-            patch("mlx_stack.core.watchdog.restart_service") as mock_restart,
+            patch("mlx_stack.core.watchdog.restart_service") as _mock_restart,
             patch("mlx_stack.core.watchdog.get_value") as mock_get_value,
         ):
             mock_result = MagicMock()
@@ -988,7 +986,7 @@ class TestDownUpWatchdogInteraction:
         # Phase 2: After `up` — all healthy
         with (
             patch("mlx_stack.core.watchdog.run_status") as mock_status,
-            patch("mlx_stack.core.watchdog.restart_service") as mock_restart,
+            patch("mlx_stack.core.watchdog.restart_service") as _mock_restart,
             patch("mlx_stack.core.watchdog.get_value") as mock_get_value,
         ):
             mock_result = MagicMock()
@@ -1094,7 +1092,6 @@ class TestFullOpsLifecycle:
             generate_plist,
             write_plist,
         )
-        from mlx_stack.core.log_rotation import rotate_log
         from mlx_stack.core.process import remove_pid_file, write_pid_file
         from mlx_stack.core.stack_status import ServiceStatus
 
@@ -1346,7 +1343,6 @@ class TestFullOpsLifecycle:
         This ensures the restarted service uses the same model, port,
         and flags as the original.
         """
-        from mlx_stack.core.stack_up import build_vllm_command
 
         tracker = ServiceTracker()
 
