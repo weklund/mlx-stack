@@ -40,7 +40,10 @@ packages = ["src/mlx_stack"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-x -q --tb=short"
+addopts = "-x -q --tb=short -m 'not integration'"
+markers = [
+    "integration: real system integration tests (launchctl, etc.)",
+]
 
 [tool.ruff]
 target-version = "py313"
