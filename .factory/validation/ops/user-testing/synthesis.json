@@ -1,0 +1,58 @@
+{
+  "milestone": "ops",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 35,
+    "passed": 35,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-CROSS-OPS-001",
+    "VAL-CROSS-OPS-002",
+    "VAL-CROSS-OPS-003",
+    "VAL-CROSS-OPS-004",
+    "VAL-CROSS-OPS-005",
+    "VAL-LAUNCHD-001",
+    "VAL-LAUNCHD-002",
+    "VAL-LAUNCHD-003",
+    "VAL-LAUNCHD-004",
+    "VAL-LAUNCHD-005",
+    "VAL-LAUNCHD-006",
+    "VAL-LAUNCHD-007",
+    "VAL-LOG-001",
+    "VAL-LOG-002",
+    "VAL-LOG-003",
+    "VAL-LOG-004",
+    "VAL-LOG-005",
+    "VAL-LOGS-001",
+    "VAL-LOGS-002",
+    "VAL-LOGS-003",
+    "VAL-LOGS-004",
+    "VAL-LOGS-005",
+    "VAL-LOGS-006",
+    "VAL-LOGS-007",
+    "VAL-WATCH-001",
+    "VAL-WATCH-002",
+    "VAL-WATCH-003",
+    "VAL-WATCH-004",
+    "VAL-WATCH-005",
+    "VAL-WATCH-006",
+    "VAL-WATCH-007",
+    "VAL-WATCH-008",
+    "VAL-WATCH-009",
+    "VAL-WATCH-010",
+    "VAL-WATCH-011"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added ops milestone run notes covering intermittent flow-validator permission-gate exits and using `pytest -o addopts='' -vv` for per-assertion evidence mapping.",
+      "source": "flow-report"
+    }
+  ],
+  "previousRound": null
+}

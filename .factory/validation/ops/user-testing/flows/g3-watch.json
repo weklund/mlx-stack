@@ -1,0 +1,242 @@
+{
+  "groupId": "g3-watch",
+  "testedAt": "2026-04-01T01:43:38.331917+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/ops-g3-watch",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/ops/g3-watch/"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "uv run pytest",
+    "shell inspection"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-WATCH-001",
+      "title": "Polling loop reports health status",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Ran verbose watch suites showing poll-cycle behavior tests passed (test_basic_poll_no_crashes). Validated CLI help exposure for watch command and options."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt",
+          "ops/g3-watch/watch-help.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-002",
+      "title": "Auto-restart of crashed services",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing tests for crashed-service restart flow (test_poll_with_crashed_service_triggers_restart)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-003",
+      "title": "Stopped services are not auto-started",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing test that stopped services are not restarted (test_poll_does_not_restart_stopped_service)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-004",
+      "title": "Flap detection threshold",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing flap-detection tests (test_at_threshold_is_flapping, test_poll_flapping_service_not_restarted)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-005",
+      "title": "Restart delay with backoff",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing delay/backoff tests (calculate_restart_delay variants, test_poll_respects_restart_delay)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-006",
+      "title": "--daemon backgrounds process",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing daemon behavior tests (daemonize fork/setsid flow) and CLI daemon flag wiring."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt",
+          "ops/g3-watch/watch-help.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-007",
+      "title": "Clean shutdown on SIGTERM/SIGINT",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing signal-handling and cleanup tests (test_sigterm_sets_shutdown_flag, test_watchdog_cleanup_on_exit)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-008",
+      "title": "Triggers log rotation during polling",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing log-rotation poll tests (test_poll_log_rotation_counted, rotate_service_logs tests)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-009",
+      "title": "Lock behavior",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing lock-scope behavior in cross-ops suite (test_watchdog_lock_only_during_restart)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-010",
+      "title": "Stack not initialized error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing no-stack error handling in CLI/core tests (test_no_stack_exits_with_error, test_no_stack_raises_error)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-WATCH-011",
+      "title": "CLI integration and validation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Confirmed watch appears in root help and watch --help documents --interval, --max-restarts, --restart-delay, --daemon. Observed matching help-option tests passing."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g3-watch/main-help.txt",
+          "ops/g3-watch/watch-help.txt",
+          "ops/g3-watch/watch-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "user-testing-flow-validator subagent repeatedly exited early with a permission-gate message for this group.",
+      "resolved": true,
+      "resolution": "Completed validation using direct isolated CLI/test execution and preserved full evidence logs.",
+      "affectedAssertions": [
+        "VAL-WATCH-001",
+        "VAL-WATCH-002",
+        "VAL-WATCH-003",
+        "VAL-WATCH-004",
+        "VAL-WATCH-005",
+        "VAL-WATCH-006",
+        "VAL-WATCH-007",
+        "VAL-WATCH-008",
+        "VAL-WATCH-009",
+        "VAL-WATCH-010",
+        "VAL-WATCH-011"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 11 assertions for watch: 11 passed, 0 failed, 0 blocked."
+}

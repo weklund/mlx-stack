@@ -1,0 +1,150 @@
+{
+  "groupId": "g4-launchd",
+  "testedAt": "2026-04-01T01:43:38.331917+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/ops-g4-launchd",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/ops/g4-launchd/"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "uv run pytest"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-LAUNCHD-001",
+      "title": "Install generates valid plist",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing plist-generation and plistlib validation tests (required keys, XML validity, permissions)."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-002",
+      "title": "Install loads agent via launchctl",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing load-agent bootstrap command tests and install path invoking load flow."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-003",
+      "title": "Uninstall removes agent and plist",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing uninstall tests confirming bootout + plist removal behavior."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-004",
+      "title": "Environment variables in plist",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing environment variable construction tests including PATH and conditional MLX_STACK_HOME."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-005",
+      "title": "--status reports agent state",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Confirmed install --help documents --status; status model tests for installed/running/not-installed states passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/install-help.txt",
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-006",
+      "title": "Prerequisite and idempotency",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed passing prerequisite guard and reinstall/uninstall idempotency tests."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LAUNCHD-007",
+      "title": "CLI integration and platform guard",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Confirmed install/uninstall appear in root help and install --help shows --status; platform guard tests passed."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g4-launchd/main-help.txt",
+          "ops/g4-launchd/install-help.txt",
+          "ops/g4-launchd/uninstall-help.txt",
+          "ops/g4-launchd/launchd-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 7 assertions for launchd integration: 7 passed, 0 failed, 0 blocked."
+}

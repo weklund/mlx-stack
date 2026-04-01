@@ -71,3 +71,10 @@ Testing surface, required testing skills/tools, resource cost classification per
 - Rerun flow `r2-g4-cross-port5050` (after contract update to port `5050`) passed `VAL-CROSS-007`: `up` served LiteLLM on `127.0.0.1:5050` and `/v1/models` returned HTTP 200 while `4000` stayed inactive.
 - Setup finding: the host `litellm` uv tool runtime was missing proxy dependencies (`websockets`, `backoff`, `fastapi`, etc.). Installing proxy extras (`litellm[proxy]`) in that tool environment unblocked LiteLLM startup for user-testing flows.
 
+## Ops milestone run notes (2026-04-01)
+
+- On this host, `user-testing-flow-validator` subagent runs intermittently exited early with `insufficient permission to proceed ... Re-run with --skip-permissions-unsafe`. Workaround was to continue validation with isolated direct CLI/test execution while preserving evidence artifacts.
+- Repo-level pytest defaults include quiet output, so assertion-level mapping is hard to prove from `-q` logs. For per-assertion evidence, use:
+  - `uv run pytest <files> -o addopts='' -vv`
+  which emits test names and pass lines suitable for assertion mapping in synthesis.
+

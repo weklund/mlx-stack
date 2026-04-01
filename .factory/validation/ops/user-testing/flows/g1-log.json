@@ -1,0 +1,172 @@
+{
+  "groupId": "g1-log",
+  "testedAt": "2026-04-01T01:05:23.328768+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "mlxStackHome": "/tmp/mlx-stack-user-testing/ops-g1-log",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/ops/g1-log/"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "shell inspection",
+    "uv run python"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-LOG-001",
+      "title": "Copytruncate rotation preserves writer file descriptor",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Start a continuous writer to fast.log in isolated MLX_STACK_HOME and grow file above threshold",
+          "expected": "File exceeds configured rotation size without stopping writer",
+          "observed": "fast.log reached 1,312,890 bytes while writer stayed active"
+        },
+        {
+          "action": "Run `uv run mlx-stack logs --rotate --service fast`",
+          "expected": "Rotation creates fast.log.1.gz and truncates fast.log in-place",
+          "observed": "CLI reported `\u2713 fast: rotated`; archive created; current log truncated then reused"
+        },
+        {
+          "action": "Keep writer running after rotation and inspect counters",
+          "expected": "Writer continues appending via same open descriptor",
+          "observed": "Writer remained alive; post-rotation counters continued past archived max (archive max 8999, current min 9200)"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g1-log/VAL-LOG-001-copytruncate-fd.txt"
+        ],
+        "network": "n/a"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOG-002",
+      "title": "Configurable rotation thresholds via config",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `config list/get` for log-max-size-mb and log-max-files",
+          "expected": "Defaults shown as 50 and 5",
+          "observed": "Defaults present in config list and get output"
+        },
+        {
+          "action": "Set both keys with valid values",
+          "expected": "Values accepted and persisted",
+          "observed": "`log-max-size-mb=1` and `log-max-files=5` accepted and shown as user-set"
+        },
+        {
+          "action": "Set invalid values (0, negative, non-integer)",
+          "expected": "Validation errors and non-zero exits",
+          "observed": "All invalid values rejected with error messages and non-zero exit codes"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g1-log/VAL-LOG-002-config-thresholds.txt"
+        ],
+        "network": "n/a"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOG-003",
+      "title": "Rotated file naming and compression",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Configure max-files=5 and perform 6 forced rotations on fast.log",
+          "expected": "Archives shift with .1.gz as newest and old archives capped at 5",
+          "observed": "After 6 rotations, only fast.log.1.gz..fast.log.5.gz existed; fast.log.6.gz absent"
+        },
+        {
+          "action": "Inspect archive marker content",
+          "expected": ".1 is most recent, then descending recency",
+          "observed": "Markers confirmed .1=rotation-6, .2=5, .3=4, .4=3, .5=2"
+        },
+        {
+          "action": "Validate gzip readability",
+          "expected": "Archives are valid compressed files",
+          "observed": "All retained archives decompressed successfully during marker inspection"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g1-log/VAL-LOG-003-archive-naming-compression.txt"
+        ],
+        "network": "n/a"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOG-004",
+      "title": "start_service opens log in append mode",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Inspect process.py start_service log open mode",
+          "expected": "Log file opened with append mode `a`",
+          "observed": "Source inspection showed `open(log_path, \"a\")` at process.py:592"
+        },
+        {
+          "action": "Start same service name twice with different output markers",
+          "expected": "Second start appends without wiping prior content",
+          "observed": "appendtest.log contained both `SESSION_ONE` and `SESSION_TWO`"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g1-log/VAL-LOG-004-start-service-append.txt"
+        ],
+        "network": "n/a"
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOG-005",
+      "title": "Rotation edge cases",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Rotate empty.log and below-threshold small.log via CLI",
+          "expected": "No rotation for empty/below-threshold files",
+          "observed": "CLI reported `no rotation needed` for both; no .gz archives created"
+        },
+        {
+          "action": "Invoke rotate_log on missing file path",
+          "expected": "Missing log skipped silently",
+          "observed": "rotate_log(missing.log) returned False with no error"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g1-log/VAL-LOG-005-edge-cases.txt"
+        ],
+        "network": "n/a"
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Negative numeric values for `config set` require `--` delimiter (e.g., `... log-max-size-mb -- -5`) or Click parses them as options.",
+      "resolved": true,
+      "resolution": "Used `--` delimiter for negative-value validation commands.",
+      "affectedAssertions": [
+        "VAL-LOG-002"
+      ]
+    },
+    {
+      "description": "With an actively writing process, post-rotation log size is not near-zero for long; it grows immediately after truncate.",
+      "resolved": true,
+      "resolution": "Validated copytruncate by confirming writer continuity and monotonic counter progression across archive/current logs.",
+      "affectedAssertions": [
+        "VAL-LOG-001"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 5 assertions (VAL-LOG-001..005): 5 passed, 0 failed, 0 blocked, 0 skipped."
+}

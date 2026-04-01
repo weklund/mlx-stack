@@ -1,0 +1,205 @@
+{
+  "groupId": "g2-logs-command",
+  "testedAt": "2026-04-01T01:11:58.794814Z",
+  "isolation": {
+    "surface": "CLI",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/ops-g2-logs-command",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/ops/g2-logs-command/"
+  },
+  "toolsUsed": [
+    "uv run mlx-stack",
+    "python3",
+    "shell inspection"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-LOGS-001",
+      "title": "Basic log viewing with --tail",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack logs fast --tail 3` in isolated MLX_STACK_HOME",
+          "expected": "Last 3 lines from fast.log are shown",
+          "observed": "Output was FAST-LINE-06, FAST-LINE-07, FAST-LINE-08 (3 lines)"
+        },
+        {
+          "action": "Run `uv run mlx-stack logs fast`",
+          "expected": "Default tail behavior works",
+          "observed": "Output showed all 8 existing lines (under default 50-line limit)"
+        },
+        {
+          "action": "Inspect `uv run mlx-stack logs --help`",
+          "expected": "Default tail behavior is documented",
+          "observed": "`--tail INTEGER  Show last N lines (default 50).` present"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-001-tail3.txt",
+          "ops/g2-logs-command/VAL-LOGS-001-default-tail.txt",
+          "ops/g2-logs-command/VAL-LOGS-001-line-count-check.txt",
+          "ops/g2-logs-command/VAL-LOGS-007-logs-help.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-002",
+      "title": "--follow streams new content in real-time",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Start `uv run mlx-stack logs fast --follow --tail 1` and append new lines to fast.log from another process",
+          "expected": "Appended lines appear in follow output within 1-2s",
+          "observed": "FOLLOW-TIMING-1 and FOLLOW-TIMING-2 were observed with ~0.10s latency each"
+        },
+        {
+          "action": "Send SIGINT to follow process",
+          "expected": "Process exits cleanly with no traceback",
+          "observed": "follow_exit=0 and traceback_matches=0"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-002-follow-output.txt",
+          "ops/g2-logs-command/VAL-LOGS-002-follow-metadata.txt",
+          "ops/g2-logs-command/VAL-LOGS-002-follow-output-timing.txt",
+          "ops/g2-logs-command/VAL-LOGS-002-follow-timing.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-003",
+      "title": "--service filters to specific service",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack logs --service standard --tail 2`",
+          "expected": "Only standard service log output is shown",
+          "observed": "Output contained STANDARD-LINE-04 and STANDARD-LINE-05 only"
+        },
+        {
+          "action": "Run `uv run mlx-stack logs --service bad`",
+          "expected": "Clear invalid-service error message and non-zero exit",
+          "observed": "Error shown: No log file found for service 'bad'... ; exit code 1"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-003-service-standard.txt",
+          "ops/g2-logs-command/VAL-LOGS-003-invalid-service.txt",
+          "ops/g2-logs-command/VAL-LOGS-003-exit-codes.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-004",
+      "title": "List available logs when no service specified",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack logs` with no args",
+          "expected": "List/table of log files with size and modified time",
+          "observed": "Rich table displayed Name, Size, Modified columns for fast.log, longctx.log, standard.log"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-004-list-logs.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-005",
+      "title": "--rotate triggers on-demand rotation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Set `log-max-size-mb=1` and create oversized fast/standard logs, then run `uv run mlx-stack logs --rotate`",
+          "expected": "Eligible logs rotate with informative output",
+          "observed": "Output: fast rotated, standard rotated, longctx no rotation needed"
+        },
+        {
+          "action": "Rewrite oversized fast.log and run `uv run mlx-stack logs --rotate --service fast`",
+          "expected": "Only fast log rotates with informative output",
+          "observed": "Output: fast rotated"
+        },
+        {
+          "action": "Inspect log directory and gzip archives",
+          "expected": "New .gz archives exist for rotated logs",
+          "observed": "fast.log.1.gz, fast.log.2.gz, standard.log.1.gz present and readable"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-005-config-set-size.txt",
+          "ops/g2-logs-command/VAL-LOGS-005-config-set-files.txt",
+          "ops/g2-logs-command/VAL-LOGS-005-rotate-all.txt",
+          "ops/g2-logs-command/VAL-LOGS-005-rotate-service-fast.txt",
+          "ops/g2-logs-command/VAL-LOGS-005-log-dir-list.txt",
+          "ops/g2-logs-command/VAL-LOGS-005-archive-check.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-006",
+      "title": "--all shows current and archived logs",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "After creating two fast archives and current content, run `uv run mlx-stack logs fast --all`",
+          "expected": "Output includes decompressed archives + current log in chronological order",
+          "observed": "Output sections included fast.log.2.gz (older), fast.log.1.gz (newer), then current fast.log with expected markers"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-006-fast-all.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-LOGS-007",
+      "title": "CLI integration",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run `uv run mlx-stack --help`",
+          "expected": "`logs` command appears in top-level help",
+          "observed": "`logs` listed as \u201cView and manage service logs.\u201d"
+        },
+        {
+          "action": "Run `uv run mlx-stack logs --help`",
+          "expected": "--follow, --tail, --service, --rotate, --all are documented",
+          "observed": "All required flags are present in help output"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g2-logs-command/VAL-LOGS-007-root-help.txt",
+          "ops/g2-logs-command/VAL-LOGS-007-logs-help.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Initial shell-background follow test hung when trying to interrupt `uv run mlx-stack logs --follow` with SIGINT in one command, causing a command timeout.",
+      "resolved": true,
+      "resolution": "Re-ran follow validation via a controlled Python subprocess that appended log lines, captured output timing, and sent SIGINT directly to the process.",
+      "affectedAssertions": [
+        "VAL-LOGS-002"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 7 assertions for logs command: 7 passed, 0 failed, 0 blocked."
+}

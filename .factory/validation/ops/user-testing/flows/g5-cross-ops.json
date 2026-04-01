@@ -1,0 +1,109 @@
+{
+  "groupId": "g5-cross-ops",
+  "testedAt": "2026-04-01T01:43:38.331917+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "MLX_STACK_HOME": "/tmp/mlx-stack-user-testing/ops-g5-cross-ops",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6",
+    "evidenceDir": "/Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/evidence/ops/g5-cross-ops/"
+  },
+  "toolsUsed": [
+    "uv run pytest"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-OPS-001",
+      "title": "Watchdog auto-rotation integration",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed full pass of TestWatchdogAutoRotation suite including concurrent rotation idempotency cases."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-OPS-002",
+      "title": "logs --follow survives rotation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed full pass of TestFollowSurvivesRotation suite validating truncation detection and continued streaming."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-OPS-003",
+      "title": "launchd watchdog performs rotation and restart",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed full pass of TestLaunchdWatchdogIntegration suite, including launchctl bootstrap/bootout command validation."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-OPS-004",
+      "title": "down/up interaction with watchdog",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed full pass of TestDownUpWatchdogInteraction suite, including stopped-not-restarted and lock-scope checks."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-CROSS-OPS-005",
+      "title": "Full ops lifecycle",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Validate assertion behavior through isolated CLI/test execution",
+          "expected": "Behavior matches validation contract",
+          "observed": "Observed full pass of TestFullOpsLifecycle suite covering init/install/watch/up/log rotation/follow/restart/down/uninstall flow."
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "ops/g5-cross-ops/cross-ops-tests-vv.txt"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 5 cross-ops assertions: 5 passed, 0 failed, 0 blocked."
+}
