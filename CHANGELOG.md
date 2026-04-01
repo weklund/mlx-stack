@@ -49,4 +49,12 @@ Initial release of mlx-stack — a CLI control plane for local LLM inference inf
 - **GitHub Actions CI** — macOS runner with lint (ruff), typecheck (pyright), and test (pytest) on push and PR.
 - **Comprehensive test suite** — 1300+ unit tests covering core modules and CLI commands with mocked external calls.
 
+### Changed
+
+N/A — initial release.
+
+### Fixed
+
+N/A — initial release.
+
 [0.1.0]: https://github.com/weklund/mlx-stack/releases/tag/v0.1.0

@@ -364,8 +364,9 @@ def export_stack(stack_path: str, output_format: str = "json") -> ExportResult:
     Returns:
         ExportResult with the output path and format.
     """
-    # Implementation here
-    ...
+    output_path = stack_path.rsplit(".", 1)[0] + f".{output_format}"
+    # Read the stack YAML and convert to the requested format
+    return ExportResult(path=output_path, format=output_format)
 ```
 
 ### Step 2: Create the CLI command
@@ -581,7 +582,7 @@ venv = ".venv"
 typeCheckingMode = "basic"
 ```
 
-The project uses `basic` mode, which enforces type annotations on function signatures and catches common type errors without requiring full strict-mode annotations everywhere. All public functions in `core/` should have complete type annotations.
+The project uses pyright in **basic mode**, which enforces type annotations on function signatures and catches common type errors without requiring full strict-mode annotations everywhere. Contributors should aim for **zero pyright errors** — the CI pipeline enforces this. All public functions in `core/` should have complete type annotations.
 
 ### Pre-commit checklist
 
