@@ -780,6 +780,146 @@ class TestFilterTraceback:
 
 
 # =========================================================================== #
+# HuggingFace CLI binary resolution tests
+# =========================================================================== #
+
+
+class TestResolveHfCli:
+    """Tests for _resolve_hf_cli — binary name resolution logic."""
+
+    @patch("mlx_stack.core.pull.shutil.which")
+    def test_prefers_hf_when_available(self, mock_which: MagicMock) -> None:
+        """When 'hf' is on PATH, it is preferred over 'huggingface-cli'."""
+        from mlx_stack.core.pull import _resolve_hf_cli
+
+        mock_which.side_effect = lambda name: "/usr/local/bin/hf" if name == "hf" else None
+        assert _resolve_hf_cli() == "hf"
+
+    @patch("mlx_stack.core.pull.shutil.which")
+    def test_falls_back_to_huggingface_cli(self, mock_which: MagicMock) -> None:
+        """When 'hf' is missing but 'huggingface-cli' exists, uses fallback."""
+        from mlx_stack.core.pull import _resolve_hf_cli
+
+        def which_side_effect(name: str) -> str | None:
+            if name == "hf":
+                return None
+            if name == "huggingface-cli":
+                return "/usr/local/bin/huggingface-cli"
+            return None
+
+        mock_which.side_effect = which_side_effect
+        assert _resolve_hf_cli() == "huggingface-cli"
+
+    @patch("mlx_stack.core.pull.shutil.which")
+    def test_returns_hf_when_neither_found(self, mock_which: MagicMock) -> None:
+        """When neither binary exists, returns 'hf' (modern default)."""
+        from mlx_stack.core.pull import _resolve_hf_cli
+
+        mock_which.return_value = None
+        assert _resolve_hf_cli() == "hf"
+
+    @patch("mlx_stack.core.pull.shutil.which")
+    def test_both_available_prefers_hf(self, mock_which: MagicMock) -> None:
+        """When both 'hf' and 'huggingface-cli' are available, prefers 'hf'."""
+        from mlx_stack.core.pull import _resolve_hf_cli
+
+        mock_which.side_effect = lambda name: f"/usr/local/bin/{name}"
+        assert _resolve_hf_cli() == "hf"
+
+
+class TestRunDownloadBinaryResolution:
+    """Tests that _run_download uses the resolved HF CLI binary."""
+
+    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="hf")
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_uses_hf_binary(
+        self,
+        mock_popen: MagicMock,
+        mock_resolve: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """_run_download passes resolved 'hf' binary as first cmd element."""
+        from io import StringIO
+
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO("")
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+        _run_download("test/repo", local_dir, console)
+
+        cmd = mock_popen.call_args[0][0]
+        assert cmd[0] == "hf"
+        assert cmd[1] == "download"
+        assert "test/repo" in cmd
+
+    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="huggingface-cli")
+    @patch("mlx_stack.core.pull.subprocess.Popen")
+    def test_uses_huggingface_cli_fallback(
+        self,
+        mock_popen: MagicMock,
+        mock_resolve: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """_run_download uses 'huggingface-cli' when that is what resolved."""
+        from io import StringIO
+
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        mock_proc = MagicMock()
+        mock_proc.stdout = StringIO("")
+        mock_proc.returncode = 0
+        mock_proc.wait.return_value = 0
+        mock_popen.return_value = mock_proc
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+        _run_download("test/repo", local_dir, console)
+
+        cmd = mock_popen.call_args[0][0]
+        assert cmd[0] == "huggingface-cli"
+
+    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="hf")
+    @patch("mlx_stack.core.pull.subprocess.Popen", side_effect=FileNotFoundError)
+    def test_file_not_found_error_message(
+        self,
+        mock_popen: MagicMock,
+        mock_resolve: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """FileNotFoundError message mentions both 'hf' and 'huggingface-cli'."""
+        from io import StringIO
+
+        import pytest
+        from rich.console import Console
+
+        from mlx_stack.core.pull import DownloadError, _run_download
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+
+        with pytest.raises(DownloadError) as exc_info:
+            _run_download("test/repo", local_dir, console)
+
+        error_msg = str(exc_info.value)
+        assert "hf" in error_msg
+        assert "huggingface-cli" in error_msg
+        assert "huggingface_hub" in error_msg
+
+
+# =========================================================================== #
 # Download progress visibility tests
 # =========================================================================== #
 

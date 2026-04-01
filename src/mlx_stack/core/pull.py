@@ -25,6 +25,30 @@ from mlx_stack.core.config import ConfigCorruptError, get_value
 from mlx_stack.core.paths import ensure_data_home, get_data_home
 
 # --------------------------------------------------------------------------- #
+# HuggingFace CLI binary resolution
+# --------------------------------------------------------------------------- #
+
+
+def _resolve_hf_cli() -> str:
+    """Resolve the HuggingFace CLI binary name.
+
+    Modern huggingface_hub versions install the CLI as ``hf`` rather than
+    ``huggingface-cli``.  We try ``hf`` first (via :func:`shutil.which`)
+    and fall back to ``huggingface-cli`` for older installations.
+
+    Returns:
+        The binary name that is available on ``PATH``, preferring ``hf``.
+    """
+    if shutil.which("hf"):
+        return "hf"
+    if shutil.which("huggingface-cli"):
+        return "huggingface-cli"
+    # Neither found — return "hf" (the modern default) so the caller
+    # raises a helpful FileNotFoundError.
+    return "hf"
+
+
+# --------------------------------------------------------------------------- #
 # Exceptions
 # --------------------------------------------------------------------------- #
 
@@ -355,12 +379,13 @@ def _run_download(
     local_dir: Path,
     console: Console,
 ) -> None:
-    """Run the huggingface-cli download command with real-time output.
+    """Run the HuggingFace CLI download command with real-time output.
 
-    Uses subprocess.Popen with stderr=subprocess.STDOUT so that HF CLI
-    tqdm progress bars (written to stderr) are merged into stdout and
-    streamed to the user in real-time. Captures output lines for error
-    extraction on failure.
+    Resolves the CLI binary via :func:`_resolve_hf_cli` (prefers ``hf``,
+    falls back to ``huggingface-cli``).  Uses subprocess.Popen with
+    stderr=subprocess.STDOUT so that HF CLI tqdm progress bars (written
+    to stderr) are merged into stdout and streamed to the user in
+    real-time.  Captures output lines for error extraction on failure.
 
     Args:
         hf_repo: The HuggingFace repo to download.
@@ -370,11 +395,11 @@ def _run_download(
     Raises:
         DownloadError: If the download fails.
     """
-    # Use huggingface-cli download via subprocess
-    # The huggingface_hub library is available as a dependency of mlx_lm
-    # Use Python -m approach to ensure we use the right environment
+    # Resolve the HF CLI binary: prefer "hf" (modern), fall back to
+    # "huggingface-cli" (legacy).
+    hf_binary = _resolve_hf_cli()
     cmd = [
-        "huggingface-cli",
+        hf_binary,
         "download",
         hf_repo,
         "--local-dir",
@@ -390,9 +415,10 @@ def _run_download(
         )
     except FileNotFoundError:
         msg = (
-            "huggingface-cli not found. Install huggingface_hub:\n"
-            "  pip install huggingface_hub\n"
-            "Or: uv pip install huggingface_hub"
+            "HuggingFace CLI not found (tried 'hf' and 'huggingface-cli').\n"
+            "Install huggingface_hub:\n"
+            "  pip install 'huggingface_hub[cli]'\n"
+            "Or: uv pip install 'huggingface_hub[cli]'"
         )
         raise DownloadError(msg) from None
     except OSError as exc:
