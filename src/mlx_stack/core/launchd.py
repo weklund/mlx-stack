@@ -511,11 +511,15 @@ def uninstall_agent() -> bool:
     if not plist_path.exists():
         return False
 
-    # Bootout the agent
+    # Bootout the agent — only suppress "No such process" (already unloaded)
     try:
         unload_agent(plist_path)
-    except LaunchdError:
-        pass  # Best-effort unload
+    except LaunchdError as exc:
+        # "No such process" means the agent wasn't loaded — safe to ignore.
+        # Any other launchctl error is fatal and should propagate.
+        err_msg = str(exc)
+        if "No such process" not in err_msg and "3:" not in err_msg:
+            raise
 
     # Remove plist file
     try:

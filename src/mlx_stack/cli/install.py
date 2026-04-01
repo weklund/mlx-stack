@@ -17,6 +17,7 @@ from mlx_stack.core.launchd import (
     LaunchdError,
     PlatformError,
     PrerequisiteError,
+    check_platform,
     get_agent_status,
     install_agent,
     uninstall_agent,
@@ -84,13 +85,16 @@ def install(show_status: bool) -> None:
         mlx-stack install              Install and start the watchdog agent
         mlx-stack install --status     Check if the agent is installed
     """
+    # Platform guard: reject non-macOS before any branch (including --status)
+    try:
+        check_platform()
+    except PlatformError as exc:
+        console.print(f"[red]Error:[/red] {exc}")
+        sys.exit(1)
+
     if show_status:
-        try:
-            status = get_agent_status()
-            _display_status(status)
-        except PlatformError as exc:
-            console.print(f"[red]Error:[/red] {exc}")
-            sys.exit(1)
+        status = get_agent_status()
+        _display_status(status)
         return
 
     try:

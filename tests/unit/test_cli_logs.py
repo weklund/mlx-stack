@@ -292,15 +292,30 @@ class TestAllLogs:
         assert oldest_pos < newest_pos < current_pos
 
     def test_all_no_logs(self, mlx_stack_home: Path) -> None:
-        """--all with no logs shows message."""
+        """--all with no logs (no archives, no current) shows informative message."""
         logs_dir = mlx_stack_home / "logs"
         logs_dir.mkdir(parents=True)
 
         runner = CliRunner()
         result = runner.invoke(logs, ["nonexistent", "--all"])
 
-        # The service doesn't exist, so we get an error
-        assert result.exit_code != 0
+        # No archives or current log → informative "no content" message, exit 0
+        assert result.exit_code == 0
+        assert "No log content found" in result.output
+
+    def test_all_archives_only_no_current(self, mlx_stack_home: Path) -> None:
+        """--all shows archives even when current log file is missing."""
+        logs_dir = mlx_stack_home / "logs"
+        _create_archive(logs_dir, "fast", 2, "old archived content")
+        _create_archive(logs_dir, "fast", 1, "recent archived content")
+        # No fast.log current file
+
+        runner = CliRunner()
+        result = runner.invoke(logs, ["fast", "--all"])
+
+        assert result.exit_code == 0
+        assert "old archived content" in result.output
+        assert "recent archived content" in result.output
 
 
 # --------------------------------------------------------------------------- #

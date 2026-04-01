@@ -669,6 +669,56 @@ class TestLaunchdWatchdogIntegration:
         # restart_service is called with keyword args from poll_cycle
         assert call_args.kwargs.get("service_name") == "fast"
 
+    def test_launchctl_bootstrap_bootout_subprocess_calls(
+        self,
+        mlx_stack_home: Path,
+        stack_definition: dict[str, Any],
+    ) -> None:
+        """launchctl bootstrap/bootout calls include gui/<uid> and plist path.
+
+        VAL-CROSS-OPS-003: Verifies that when install_agent() and
+        uninstall_agent() invoke launchctl, the command arguments include
+        the correct gui/<uid> domain and plist path.
+        """
+        from mlx_stack.core.launchd import (
+            generate_plist,
+            load_agent,
+            unload_agent,
+            write_plist,
+        )
+
+        plist_path = mlx_stack_home / "com.mlx-stack.watchdog.plist"
+        plist_data = generate_plist(mlx_stack_binary="/usr/local/bin/mlx-stack")
+        write_plist(plist_data, plist_path=plist_path)
+
+        uid = os.getuid()
+
+        # Test bootstrap (load_agent) call args
+        with patch("mlx_stack.core.launchd.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+            load_agent(plist_path=plist_path)
+
+            mock_run.assert_called_once()
+            call_args = mock_run.call_args
+            cmd = call_args[0][0]  # positional arg: the command list
+            assert cmd[0] == "launchctl"
+            assert cmd[1] == "bootstrap"
+            assert cmd[2] == f"gui/{uid}"
+            assert cmd[3] == str(plist_path)
+
+        # Test bootout (unload_agent) call args
+        with patch("mlx_stack.core.launchd.subprocess.run") as mock_run:
+            mock_run.return_value = MagicMock(returncode=0, stderr="", stdout="")
+            unload_agent(plist_path=plist_path)
+
+            mock_run.assert_called_once()
+            call_args = mock_run.call_args
+            cmd = call_args[0][0]
+            assert cmd[0] == "launchctl"
+            assert cmd[1] == "bootout"
+            assert cmd[2] == f"gui/{uid}"
+            assert cmd[3] == str(plist_path)
+
     def test_launchd_install_then_watchdog_performs_duties(
         self,
         mlx_stack_home: Path,
@@ -1168,10 +1218,54 @@ class TestFullOpsLifecycle:
         assert fast_log.stat().st_size == 0
         assert (logs_dir / "fast.log.1.gz").exists()
 
-        # --- Step 7: Follow (verify log following works) ---
-        # Write new content after rotation
+        # --- Step 7: Follow (verify log following detects new lines) ---
+        # Write initial content after rotation
         fast_log.write_text("post-rotation log line\n")
-        assert "post-rotation log line" in fast_log.read_text()
+
+        follow_captured: list[str] = []
+
+        def follow_thread_fn() -> None:
+            try:
+                follow_log(
+                    fast_log,
+                    num_lines=0,
+                    output_callback=lambda text: follow_captured.append(text),
+                )
+            except Exception:
+                pass
+
+        follow_thread = threading.Thread(target=follow_thread_fn, daemon=True)
+        follow_thread.start()
+
+        # Give follow time to start and read initial position
+        time.sleep(0.3)
+
+        # Append new content (simulating live service logging)
+        with open(fast_log, "a") as f:
+            f.write("follow-detected-line\n")
+
+        # Wait for follow to pick up the new content
+        deadline = time.monotonic() + 5.0
+        while time.monotonic() < deadline:
+            if any("follow-detected-line" in c for c in follow_captured):
+                break
+            time.sleep(0.2)
+
+        # Stop the follow thread
+        import ctypes
+        assert follow_thread.ident is not None
+        try:
+            ctypes.pythonapi.PyThreadState_SetAsyncExc(
+                ctypes.c_ulong(follow_thread.ident),
+                ctypes.py_object(KeyboardInterrupt),
+            )
+        except Exception:
+            pass
+        follow_thread.join(timeout=3)
+
+        # Verify follow detected the new line
+        combined_follow = "\n".join(follow_captured)
+        assert "follow-detected-line" in combined_follow
 
         # --- Step 8: Kill service (simulate crash) ---
         # Remove PID to simulate process death BUT leave PID file

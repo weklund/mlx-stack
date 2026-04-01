@@ -135,20 +135,38 @@ def _delete_excess_archives(base: Path, stem: str, max_files: int) -> None:
     (which would become max_files+1 after shifting) and any existing
     archives beyond max_files.
 
+    Scans the logs directory for ALL matching archive files using a glob
+    pattern (``<stem>.*.gz``) instead of stopping at the first missing
+    sequential index. Archives are sorted by modification time; the
+    oldest are deleted until the count is at or below ``max_files - 1``
+    (leaving room for the new rotation).
+
     Args:
         base: Parent directory.
         stem: Log file name.
         max_files: Maximum archives to keep.
     """
-    # Delete from max_files upward (the shift would push these out of range)
-    n = max_files
-    while True:
-        path = _archive_path_for(base, stem, n)
-        if path.exists():
-            path.unlink()
-            n += 1
-        else:
-            break
+    import re
+
+    pattern = re.compile(rf"^{re.escape(stem)}\.(\d+)\.gz$")
+    archives: list[Path] = []
+
+    for path in base.iterdir():
+        if pattern.match(path.name) and path.is_file():
+            archives.append(path)
+
+    # We need room for the new archive that will become .1.gz after
+    # shifting, so keep at most max_files - 1 existing archives.
+    if len(archives) < max_files:
+        return
+
+    # Sort by modification time, oldest first
+    archives.sort(key=lambda p: p.stat().st_mtime)
+
+    # Delete oldest until we have at most max_files - 1
+    excess = len(archives) - (max_files - 1)
+    for path in archives[:excess]:
+        path.unlink()
 
 
 def _shift_archives(base: Path, stem: str, max_files: int) -> None:

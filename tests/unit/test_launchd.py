@@ -755,12 +755,13 @@ class TestUninstallAgent:
             with pytest.raises(PlatformError):
                 uninstall_agent()
 
-    def test_best_effort_unload(self) -> None:
-        """If unload fails, plist should still be removed."""
+    def test_best_effort_unload_no_such_process(self) -> None:
+        """If unload fails with 'No such process', plist should still be removed."""
+        no_proc_err = LaunchdError("No such process")
         with (
             patch("mlx_stack.core.launchd.check_platform"),
             patch("mlx_stack.core.launchd.get_plist_path") as mock_get_path,
-            patch("mlx_stack.core.launchd.unload_agent", side_effect=LaunchdError("fail")),
+            patch("mlx_stack.core.launchd.unload_agent", side_effect=no_proc_err),
         ):
             mock_plist = MagicMock()
             mock_plist.exists.return_value = True
@@ -771,6 +772,25 @@ class TestUninstallAgent:
 
         assert result is True
         mock_plist.unlink.assert_called_once()
+
+    def test_unload_non_trivial_error_raises(self) -> None:
+        """If unload fails with a non-'No such process' error, raise LaunchdError."""
+        perm_err = LaunchdError("permission denied")
+        with (
+            patch("mlx_stack.core.launchd.check_platform"),
+            patch("mlx_stack.core.launchd.get_plist_path") as mock_get_path,
+            patch("mlx_stack.core.launchd.unload_agent", side_effect=perm_err),
+        ):
+            mock_plist = MagicMock()
+            mock_plist.exists.return_value = True
+            mock_plist.unlink = MagicMock()
+            mock_get_path.return_value = mock_plist
+
+            with pytest.raises(LaunchdError, match="permission denied"):
+                uninstall_agent()
+
+        # Plist should NOT have been removed since the error was non-trivial
+        mock_plist.unlink.assert_not_called()
 
     def test_unlink_failure_raises(self) -> None:
         with (

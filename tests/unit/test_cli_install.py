@@ -150,7 +150,7 @@ class TestInstallStatus:
         self, runner: CliRunner, mlx_stack_home: Path
     ) -> None:
         with patch(
-            "mlx_stack.cli.install.get_agent_status",
+            "mlx_stack.cli.install.check_platform",
             side_effect=PlatformError("only available on macOS"),
         ):
             result = runner.invoke(cli, ["install", "--status"])

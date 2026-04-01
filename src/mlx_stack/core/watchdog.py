@@ -292,11 +292,14 @@ def restart_service(
     if litellm_binary is None:
         litellm_binary = shutil.which("litellm") or "litellm"
 
-    # Clean up old PID file
-    remove_pid_file(service_name)
-
+    # Acquire lock BEFORE removing PID file.  If the lock cannot be
+    # obtained, leave the PID file intact so the service stays in
+    # "crashed" state for the next poll cycle.
     try:
         with acquire_lock():
+            # Clean up old PID file only after lock is held
+            remove_pid_file(service_name)
+
             if service_name == LITELLM_SERVICE_NAME:
                 return _restart_litellm(service_name, stack, litellm_binary)
             else:
@@ -723,7 +726,7 @@ def run_watchdog(
             if status_callback is not None:
                 status_callback(result, state)
 
-            if restart_callback is not None:
+            if restart_callback is not None and result.restarts_attempted > 0:
                 for record in state.restart_log[-result.restarts_attempted:]:
                     restart_callback(record)
 

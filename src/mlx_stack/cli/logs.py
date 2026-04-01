@@ -176,7 +176,24 @@ def logs(
         _display_log_list()
         return
 
-    # Validate service name
+    # Handle --all mode: show archives + current.
+    # This must be checked BEFORE the log_path validation because
+    # read_all_logs works even when the current log file is missing
+    # (it can show archives only).
+    if show_all:
+        content = read_all_logs(effective_service)
+        if content:
+            click.echo(content)
+        else:
+            console.print(
+                Text(
+                    f"No log content found for service '{effective_service}'.",
+                    style="yellow",
+                )
+            )
+        return
+
+    # Validate service name — required for --follow, --tail, and default modes
     log_path = get_log_path(effective_service)
     if log_path is None:
         available = get_available_services()
@@ -192,20 +209,6 @@ def logs(
                 f"'{effective_service}'. No log files exist."
             )
         sys.exit(1)
-
-    # Handle --all mode: show archives + current
-    if show_all:
-        content = read_all_logs(effective_service)
-        if content:
-            click.echo(content)
-        else:
-            console.print(
-                Text(
-                    f"No log content found for service '{effective_service}'.",
-                    style="yellow",
-                )
-            )
-        return
 
     # Handle --follow mode
     if follow:
