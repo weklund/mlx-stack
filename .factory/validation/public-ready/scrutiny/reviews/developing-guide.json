@@ -1,0 +1,34 @@
+{
+  "featureId": "developing-guide",
+  "reviewedAt": "2026-04-01T03:44:03Z",
+  "commitId": "6839c26",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The guide is comprehensive and covers all major requested sections, but it misses a stated requirement to explain strict Pyright configuration and includes at least one explicitly non-runnable code example, which violates the expected behavior that examples be runnable.",
+    "issues": [
+      {
+        "file": "DEVELOPING.md",
+        "line": 581,
+        "severity": "blocking",
+        "description": "The feature requirement explicitly called for explaining the strict mode type-checking config, but this section documents `typeCheckingMode = \"basic\"` and does not provide strict-mode configuration guidance."
+      },
+      {
+        "file": "DEVELOPING.md",
+        "line": 368,
+        "severity": "blocking",
+        "description": "The expected behavior requires code examples to be runnable, but the new CLI command example includes a placeholder implementation (`...`) and is therefore not runnable as written."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature is assigned `cli-feature`, but the worker session could not invoke that skill and had to proceed without it; additionally, the skill procedure is geared to TDD coding work and is a poor fit for documentation-only features.",
+      "evidence": "Transcript skeleton for workerSessionId 54849990-7a61-47b9-9a68-c7c3ba45b126 shows `Skill \"cli-feature\" not found`; handoff.skillFeedback.deviations records this fallback; `.factory/skills/cli-feature/SKILL.md` requires code-first TDD steps."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, transcript skeleton, and shared-state files. The documentation is broad and mostly accurate, but two blocking requirement mismatches remain (strict-mode guidance and runnable-example requirement), so this review fails."
+}

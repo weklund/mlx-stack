@@ -1,0 +1,28 @@
+{
+  "featureId": "github-actions-ci",
+  "reviewedAt": "2026-04-01T03:42:38Z",
+  "commitId": "e9dfdf4",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The workflow implements the requested CI steps and tooling, but the concurrency key does not enforce branch-level cancellation for push events.",
+    "issues": [
+      {
+        "file": ".github/workflows/ci.yml",
+        "line": 9,
+        "severity": "blocking",
+        "description": "Concurrency is configured as `${{ github.workflow }}-${{ github.head_ref || github.run_id }}`. On push events `github.head_ref` is empty, so this falls back to `github.run_id` (unique per run), which prevents cancel-in-progress from cancelling prior runs on the same branch. This violates the requirement to cancel stale runs per branch."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature is tagged with `skillName: cli-feature`, but the worker could not use that skill at runtime and had to proceed without it.",
+      "evidence": "features.json sets `github-actions-ci` skillName to `cli-feature`; transcript skeleton shows `Tool: Skill {\"skill\":\"cli-feature\"}` followed by 'The `cli-feature` skill isn't available'; handoff.skillFeedback.deviations records the same mismatch."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Fail: one blocking issue found in `.github/workflows/ci.yml` where concurrency grouping uses `github.run_id` fallback, so stale push runs on the same branch are not cancelled as required."
+}

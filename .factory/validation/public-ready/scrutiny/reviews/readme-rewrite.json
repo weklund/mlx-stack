@@ -1,0 +1,33 @@
+{
+  "featureId": "readme-rewrite",
+  "reviewedAt": "2026-04-01T03:42:58Z",
+  "commitId": "1878c300ed6a2f37d36ae58e565ecc2fe4ab7155",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Implementation covers the requested README rewrite, TOC/sections, architecture diagram, badges, project.urls additions, and py.typed marker creation. No blocking gaps were found against expected behavior.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/py.typed",
+        "line": 1,
+        "severity": "non_blocking",
+        "description": "Feature description asked for an empty py.typed marker, but the committed file contains a single newline byte (size 1). This does not affect PEP 561 behavior, but it is slightly off the literal wording."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Worker transcript shows `Skill(\"cli-feature\")` was not invokable even though the mission feature specifies `skillName: cli-feature` and the skill file exists in-repo. This indicates a registration/discovery gap between mission-assigned skills and runtime-available skills.",
+      "evidence": "Transcript skeleton for session f3a55907-efca-4c51-aa35-4ec88e4da17d includes `Tool Result: Error: Skill \"cli-feature\" not found`; feature metadata sets `skillName` to `cli-feature`; skill file exists at `.factory/skills/cli-feature/SKILL.md`."
+    },
+    {
+      "area": "skills",
+      "observation": "The assigned `cli-feature` skill procedure is code/TDD-centric and not well-suited to documentation-only features, which can force irrelevant workflow steps or deviations.",
+      "evidence": "Feature description is docs/metadata-only (README rewrite + pyproject URLs + py.typed marker), while `.factory/skills/cli-feature/SKILL.md` mandates writing failing tests first and full code-path implementation flow."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, and commit diff for readme-rewrite. The feature is implemented as requested with no blocking defects; one minor non-blocking mismatch is that py.typed is newline-only instead of literally empty. Noted skill-discovery/procedure-fit gaps in shared state."
+}

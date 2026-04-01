@@ -1,0 +1,28 @@
+{
+  "featureId": "community-docs",
+  "reviewedAt": "2026-04-01T03:42:32Z",
+  "commitId": "e8f755c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The implementation adds all requested community documentation files and updates LICENSE year, and most content requirements are covered. However, the changelog entry does not fully satisfy the explicitly requested Keep a Changelog section structure.",
+    "issues": [
+      {
+        "file": "CHANGELOG.md",
+        "line": 11,
+        "severity": "blocking",
+        "description": "Feature description requires Keep a Changelog format with Added/Changed/Fixed sections for the retroactive v0.1.0 entry, but the file includes only `### Added` and omits `### Changed` and `### Fixed` sections."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The assigned `cli-feature` skill is code/TDD-oriented and does not fit docs-only features well, leading the worker to bypass it for this feature.",
+      "evidence": "Feature metadata uses `skillName: cli-feature`; transcript skeleton for session `785530bb-26a6-487b-9c85-904e8b1a991f` states this was a docs-only feature and proceeds without cli-feature procedure steps, and handoff.skillFeedback suggests adding docs-only guidance."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature `community-docs` using features.json, handoff, commit diff (e8f755c), transcript skeleton, AGENTS.md, services.yaml, library files, and the cli-feature skill. Result: FAIL due to one blocking gap in CHANGELOG.md section structure (missing Changed/Fixed headings)."
+}
