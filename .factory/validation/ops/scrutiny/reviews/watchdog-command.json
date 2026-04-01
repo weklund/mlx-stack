@@ -1,0 +1,50 @@
+{
+  "featureId": "watchdog-command",
+  "reviewedAt": "2026-04-01T00:29:47Z",
+  "commitId": "1636a6ed8377ef86db39c1a447428257efc11a85",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The watchdog feature broadly implements the requested scope (polling, restart logic, flap detection, daemon mode, signal handling, CLI wiring, and tests), but there is one blocking correctness bug in restart flow plus two non-blocking quality gaps.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/watchdog.py",
+        "line": 296,
+        "severity": "blocking",
+        "description": "restart_service removes the service PID file before attempting to acquire the lock. If lock acquisition fails (line 304), restart returns False with the PID file already deleted. On the next poll, status logic classifies the service as stopped when PID is missing (process.py line 773), and poll_cycle only attempts restart for status == \"crashed\" (watchdog.py line 576). Result: a crashed service can become permanently non-restartable after transient lock contention, violating expected watchdog recovery behavior."
+      },
+      {
+        "file": "src/mlx_stack/core/watchdog.py",
+        "line": 727,
+        "severity": "non_blocking",
+        "description": "Restart callback dispatch uses `state.restart_log[-result.restarts_attempted:]`. When `restarts_attempted` is 0, slice `[-0:]` equals the full list, so previously logged restart events are replayed every cycle. This causes duplicate restart event output and noisy/incorrect operational logs."
+      },
+      {
+        "file": "tests/unit/test_watchdog.py",
+        "line": 403,
+        "severity": "non_blocking",
+        "description": "The rotation test assertion `assert count >= 0` is vacuous and does not verify actual rotation behavior. This is brittle coverage that can pass even if rotation integration regresses."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Current watchdog lock guidance documents lock scope but not PID-file ordering semantics during restart attempts. This gap likely contributed to the remove-PID-before-lock bug.",
+      "evidence": "AGENTS.md line 40 says to lock only during restart operations; watchdog.py line 296 removes PID before lock acquisition at line 299, and lock failure path at line 304 can leave service misclassified as stopped."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill is out of sync with this repository’s command-registration pattern.",
+      "evidence": "`.factory/skills/cli-feature/SKILL.md` line 189 instructs registering commands in `src/mlx_stack/cli/__init__.py`, but actual registry is in `src/mlx_stack/cli/main.py` (e.g., line 180 for watch)."
+    },
+    {
+      "area": "skills",
+      "observation": "The skill’s strict TDD procedure appears mismatched for continuation/fix-style worker sessions, creating process drift between stated procedure and real workflow.",
+      "evidence": "Skill mandates failing-tests-first (SKILL.md lines 65 and 127), while the session transcript skeleton shows baseline/full-suite runs and code review flow without an explicit failing-test-first step."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed watchdog-command using feature metadata, handoff, commit diff, transcript skeleton, validation contract, and shared-state docs. Marked FAIL due to a blocking restart-flow bug where PID removal precedes lock acquisition and can prevent future auto-restarts after lock contention. Also noted two non-blocking issues (duplicate restart callback replay and weak rotation test assertion) plus shared-state documentation/skill alignment gaps."
+}

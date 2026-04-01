@@ -1,0 +1,40 @@
+{
+  "featureId": "launchd-integration",
+  "reviewedAt": "2026-04-01T00:29:49Z",
+  "commitId": "ad45ad6",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature largely implements the required launchd integration surface (plist generation, command wiring, status reporting, and broad test coverage), but there are blocking correctness gaps in error handling and platform guarding that can produce incorrect user-visible outcomes.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/launchd.py",
+        "line": 517,
+        "severity": "blocking",
+        "description": "uninstall_agent swallows all LaunchdError exceptions from unload_agent and still deletes the plist, which can report successful uninstall even when launchctl bootout actually failed. This can leave the agent running while claiming it was removed, violating the uninstall behavior contract."
+      },
+      {
+        "file": "src/mlx_stack/cli/install.py",
+        "line": 87,
+        "severity": "blocking",
+        "description": "The install --status path bypasses platform checks (it calls get_agent_status directly). On non-macOS, this path returns a normal status instead of a platform error, which is inconsistent with the required non-macOS guard for install/uninstall commands."
+      },
+      {
+        "file": "src/mlx_stack/core/launchd.py",
+        "line": 197,
+        "severity": "non_blocking",
+        "description": "MLX_STACK_HOME is included whenever the environment variable is set, even if set to the default ~/.mlx-stack path. The feature spec says MLX_STACK_HOME should be embedded only when custom (non-default)."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata requires skillName `cli-feature`, but the worker transcript shows the skill invocation failed (`Skill \"cli-feature\" not found`) and the worker proceeded without it. This indicates a shared-state mismatch between configured feature skills and runtime-available skills.",
+      "evidence": "Feature entry: /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/features.json (id=launchd-integration, skillName=cli-feature). Transcript skeleton: /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/worker-transcripts.jsonl (workerSessionId=c58cef80-49ab-44c5-8f63-b6b6d3809ab2) contains tool result `Error: Skill \"cli-feature\" not found`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit ad45ad6 for launchd-integration and found two blocking issues: uninstall can silently ignore launchctl bootout failures, and install --status bypasses non-macOS platform guarding. Report written with evidence and one shared-state skill-mapping observation."
+}

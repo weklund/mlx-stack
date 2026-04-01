@@ -78,6 +78,10 @@ Architectural decisions, patterns discovered, and conventions.
 - Archives shifted up before new rotation
 - No cooperation needed from child processes (vllm-mlx, litellm)
 
+### Log Follow Caveat
+- `core/log_viewer.py:follow_log` detects truncation when `current_size < position`.
+- Edge case: truncate + immediate rewrite back to exactly the previous byte length may not trigger truncation detection (`current_size == position`), so the stream can miss lines until new writes advance file size.
+
 ### Watchdog Architecture
 - Single foreground loop (or daemonized with --daemon)
 - Polls get_service_status for all services each interval

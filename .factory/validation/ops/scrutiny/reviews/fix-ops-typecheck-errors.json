@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-ops-typecheck-errors",
+  "reviewedAt": "2026-04-01T00:28:45Z",
+  "commitId": "c5cb45f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The commit cleanly addresses the four targeted pyright issues in tests/unit/test_ops_cross_area.py by adding explicit non-None guards before Optional values are used where concrete types are required. The changes are minimal, localized, and aligned with the feature description and expected behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The feature metadata specifies skillName `cli-feature`, but the transcript skeleton shows `mission-worker-base` was invoked instead. This suggests a procedure mismatch for fix-only tasks and may cause inaccurate `followedProcedure` reporting.",
+      "evidence": "Feature metadata: /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/features.json (id=fix-ops-typecheck-errors, skillName=cli-feature). Transcript skeleton entry: /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/worker-transcripts.jsonl (workerSessionId=86b4d04c-87b8-4dec-b666-251541580a80) shows `Tool: Skill` with `mission-worker-base`."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed commit c5cb45f for fix-ops-typecheck-errors; implementation is correct and complete for the requested pyright Optional/int and optional-subscript fixes, with no blocking code issues found."
+}

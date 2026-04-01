@@ -1,0 +1,39 @@
+{
+  "featureId": "logs-command",
+  "reviewedAt": "2026-04-01T00:29:43Z",
+  "commitId": "e15ab220a15c6b7934245b7c497f97e3e20612b9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The feature implementation covers the requested logs-command scope (tail, follow, service filtering, list, rotate integration, and --all archive viewing) with substantial core and CLI unit-test coverage. I found one functional edge-case gap and one related test-coverage gap, both non-blocking for the contracted behavior.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/logs.py",
+        "line": 180,
+        "severity": "non_blocking",
+        "description": "The CLI validates `get_log_path(effective_service)` before executing `--all`, so `mlx-stack logs <service> --all` exits with 'No log file found' when only rotated archives exist and the current `.log` is absent. This blocks archive-only viewing even though `read_all_logs()` supports archives without a current log."
+      },
+      {
+        "file": "tests/unit/test_cli_logs.py",
+        "line": 274,
+        "severity": "non_blocking",
+        "description": "CLI tests for `--all` cover the happy path (archives + current) and no-logs error, but do not cover the archive-only case (archives exist, current log missing), leaving the edge-case behavior in `logs.py` untested."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata points to `skillName: cli-feature`, but that skill was not available to the worker at runtime, causing repeated manual bypass behavior.",
+      "evidence": "Transcript skeleton for worker session 66eb4f19-206f-4d84-929a-631b19868ab1 shows `Tool: Skill {\"skill\":\"cli-feature\"}` followed by `Error: Skill \"cli-feature\" not found`; handoff.skillFeedback also records this deviation."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-feature skill prescribes test-first (TDD), but this run implemented production files before creating tests, suggesting either procedure drift or insufficient enforcement/clarity.",
+      "evidence": "Transcript skeleton sequence shows `Create src/mlx_stack/core/log_viewer.py` and `Create src/mlx_stack/cli/logs.py` before `Create tests/unit/test_log_viewer.py` and `Create tests/unit/test_cli_logs.py`, while `.factory/skills/cli-feature/SKILL.md` Step 2 requires writing failing tests first."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature logs-command from commit e15ab22 in detail across handoff, diff, transcript skeleton, skill guidance, and shared-state docs. Implementation is broadly correct against feature requirements and validation-contract intent, with two non-blocking gaps: archive-only `--all` CLI behavior and missing test coverage for that case."
+}

@@ -1,0 +1,45 @@
+{
+  "featureId": "ops-cross-area-validation",
+  "reviewedAt": "2026-04-01T00:30:53Z",
+  "commitId": "54dc7e1",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The feature adds substantial cross-ops tests and covers many intended interactions, but two contract-critical assertions are only partially exercised: launchd-started watchdog behavior is tested without launchctl invocation checks, and the declared full lifecycle test does not actually execute a follow stream step.",
+    "issues": [
+      {
+        "file": "tests/unit/test_ops_cross_area.py",
+        "line": 685,
+        "severity": "blocking",
+        "description": "VAL-CROSS-OPS-003 explicitly calls for mocking launchctl and validating the launchd-started watchdog path, but the tests only generate/write a plist and then call poll_cycle directly. They do not exercise install_agent/load_agent or assert launchctl bootstrap/bootout invocation, so the launchd boundary is not validated in this cross-area feature."
+      },
+      {
+        "file": "tests/unit/test_ops_cross_area.py",
+        "line": 1171,
+        "severity": "blocking",
+        "description": "VAL-CROSS-OPS-005 requires the full lifecycle to include a logs --follow streaming step. In test_full_lifecycle_sequence, Step 7 only writes and reads the log file directly and never invokes follow_log or the logs --follow command path, so the declared full-lifecycle flow is not actually verified end-to-end."
+      },
+      {
+        "file": "tests/unit/test_ops_cross_area.py",
+        "line": 393,
+        "severity": "non_blocking",
+        "description": "The follow tests stop background threads by injecting KeyboardInterrupt via ctypes.pythonapi.PyThreadState_SetAsyncExc. This technique is fragile and can introduce nondeterministic/flaky behavior across Python versions and runtimes."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Feature metadata references skillName `cli-feature`, but runtime skill invocation failed and the worker proceeded without the feature-specific skill. This indicates a shared-state mismatch between configured feature skills and runtime-available skills.",
+      "evidence": "Feature entry: /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/features.json (id=ops-cross-area-validation, skillName=cli-feature). Transcript skeleton entry in /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/worker-transcripts.jsonl for workerSessionId=90eb8a22-7689-422e-ad99-46965bc1afb6 contains `Error: Skill \"cli-feature\" not found`, while /Users/weae1504/Projects/mlx-stack/.factory/skills/cli-feature/SKILL.md exists."
+    },
+    {
+      "area": "knowledge",
+      "observation": "The worker identified a follow_log truncation edge case (truncate + rewrite to identical byte length can evade `current_size < position` detection) but this operational quirk is not captured in shared library knowledge.",
+      "evidence": "Transcript skeleton for workerSessionId=90eb8a22-7689-422e-ad99-46965bc1afb6 in /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/worker-transcripts.jsonl documents the equality-size truncation scenario; /Users/weae1504/Projects/mlx-stack/.factory/library/architecture.md mentions copytruncate strategy but not this follow polling caveat."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed feature ops-cross-area-validation (commit 54dc7e1) across handoff, diff, transcript skeleton, validation contract, and skill/shared-state artifacts. The test suite is broad but does not fully satisfy two explicit contract-critical flows (launchctl-backed launchd path and follow-stream step inside full lifecycle), so the review result is fail with actionable blocking issues."
+}
