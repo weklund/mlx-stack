@@ -6,13 +6,13 @@ architecture: transformer
 min_mlx_lm_version: "0.22.0"
 sources:
   int4:
-    hf_repo: mlx-community/Qwen3.5-0.6B-4bit
-    disk_size_gb: 0.5
+    hf_repo: mlx-community/Qwen3.5-0.8B-4bit
+    disk_size_gb: 0.65
   int8:
-    hf_repo: mlx-community/Qwen3.5-0.6B-8bit
+    hf_repo: mlx-community/Qwen3.5-0.8B-8bit
     disk_size_gb: 0.9
   bf16:
-    hf_repo: Qwen/Qwen3.5-0.6B
+    hf_repo: Qwen/Qwen3.5-0.8B
     disk_size_gb: 1.6
     convert_from: true
 capabilities:

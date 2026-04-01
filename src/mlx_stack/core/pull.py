@@ -288,7 +288,7 @@ def get_model_local_path(models_dir: Path, hf_repo: str) -> Path:
 
     Args:
         models_dir: The models directory.
-        hf_repo: The HuggingFace repo name (e.g., "mlx-community/Qwen3.5-0.6B-4bit").
+        hf_repo: The HuggingFace repo name (e.g., "mlx-community/Qwen3.5-0.8B-4bit").
 
     Returns:
         The local path for the model directory.
