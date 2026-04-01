@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-ops-scrutiny-issues",
+  "reviewedAt": "2026-04-01T00:49:29Z",
+  "commitId": "75cadda588e240403a683fff9a58934a0f84970f",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "Reviewed prior failed reviews and original diffs for log-rotation (e6e3827), watchdog-command (1636a6e), launchd-integration (ad45ad6), and ops-cross-area-validation (54dc7e1), then reviewed fix diff 75cadda. The fix commit addresses all prior blocking findings: archive cleanup now scans all matching archives and trims oldest by mtime; restart flow now acquires lock before PID removal and restart callback slicing is guarded for zero attempts; uninstall no longer suppresses non-trivial bootout errors and install --status is platform-guarded; cross-area tests now assert launchctl bootstrap/bootout args and include an actual follow_log detection step in lifecycle flow; --all logs mode now works when only archives exist.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "Runtime skill availability still mismatches feature metadata/skill files: the worker session required `cli-feature`, but skill invocation failed and the worker proceeded without it.",
+      "evidence": "Feature metadata lists skillName=cli-feature for fix-ops-scrutiny-issues in /Users/weae1504/.factory/missions/3030b53e-194c-480b-b5bd-fa6c341250b6/features.json; /Users/weae1504/Projects/mlx-stack/.factory/skills/cli-feature/SKILL.md exists; transcript skeleton for workerSessionId 572c38a1-7cd1-4c0f-b9d2-7e8e358ca9a9 includes `Tool Result Error: Skill \"cli-feature\" not found`."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/ops/scrutiny/reviews/log-rotation.json; .factory/validation/ops/scrutiny/reviews/watchdog-command.json; .factory/validation/ops/scrutiny/reviews/launchd-integration.json; .factory/validation/ops/scrutiny/reviews/ops-cross-area-validation.json",
+  "summary": "PASS: comparing both original failing diffs and the fix diff shows all previously blocking scrutiny issues were remediated in commit 75cadda without introducing new blocking defects in reviewed scope."
+}

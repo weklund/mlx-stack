@@ -1,7 +1,7 @@
 {
   "milestone": "ops",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,94 +20,19 @@
     }
   },
   "reviewsSummary": {
-    "total": 7,
-    "passed": 3,
-    "failed": 4,
-    "failedFeatures": [
-      "log-rotation",
-      "watchdog-command",
-      "launchd-integration",
-      "ops-cross-area-validation"
-    ]
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "log-rotation",
-      "severity": "blocking",
-      "description": "`rotate_log` archive cleanup stops at the first missing index, so sparse archive numbering can retain files beyond `max_files`, violating retention guarantees."
-    },
-    {
-      "featureId": "watchdog-command",
-      "severity": "blocking",
-      "description": "`restart_service` removes PID files before lock acquisition; on lock acquisition failure, crashed services can be reclassified as stopped and never auto-restarted."
-    },
-    {
-      "featureId": "launchd-integration",
-      "severity": "blocking",
-      "description": "`uninstall_agent` swallows launchctl unload failures and still removes the plist, which can report uninstall success while the agent remains loaded/running."
-    },
-    {
-      "featureId": "launchd-integration",
-      "severity": "blocking",
-      "description": "`install --status` bypasses non-macOS platform guarding and can return normal status output where a platform error is required."
-    },
-    {
-      "featureId": "ops-cross-area-validation",
-      "severity": "blocking",
-      "description": "Cross-ops tests for VAL-CROSS-OPS-003 do not validate launchctl bootstrap/bootout invocation, so launchd-started watchdog behavior is not fully covered at the launchctl boundary."
-    },
-    {
-      "featureId": "ops-cross-area-validation",
-      "severity": "blocking",
-      "description": "The full lifecycle test for VAL-CROSS-OPS-005 does not execute an actual `logs --follow` flow; it only reads/writes files directly, leaving the required follow-stream step unvalidated."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "library",
-      "description": "Added a log-follow caveat in `.factory/library/architecture.md` documenting the truncate+rewrite same-size edge case for `follow_log` truncation detection.",
-      "sourceFeature": "ops-cross-area-validation"
-    }
-  ],
-  "suggestedGuidanceUpdates": [
-    {
-      "target": "AGENTS.md",
-      "suggestion": "Add watchdog restart-flow guidance that PID files must not be removed before lock acquisition succeeds, and failed restart attempts must preserve crashed-state observability for subsequent polls.",
-      "evidence": "watchdog-command review found a blocking bug from removing PID before lock acquisition; lock contention then makes crashed services appear stopped and non-restartable.",
-      "isSystemic": false
-    },
-    {
-      "target": "skills",
-      "suggestion": "Fix skill availability mapping so features configured with `skillName: cli-feature` can actually invoke `cli-feature` at runtime.",
-      "evidence": "Multiple ops reviews observed transcript errors `Skill \"cli-feature\" not found` despite `.factory/skills/cli-feature/SKILL.md` existing.",
-      "isSystemic": true
-    },
-    {
-      "target": "skills",
-      "suggestion": "Update `cli-feature` instructions to match repo reality (`src/mlx_stack/cli/main.py` is the command registry, not `cli/__init__.py`).",
-      "evidence": "watchdog-command review noted skill guidance references `cli/__init__.py`, but command registration in this repo is done in `cli/main.py`.",
-      "isSystemic": true
-    },
-    {
-      "target": "skills",
-      "suggestion": "Clarify `cli-feature` test-first requirements with explicit exceptions/alternative flow for lint-only/typecheck-only maintenance fixes.",
-      "evidence": "fix-ops-lint-errors and related reviews highlighted procedural ambiguity where strict TDD steps do not fit pure static-cleanup tasks.",
-      "isSystemic": true
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
   "rejectedObservations": [
     {
-      "observation": "Repeated reports that worker sessions used `mission-worker-base` instead of `cli-feature`.",
-      "reason": "duplicate"
-    },
-    {
-      "observation": "Repeated reports of `cli-feature` not found.",
-      "reason": "duplicate"
-    },
-    {
-      "observation": "Non-blocking request to further strengthen specific test assertions (e.g., vacuous `count >= 0`).",
-      "reason": "already-captured-in-feature-review"
+      "observation": "Runtime skill availability still mismatches feature metadata/skill files: the worker session required `cli-feature`, but skill invocation failed and the worker proceeded without it.",
+      "reason": "duplicate-already-reported-in-round-1"
     }
   ],
-  "previousRound": null
+  "previousRound": ".factory/validation/ops/scrutiny/synthesis.round1.json"
 }
