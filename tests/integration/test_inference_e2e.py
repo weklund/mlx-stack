@@ -1,17 +1,20 @@
 """End-to-end integration test for the full inference pipeline.
 
-Tests the complete user journey with REAL processes:
-  init → pull → up → inference → down → cleanup
+Tests the complete user journey with REAL processes, using a manually
+created minimal stack config to guarantee the smallest model is used
+regardless of hardware:
+
+  write config → pull → up → inference → down → cleanup
 
 **Requirements:**
   - macOS (darwin) — skipped on other platforms
   - Ports 8000 and 4000 must be free (skipped if occupied)
-  - First run downloads ~500MB model; subsequent runs use cache
+  - First run downloads ~650MB model; subsequent runs use cache
   - Run explicitly with: ``pytest -m integration``
   - Generous 5-minute timeout for model download + startup
 
 **What it tests:**
-  1. ``run_init()`` generates a valid stack config
+  1. Manually written stack definition (schema_version: 1, one tier)
   2. ``pull_model()`` downloads qwen3.5-0.8b (cached across runs)
   3. ``run_up()`` starts real vllm-mlx + LiteLLM with health checks
   4. LiteLLM proxy responds to chat completion requests
@@ -20,9 +23,14 @@ Tests the complete user journey with REAL processes:
   7. No PID files remain after shutdown
   8. Ports 8000 and 4000 are freed after shutdown
 
-The test uses a persistent model cache at ~/.mlx-stack-test-cache/models/
-so models are not re-downloaded every run. A try/finally block guarantees
-cleanup even on assertion failures.
+The test creates its own minimal stack config with qwen3.5-0.8b on a
+known port, bypassing the recommendation engine entirely. This ensures
+the test works on any Apple Silicon hardware (from M1 8GB to M5 Max
+128GB) without accidentally selecting larger models that aren't cached.
+
+A persistent model cache at ~/.mlx-stack-test-cache/models/ avoids
+re-downloading on every run. A try/finally block guarantees cleanup
+even on assertion failures.
 """
 
 from __future__ import annotations
@@ -33,6 +41,7 @@ import socket
 import subprocess
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -42,7 +51,6 @@ import yaml
 
 from mlx_stack.core.pull import pull_model
 from mlx_stack.core.stack_down import run_down
-from mlx_stack.core.stack_init import run_init
 from mlx_stack.core.stack_up import run_up
 
 # ---------------------------------------------------------------------------
@@ -77,6 +85,18 @@ _skip_port_4000_in_use = pytest.mark.skipif(
     _is_port_in_use(4000),
     reason="Port 4000 is already in use — skipping to avoid conflicts",
 )
+
+
+# ---------------------------------------------------------------------------
+# Constants — the smallest model for guaranteed fast testing
+# ---------------------------------------------------------------------------
+
+MODEL_ID = "qwen3.5-0.8b"
+MODEL_QUANT = "int4"
+MODEL_SOURCE = "mlx-community/Qwen3.5-0.8B-4bit"
+VLLM_PORT = 8000
+LITELLM_PORT = 4000
+TIER_NAME = "fast"
 
 
 # ---------------------------------------------------------------------------
@@ -134,13 +154,50 @@ def _wait_for_port_free(port: int, timeout: float = 10.0) -> bool:
     return False
 
 
-def _read_stack_yaml(mlx_home: Path) -> dict[str, Any]:
-    """Read and parse the generated stack YAML."""
-    stack_path = mlx_home / "stacks" / "default.yaml"
-    content = stack_path.read_text(encoding="utf-8")
-    stack = yaml.safe_load(content)
-    assert isinstance(stack, dict), "Stack YAML should be a mapping"
-    return stack
+def _build_minimal_stack_yaml() -> dict[str, Any]:
+    """Build a minimal stack definition with one tier using qwen3.5-0.8b.
+
+    This bypasses the recommendation engine entirely, giving us full
+    control over which model is used regardless of hardware capabilities.
+    """
+    return {
+        "schema_version": 1,
+        "name": "default",
+        "hardware_profile": "test",
+        "intent": "balanced",
+        "created": datetime.now(timezone.utc).isoformat(),
+        "tiers": [
+            {
+                "name": TIER_NAME,
+                "model": MODEL_ID,
+                "quant": MODEL_QUANT,
+                "source": MODEL_SOURCE,
+                "port": VLLM_PORT,
+                "vllm_flags": {},
+            },
+        ],
+    }
+
+
+def _build_minimal_litellm_yaml() -> dict[str, Any]:
+    """Build a minimal LiteLLM config pointing to the single tier."""
+    return {
+        "model_list": [
+            {
+                "model_name": TIER_NAME,
+                "litellm_params": {
+                    "model": f"openai/{MODEL_ID}",
+                    "api_base": f"http://localhost:{VLLM_PORT}/v1",
+                    "api_key": "dummy",
+                },
+            },
+        ],
+        "router_settings": {
+            "routing_strategy": "simple-shuffle",
+            "num_retries": 2,
+            "timeout": 120,
+        },
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -152,17 +209,17 @@ def _read_stack_yaml(mlx_home: Path) -> dict[str, Any]:
 @_skip_port_8000_in_use
 @_skip_port_4000_in_use
 class TestInferenceE2E:
-    """End-to-end inference test: init → pull → up → inference → down.
+    """End-to-end inference test: write config → pull → up → inference → down.
 
-    Uses a tmp_path-based MLX_STACK_HOME with a persistent model cache
-    so models are not re-downloaded every run. The test exercises the
-    full user journey with real vllm-mlx and LiteLLM processes.
+    Creates a minimal stack config with qwen3.5-0.8b (~650MB int4),
+    the smallest available model, to ensure the test works on any Apple
+    Silicon hardware without downloading large models.
 
     **How to run**::
 
         pytest -m integration tests/integration/test_inference_e2e.py -v
 
-    **Note:** First run downloads ~500MB model. Subsequent runs use cache.
+    **Note:** First run downloads ~650MB model. Subsequent runs use cache.
     """
 
     def test_full_inference_lifecycle(
@@ -171,12 +228,12 @@ class TestInferenceE2E:
         monkeypatch: pytest.MonkeyPatch,
         model_cache_dir: Path,
     ) -> None:
-        """Test init → pull → up → inference → down with real processes.
+        """Test write config → pull → up → inference → down with real processes.
 
         Steps:
             1. Set up an isolated MLX_STACK_HOME with persistent model cache
-            2. Run init to generate stack config
-            3. Pull the smallest model (qwen3.5-0.8b int4, ~500MB)
+            2. Write minimal stack YAML and LiteLLM config (skip init)
+            3. Pull the smallest model (qwen3.5-0.8b int4, ~650MB)
             4. Run up to start vllm-mlx + LiteLLM
             5. Send inference request to LiteLLM proxy
             6. Send inference request directly to vllm-mlx
@@ -200,45 +257,40 @@ class TestInferenceE2E:
         )
 
         try:
-            # ---- Step 1: Init — generate stack config ----
-            init_result = run_init(intent="balanced", force=True)
-            assert init_result["stack_path"].exists(), "Stack YAML not generated"
-            assert init_result["litellm_path"].exists(), "LiteLLM config not generated"
+            # ---- Step 1: Write minimal stack config (skip init) ----
+            # This bypasses the recommendation engine, which selects
+            # different models on different hardware. By writing the
+            # config directly we guarantee qwen3.5-0.8b is used.
+            stacks_dir = mlx_home / "stacks"
+            stacks_dir.mkdir(parents=True, exist_ok=True)
 
-            # ---- Step 2: Read stack YAML dynamically ----
-            stack = _read_stack_yaml(mlx_home)
-            tiers = stack["tiers"]
-            assert len(tiers) > 0, "Stack should have at least one tier"
+            stack_yaml = _build_minimal_stack_yaml()
+            stack_path = stacks_dir / "default.yaml"
+            stack_path.write_text(
+                yaml.dump(stack_yaml, default_flow_style=False, sort_keys=False),
+                encoding="utf-8",
+            )
 
-            # Find the tier for qwen3.5-0.8b (smallest model) and its port
-            # The init may assign it to any tier name; discover dynamically
-            vllm_tier = None
-            for tier in tiers:
-                if tier.get("model") == "qwen3.5-0.8b":
-                    vllm_tier = tier
-                    break
+            litellm_config = _build_minimal_litellm_yaml()
+            litellm_path = mlx_home / "litellm.yaml"
+            litellm_path.write_text(
+                yaml.dump(litellm_config, default_flow_style=False, sort_keys=False),
+                encoding="utf-8",
+            )
 
-            # If qwen3.5-0.8b is not in the stack (different hardware
-            # profile may select different models), use the first tier
-            if vllm_tier is None:
-                vllm_tier = tiers[0]
+            assert stack_path.exists(), "Stack YAML not written"
+            assert litellm_path.exists(), "LiteLLM config not written"
 
-            tier_name = vllm_tier["name"]
-            vllm_port = vllm_tier["port"]
-            model_id = vllm_tier["model"]
-            hf_source = vllm_tier["source"]
-            litellm_port = 4000  # Default; read from config if changed
-
-            # ---- Step 3: Pull model ----
+            # ---- Step 2: Pull model ----
             pull_result = pull_model(
-                model_id=model_id,
-                quant="int4",
+                model_id=MODEL_ID,
+                quant=MODEL_QUANT,
             )
             assert pull_result.local_path.exists(), (
                 f"Model not found at {pull_result.local_path}"
             )
 
-            # ---- Step 4: Up — start real services ----
+            # ---- Step 3: Up — start real services ----
             up_result = run_up()
 
             # Verify at least one tier is healthy
@@ -258,12 +310,11 @@ class TestInferenceE2E:
                 f"({up_result.litellm.error})"
             )
 
-            # ---- Step 5: Inference via LiteLLM proxy ----
-            # Use the tier name as the model identifier for LiteLLM
+            # ---- Step 4: Inference via LiteLLM proxy ----
             litellm_response = httpx.post(
-                f"http://localhost:{litellm_port}/v1/chat/completions",
+                f"http://localhost:{LITELLM_PORT}/v1/chat/completions",
                 json={
-                    "model": tier_name,
+                    "model": TIER_NAME,
                     "messages": [
                         {"role": "user", "content": "Say hello in exactly 3 words"},
                     ],
@@ -281,12 +332,11 @@ class TestInferenceE2E:
                 f"LiteLLM returned empty content: {litellm_data}"
             )
 
-            # ---- Step 6: Inference directly to vllm-mlx ----
-            # Use the HF repo name as the model identifier for vllm-mlx
+            # ---- Step 5: Inference directly to vllm-mlx ----
             vllm_response = httpx.post(
-                f"http://127.0.0.1:{vllm_port}/v1/chat/completions",
+                f"http://127.0.0.1:{VLLM_PORT}/v1/chat/completions",
                 json={
-                    "model": hf_source,
+                    "model": MODEL_SOURCE,
                     "messages": [
                         {"role": "user", "content": "Say hello in exactly 3 words"},
                     ],
@@ -304,7 +354,7 @@ class TestInferenceE2E:
                 f"vllm-mlx returned empty content: {vllm_data}"
             )
 
-            # ---- Step 7: Down — stop all services ----
+            # ---- Step 6: Down — stop all services ----
             down_result = run_down()
 
             # Verify services were stopped (not "nothing to stop")
@@ -312,7 +362,7 @@ class TestInferenceE2E:
                 "run_down reported nothing to stop — services may have crashed"
             )
 
-            # ---- Step 8: Verify no PID files remain ----
+            # ---- Step 7: Verify no PID files remain ----
             pids_dir = mlx_home / "pids"
             if pids_dir.exists():
                 remaining_pids = list(pids_dir.glob("*.pid"))
@@ -320,12 +370,12 @@ class TestInferenceE2E:
                     f"PID files remain after down: {[p.name for p in remaining_pids]}"
                 )
 
-            # ---- Step 9: Verify ports are freed ----
-            assert _wait_for_port_free(vllm_port, timeout=10.0), (
-                f"Port {vllm_port} still bound after down"
+            # ---- Step 8: Verify ports are freed ----
+            assert _wait_for_port_free(VLLM_PORT, timeout=10.0), (
+                f"Port {VLLM_PORT} still bound after down"
             )
-            assert _wait_for_port_free(litellm_port, timeout=10.0), (
-                f"Port {litellm_port} still bound after down"
+            assert _wait_for_port_free(LITELLM_PORT, timeout=10.0), (
+                f"Port {LITELLM_PORT} still bound after down"
             )
 
         finally:
@@ -339,11 +389,6 @@ class TestInferenceE2E:
             # Kill any remaining processes on ports 8000 and 4000
             _kill_processes_on_port(8000)
             _kill_processes_on_port(4000)
-
-            # Also kill processes on any dynamically assigned ports
-            # The stack may use ports 8001, 8002, etc.
-            for port in range(8001, 8003):
-                _kill_processes_on_port(port)
 
             # Wait briefly for processes to die
             time.sleep(1)
