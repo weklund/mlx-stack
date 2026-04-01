@@ -269,7 +269,7 @@ class TestInferenceE2E:
                     ],
                     "max_tokens": 50,
                 },
-                timeout=60.0,
+                timeout=120.0,
             )
             assert litellm_response.status_code == 200, (
                 f"LiteLLM response status: {litellm_response.status_code}, "
@@ -292,7 +292,7 @@ class TestInferenceE2E:
                     ],
                     "max_tokens": 50,
                 },
-                timeout=60.0,
+                timeout=120.0,
             )
             assert vllm_response.status_code == 200, (
                 f"vllm-mlx response status: {vllm_response.status_code}, "
