@@ -390,6 +390,7 @@ class TestFollowSurvivesRotation:
         # Stop the follow thread by sending KeyboardInterrupt
         # (follow_log catches KeyboardInterrupt for clean exit)
         import ctypes
+        assert thread.ident is not None
         try:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
@@ -440,6 +441,7 @@ class TestFollowSurvivesRotation:
         time.sleep(1.0)
 
         import ctypes
+        assert thread.ident is not None
         try:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
@@ -516,6 +518,7 @@ class TestFollowSurvivesRotation:
         assert wait_for_content("round-3-content")
 
         import ctypes
+        assert thread.ident is not None
         try:
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
@@ -1370,5 +1373,6 @@ class TestFullOpsLifecycle:
         cmd = call_kwargs[1].get("cmd", call_kwargs[0][1] if len(call_kwargs[0]) > 1 else None)
         if cmd is None:
             cmd = call_kwargs.kwargs.get("cmd")
+        assert cmd is not None, "start_service was not called with a 'cmd' argument"
         assert "/usr/bin/vllm-mlx" in cmd[0]
         assert "8000" in str(cmd)  # Port from stack definition
