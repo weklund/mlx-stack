@@ -1,6 +1,6 @@
 [project]
 name = "mlx-stack"
-version = "0.1.0"
+dynamic = ["version"]
 description = "CLI control plane for local LLM infrastructure on Apple Silicon"
 readme = "README.md"
 license = "MIT"
@@ -38,8 +38,14 @@ Documentation = "https://github.com/weklund/mlx-stack#readme"
 mlx-stack = "mlx_stack.cli:cli"
 
 [build-system]
-requires = ["hatchling"]
+requires = ["hatchling", "hatch-vcs"]
 build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/mlx_stack/_version.py"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/mlx_stack"]

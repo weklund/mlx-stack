@@ -3,6 +3,7 @@
 **CLI control plane for local LLM inference infrastructure on Apple Silicon.**
 
 [![CI](https://github.com/weklund/mlx-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/weklund/mlx-stack/actions/workflows/ci.yml)
+[![PyPI](https://img.shields.io/pypi/v/mlx-stack.svg)](https://pypi.org/project/mlx-stack/)
 [![Python 3.13+](https://img.shields.io/badge/python-≥3.13-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
 [![Platform: macOS Apple Silicon](https://img.shields.io/badge/platform-macOS%20Apple%20Silicon-lightgrey.svg)](https://support.apple.com/en-us/116943)
@@ -13,6 +14,7 @@
 
 - [Architecture](#architecture)
 - [Feature Highlights](#feature-highlights)
+- [Installation](#installation)
 - [Quick Start](#quick-start)
 - [CLI Reference](#cli-reference)
 - [Configuration](#configuration)
@@ -65,6 +67,30 @@ mlx-stack orchestrates [vllm-mlx](https://github.com/vllm-project/vllm) model se
 - **24/7 Unattended Operation** — Built-in watchdog with auto-restart, flap detection, exponential backoff, and macOS LaunchAgent integration for always-on inference on headless Mac Minis.
 - **One-Command Setup** — `mlx-stack init --accept-defaults` profiles your hardware, picks models, generates configs, and gets you from zero to a running OpenAI-compatible endpoint in minutes.
 - **15-Model Curated Catalog** — Ships with benchmark data for Qwen 3.5, Gemma 3, DeepSeek R1, Nemotron, and Llama 3.3 families — with quality scores, tool-calling metadata, and per-hardware performance data.
+
+## Installation
+
+The recommended way to install mlx-stack is with [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv tool install mlx-stack
+```
+
+This installs `mlx-stack` globally as an isolated tool — no need to manage virtual environments.
+
+Alternatively, you can use [pipx](https://pipx.pypa.io/):
+
+```bash
+pipx install mlx-stack
+```
+
+Or try it without installing:
+
+```bash
+uvx mlx-stack profile
+```
+
+> **Note:** `uvx` runs in an ephemeral environment, which works great for one-off commands. For the watchdog and LaunchAgent features (`mlx-stack watch`, `mlx-stack install`), use `uv tool install` so the binary has a stable path.
 
 ## Quick Start
 
