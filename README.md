@@ -121,6 +121,32 @@ Options:
 Options:
 - `--save` -- Persist results for use by `recommend` and `init` scoring.
 
+### Ops and Reliability
+
+**`mlx-stack logs [service]`** -- View and manage service logs. Without arguments, lists all available log files with sizes and modification times.
+
+Options:
+- `--follow` / `-f` -- Follow log output in real-time.
+- `--tail <N>` -- Show last N lines (default 50).
+- `--service <name>` -- Filter to a specific service's log.
+- `--rotate` -- Rotate eligible log files.
+- `--all` -- Show archived and current logs in chronological order.
+
+**`mlx-stack watch`** -- Health monitor that polls service status and auto-restarts crashed services. Includes flap detection, exponential backoff, and log rotation.
+
+Options:
+- `--interval <seconds>` -- Seconds between health polls (default 30).
+- `--max-restarts <N>` -- Maximum restarts before marking a service as flapping (default 5).
+- `--restart-delay <seconds>` -- Base delay before restart with exponential backoff (default 5).
+- `--daemon` -- Run in background as a daemon.
+
+**`mlx-stack install`** -- Install the watchdog as a macOS LaunchAgent for automatic startup on login.
+
+Options:
+- `--status` -- Show current launchd agent status without installing.
+
+**`mlx-stack uninstall`** -- Remove the watchdog LaunchAgent. Running services are not affected.
+
 ## Configuration
 
 Configuration is stored in `~/.mlx-stack/config.yaml`. Available keys:
@@ -133,6 +159,52 @@ Configuration is stored in `~/.mlx-stack/config.yaml`. Available keys:
 | `litellm-port` | `4000` | LiteLLM proxy port |
 | `model-dir` | `~/.mlx-stack/models` | Model storage directory |
 | `auto-health-check` | `true` | Run health checks automatically on startup |
+| `log-max-size-mb` | `50` | Maximum log file size in MB before rotation |
+| `log-max-files` | `3` | Number of rotated log files to retain |
+
+## 24/7 Operation
+
+mlx-stack can run unattended as a persistent local inference service.
+
+### Quick setup
+
+```
+mlx-stack init --accept-defaults
+mlx-stack install
+```
+
+This installs a macOS LaunchAgent that starts the watchdog automatically on login. The watchdog monitors service health every 30 seconds, auto-restarts crashed processes with exponential backoff, detects flapping services, and rotates logs to prevent unbounded disk usage.
+
+### Manual monitoring
+
+Run the watchdog in the foreground for interactive monitoring:
+
+```
+mlx-stack watch
+```
+
+This displays a Rich-formatted status table each poll cycle and prints restart events as they happen. Use `--interval 60` to poll less frequently or `--daemon` to run in the background without a LaunchAgent.
+
+### Log management
+
+View recent output from any service:
+
+```
+mlx-stack logs                      # List all log files
+mlx-stack logs fast                 # Last 50 lines of fast tier
+mlx-stack logs fast --follow        # Stream in real-time
+mlx-stack logs --rotate             # Rotate all eligible logs
+```
+
+Log rotation happens automatically during watchdog polls. Configure rotation thresholds with `log-max-size-mb` (default 50 MB) and `log-max-files` (default 3 retained archives).
+
+### Removing the agent
+
+```
+mlx-stack uninstall
+```
+
+This stops the watchdog and removes the LaunchAgent plist. Running services are not affected.
 
 ## Model Catalog
 
