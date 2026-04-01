@@ -18,34 +18,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from huggingface_hub import snapshot_download
 from rich.console import Console
 
 from mlx_stack.core.catalog import CatalogEntry, QuantSource, get_entry_by_id, load_catalog
 from mlx_stack.core.config import ConfigCorruptError, get_value
 from mlx_stack.core.paths import ensure_data_home, get_data_home
-
-# --------------------------------------------------------------------------- #
-# HuggingFace CLI binary resolution
-# --------------------------------------------------------------------------- #
-
-
-def _resolve_hf_cli() -> str:
-    """Resolve the HuggingFace CLI binary name.
-
-    Modern huggingface_hub versions install the CLI as ``hf`` rather than
-    ``huggingface-cli``.  We try ``hf`` first (via :func:`shutil.which`)
-    and fall back to ``huggingface-cli`` for older installations.
-
-    Returns:
-        The binary name that is available on ``PATH``, preferring ``hf``.
-    """
-    if shutil.which("hf"):
-        return "hf"
-    if shutil.which("huggingface-cli"):
-        return "huggingface-cli"
-    # Neither found — return "hf" (the modern default) so the caller
-    # raises a helpful FileNotFoundError.
-    return "hf"
 
 
 # --------------------------------------------------------------------------- #
@@ -321,71 +299,18 @@ def is_model_downloaded(model_path: Path) -> bool:
 # --------------------------------------------------------------------------- #
 
 
-def _filter_traceback(output: str) -> str:
-    """Filter Python traceback lines from output, returning clean error message.
-
-    Extracts the meaningful error message from output that may contain
-    a full Python traceback. Removes traceback header, frame lines, and
-    code context lines, keeping only pre-traceback content and the final
-    exception line.
-
-    Args:
-        output: Raw output that may contain traceback lines.
-
-    Returns:
-        The filtered, human-readable error message.
-    """
-    lines = output.strip().splitlines()
-    if not lines:
-        return output
-
-    # Check if the output contains a traceback
-    has_traceback = any(
-        line.strip().startswith("Traceback (most recent call last)")
-        for line in lines
-    )
-
-    if not has_traceback:
-        return output.strip()
-
-    # Walk through lines:
-    # - Keep lines before the traceback
-    # - Skip the traceback header and all indented frame/code lines
-    # - Keep the final exception line (first non-indented line after frames)
-    meaningful_lines: list[str] = []
-    in_traceback = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped.startswith("Traceback (most recent call last)"):
-            in_traceback = True
-            continue
-        if in_traceback:
-            # Inside traceback: skip lines that start with whitespace
-            # (frame references like '  File "..."' and code context lines)
-            if line.startswith((" ", "\t")) or stripped == "":
-                continue
-            # First non-indented, non-empty line is the exception message
-            meaningful_lines.append(stripped)
-            in_traceback = False
-            continue
-        if stripped:
-            meaningful_lines.append(stripped)
-
-    return "\n".join(meaningful_lines) if meaningful_lines else output.strip()
-
-
 def _run_download(
     hf_repo: str,
     local_dir: Path,
     console: Console,
 ) -> None:
-    """Run the HuggingFace CLI download command with real-time output.
+    """Download a model snapshot using the huggingface_hub Python API.
 
-    Resolves the CLI binary via :func:`_resolve_hf_cli` (prefers ``hf``,
-    falls back to ``huggingface-cli``).  Uses subprocess.Popen with
-    stderr=subprocess.STDOUT so that HF CLI tqdm progress bars (written
-    to stderr) are merged into stdout and streamed to the user in
-    real-time.  Captures output lines for error extraction on failure.
+    Uses :func:`huggingface_hub.snapshot_download` directly instead of
+    shelling out to the ``hf`` / ``huggingface-cli`` binaries.  This
+    avoids PATH resolution issues when mlx-stack is installed via
+    ``uv tool install`` or ``pipx``, where dependency entry-points are
+    not exposed on the user's PATH.
 
     Args:
         hf_repo: The HuggingFace repo to download.
@@ -395,81 +320,11 @@ def _run_download(
     Raises:
         DownloadError: If the download fails.
     """
-    # Resolve the HF CLI binary: prefer "hf" (modern), fall back to
-    # "huggingface-cli" (legacy).
-    hf_binary = _resolve_hf_cli()
-    cmd = [
-        hf_binary,
-        "download",
-        hf_repo,
-        "--local-dir",
-        str(local_dir),
-    ]
-
     try:
-        proc = subprocess.Popen(
-            cmd,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.STDOUT,
-            text=True,
-        )
-    except FileNotFoundError:
-        msg = (
-            "HuggingFace CLI not found (tried 'hf' and 'huggingface-cli').\n"
-            "Install huggingface_hub:\n"
-            "  pip install 'huggingface_hub[cli]'\n"
-            "Or: uv pip install 'huggingface_hub[cli]'"
-        )
+        snapshot_download(repo_id=hf_repo, local_dir=str(local_dir))
+    except Exception as exc:
+        msg = f"Download failed for {hf_repo}: {exc}"
         raise DownloadError(msg) from None
-    except OSError as exc:
-        msg = f"Failed to start download: {exc}"
-        raise DownloadError(msg) from None
-
-    # Stream stdout (merged with stderr) line-by-line to show download
-    # progress bars in real-time. Capture lines for error extraction.
-    # Filter traceback blocks DURING streaming — suppress them from
-    # console output but still capture them for the error handler.
-    assert proc.stdout is not None
-    captured_lines: list[str] = []
-    in_traceback = False
-    try:
-        for line in proc.stdout:
-            stripped = line.rstrip("\n")
-            if not stripped:
-                continue
-
-            captured_lines.append(stripped)
-
-            # Detect start of a traceback block
-            if stripped.strip().startswith("Traceback (most recent call last)"):
-                in_traceback = True
-                continue
-
-            if in_traceback:
-                # Inside traceback: suppress indented frame/code lines
-                if stripped.startswith((" ", "\t")):
-                    continue
-                # First non-indented line after frames is the exception
-                # message — suppress it too (it's the error summary)
-                in_traceback = False
-                continue
-
-            # Normal line — show to user
-            console.print(f"  {stripped}")
-
-        # Wait for process to complete
-        proc.wait(timeout=3600)
-    except subprocess.TimeoutExpired:
-        proc.kill()
-        proc.wait()
-        msg = "Download timed out after 1 hour."
-        raise DownloadError(msg) from None
-
-    if proc.returncode != 0:
-        raw_output = "\n".join(captured_lines)
-        clean_error = _filter_traceback(raw_output)
-        msg = f"Download failed for {hf_repo}:\n{clean_error}"
-        raise DownloadError(msg)
 
 
 def download_model(

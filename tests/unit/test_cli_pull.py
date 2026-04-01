@@ -720,185 +720,43 @@ class TestDownloadModel:
 # =========================================================================== #
 
 
-class TestFilterTraceback:
-    """Tests for _filter_traceback — VAL-PULL-008."""
+class TestRunDownloadUsesSnapshotDownload:
+    """Tests that _run_download uses the huggingface_hub Python API.
 
-    def test_no_traceback_passes_through(self) -> None:
-        """Output without traceback is returned as-is."""
-        from mlx_stack.core.pull import _filter_traceback
+    Regression guard for GitHub issue #1: mlx-stack pull must NOT shell out
+    to hf/huggingface-cli (which breaks under uv tool / pipx installs).
+    Instead it must call huggingface_hub.snapshot_download directly.
+    """
 
-        output = "Error: Repository not found"
-        assert _filter_traceback(output) == "Error: Repository not found"
-
-    def test_filters_full_traceback(self) -> None:
-        """Full Python traceback is filtered to just the error message."""
-        from mlx_stack.core.pull import _filter_traceback
-
-        output = (
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/python3.13/site-packages/requests/adapters.py", line 667\n'
-            "    resp = conn.urlopen(...)\n"
-            '  File "/usr/lib/python3.13/urllib3/connectionpool.py", line 843\n'
-            "    retries = retries.increment(...)\n"
-            "requests.exceptions.ConnectionError: Connection refused\n"
-        )
-        result = _filter_traceback(output)
-        assert "Traceback" not in result
-        assert "File " not in result
-        assert "Connection refused" in result
-
-    def test_empty_string(self) -> None:
-        """Empty string returns empty string."""
-        from mlx_stack.core.pull import _filter_traceback
-
-        assert _filter_traceback("") == ""
-
-    def test_multiline_without_traceback(self) -> None:
-        """Multiple lines without traceback are preserved."""
-        from mlx_stack.core.pull import _filter_traceback
-
-        output = "Downloading file 1...\nDownloading file 2...\nError: timeout"
-        result = _filter_traceback(output)
-        assert "Downloading file 1..." in result
-        assert "Error: timeout" in result
-
-    def test_traceback_with_preamble(self) -> None:
-        """Output with text before traceback preserves pre-traceback content."""
-        from mlx_stack.core.pull import _filter_traceback
-
-        output = (
-            "Downloading model.safetensors\n"
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/python3.13/site-packages/something.py", line 10\n'
-            "    do_stuff()\n"
-            "OSError: Network error\n"
-        )
-        result = _filter_traceback(output)
-        assert "Downloading model.safetensors" in result
-        assert "Network error" in result
-        assert "Traceback" not in result
-
-
-# =========================================================================== #
-# HuggingFace CLI binary resolution tests
-# =========================================================================== #
-
-
-class TestResolveHfCli:
-    """Tests for _resolve_hf_cli — binary name resolution logic."""
-
-    @patch("mlx_stack.core.pull.shutil.which")
-    def test_prefers_hf_when_available(self, mock_which: MagicMock) -> None:
-        """When 'hf' is on PATH, it is preferred over 'huggingface-cli'."""
-        from mlx_stack.core.pull import _resolve_hf_cli
-
-        mock_which.side_effect = lambda name: "/usr/local/bin/hf" if name == "hf" else None
-        assert _resolve_hf_cli() == "hf"
-
-    @patch("mlx_stack.core.pull.shutil.which")
-    def test_falls_back_to_huggingface_cli(self, mock_which: MagicMock) -> None:
-        """When 'hf' is missing but 'huggingface-cli' exists, uses fallback."""
-        from mlx_stack.core.pull import _resolve_hf_cli
-
-        def which_side_effect(name: str) -> str | None:
-            if name == "hf":
-                return None
-            if name == "huggingface-cli":
-                return "/usr/local/bin/huggingface-cli"
-            return None
-
-        mock_which.side_effect = which_side_effect
-        assert _resolve_hf_cli() == "huggingface-cli"
-
-    @patch("mlx_stack.core.pull.shutil.which")
-    def test_returns_hf_when_neither_found(self, mock_which: MagicMock) -> None:
-        """When neither binary exists, returns 'hf' (modern default)."""
-        from mlx_stack.core.pull import _resolve_hf_cli
-
-        mock_which.return_value = None
-        assert _resolve_hf_cli() == "hf"
-
-    @patch("mlx_stack.core.pull.shutil.which")
-    def test_both_available_prefers_hf(self, mock_which: MagicMock) -> None:
-        """When both 'hf' and 'huggingface-cli' are available, prefers 'hf'."""
-        from mlx_stack.core.pull import _resolve_hf_cli
-
-        mock_which.side_effect = lambda name: f"/usr/local/bin/{name}"
-        assert _resolve_hf_cli() == "hf"
-
-
-class TestRunDownloadBinaryResolution:
-    """Tests that _run_download uses the resolved HF CLI binary."""
-
-    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="hf")
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_uses_hf_binary(
+    @patch("mlx_stack.core.pull.snapshot_download")
+    def test_calls_snapshot_download_with_correct_args(
         self,
-        mock_popen: MagicMock,
-        mock_resolve: MagicMock,
+        mock_snapshot: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """_run_download passes resolved 'hf' binary as first cmd element."""
+        """_run_download calls snapshot_download with repo_id and local_dir."""
         from io import StringIO
 
         from rich.console import Console
 
         from mlx_stack.core.pull import _run_download
 
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("")
-        mock_proc.returncode = 0
-        mock_proc.wait.return_value = 0
-        mock_popen.return_value = mock_proc
-
         local_dir = tmp_path / "model"
         local_dir.mkdir()
         console = Console(file=StringIO())
         _run_download("test/repo", local_dir, console)
 
-        cmd = mock_popen.call_args[0][0]
-        assert cmd[0] == "hf"
-        assert cmd[1] == "download"
-        assert "test/repo" in cmd
+        mock_snapshot.assert_called_once_with(
+            repo_id="test/repo", local_dir=str(local_dir)
+        )
 
-    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="huggingface-cli")
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_uses_huggingface_cli_fallback(
+    @patch("mlx_stack.core.pull.snapshot_download", side_effect=Exception("Repo not found"))
+    def test_wraps_exception_in_download_error(
         self,
-        mock_popen: MagicMock,
-        mock_resolve: MagicMock,
+        mock_snapshot: MagicMock,
         tmp_path: Path,
     ) -> None:
-        """_run_download uses 'huggingface-cli' when that is what resolved."""
-        from io import StringIO
-
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("")
-        mock_proc.returncode = 0
-        mock_proc.wait.return_value = 0
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console = Console(file=StringIO())
-        _run_download("test/repo", local_dir, console)
-
-        cmd = mock_popen.call_args[0][0]
-        assert cmd[0] == "huggingface-cli"
-
-    @patch("mlx_stack.core.pull._resolve_hf_cli", return_value="hf")
-    @patch("mlx_stack.core.pull.subprocess.Popen", side_effect=FileNotFoundError)
-    def test_file_not_found_error_message(
-        self,
-        mock_popen: MagicMock,
-        mock_resolve: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """FileNotFoundError message mentions both 'hf' and 'huggingface-cli'."""
+        """Exceptions from snapshot_download are wrapped in DownloadError."""
         from io import StringIO
 
         import pytest
@@ -910,334 +768,31 @@ class TestRunDownloadBinaryResolution:
         local_dir.mkdir()
         console = Console(file=StringIO())
 
-        with pytest.raises(DownloadError) as exc_info:
+        with pytest.raises(DownloadError, match="Repo not found"):
             _run_download("test/repo", local_dir, console)
 
-        error_msg = str(exc_info.value)
-        assert "hf" in error_msg
-        assert "huggingface-cli" in error_msg
-        assert "huggingface_hub" in error_msg
-
-
-# =========================================================================== #
-# Download progress visibility tests
-# =========================================================================== #
-
-
-class TestDownloadProgress:
-    """Tests for real-time download progress display."""
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_streams_output(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """_run_download streams stdout (merged with stderr) to console."""
-        from io import StringIO
-
-        from rich.console import Console
+    def test_no_subprocess_usage_in_run_download(self) -> None:
+        """_run_download does not reference subprocess or Popen."""
+        import inspect
 
         from mlx_stack.core.pull import _run_download
 
-        # Mock Popen to simulate line-by-line output (stderr merged via STDOUT)
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("Downloading model.safetensors: 50%\nDownloading: 100%\n")
-        mock_proc.returncode = 0
-        mock_proc.wait.return_value = 0
-        mock_popen.return_value = mock_proc
+        source = inspect.getsource(_run_download)
+        assert "subprocess" not in source
+        assert "Popen" not in source
+        assert "shutil.which" not in source
 
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        output = StringIO()
-        console = Console(file=output, no_color=True)
-        _run_download("test/repo", local_dir, console)
+    def test_no_resolve_hf_cli_exists(self) -> None:
+        """The _resolve_hf_cli helper has been removed entirely."""
+        import mlx_stack.core.pull as pull_module
 
-        printed = output.getvalue()
-        assert "Downloading" in printed
+        assert not hasattr(pull_module, "_resolve_hf_cli")
 
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_uses_stderr_stdout_for_progress(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Verifies Popen uses stderr=STDOUT to merge tqdm progress bars."""
-        import subprocess as sp
-        from io import StringIO
+    def test_no_filter_traceback_exists(self) -> None:
+        """The _filter_traceback helper has been removed (no longer needed)."""
+        import mlx_stack.core.pull as pull_module
 
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("")
-        mock_proc.returncode = 0
-        mock_proc.wait.return_value = 0
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console = Console(file=StringIO())
-        _run_download("test/repo", local_dir, console)
-
-        mock_popen.assert_called_once()
-        call_kwargs = mock_popen.call_args
-        # Verify stderr=subprocess.STDOUT to merge progress bars into stdout
-        assert call_kwargs[1].get("stderr") == sp.STDOUT
-        # Verify stdout is PIPE for streaming
-        assert call_kwargs[1].get("stdout") == sp.PIPE
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_failure_reports_captured_output(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Failed download reports captured output in error."""
-        from io import StringIO
-
-        import pytest
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        # With stderr=STDOUT, error messages come through stdout
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO("Error: Repository not found\n")
-        mock_proc.returncode = 1
-        mock_proc.wait.return_value = 1
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console = Console(file=StringIO())
-
-        with pytest.raises(DownloadError, match="Repository not found"):
-            _run_download("test/repo", local_dir, console)
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_run_download_filters_traceback_on_failure(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Failed download filters Python traceback, shows clean error."""
-        from io import StringIO
-
-        import pytest
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        # Simulate output with full Python traceback
-        traceback_output = (
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/python3.13/site-packages/huggingface_hub/utils.py", line 100\n'
-            "    response.raise_for_status()\n"
-            "requests.exceptions.ConnectionError: Connection refused\n"
-        )
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO(traceback_output)
-        mock_proc.returncode = 1
-        mock_proc.wait.return_value = 1
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console = Console(file=StringIO())
-
-        with pytest.raises(DownloadError) as exc_info:
-            _run_download("test/repo", local_dir, console)
-
-        error_msg = str(exc_info.value)
-        # Should contain the clean error, not the traceback
-        assert "Connection refused" in error_msg
-        assert "Traceback (most recent call last)" not in error_msg
-        assert '  File "' not in error_msg
-
-
-# =========================================================================== #
-# Streaming traceback suppression tests — VAL-PULL-008
-# =========================================================================== #
-
-
-class TestStreamingTracebackSuppression:
-    """Tests that traceback lines are suppressed DURING real-time streaming.
-
-    The _run_download() function must detect traceback blocks in the output
-    stream and suppress them from console display, while still capturing
-    them in captured_lines for error extraction.
-    """
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_traceback_lines_not_printed_to_console(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Traceback block lines are NOT printed to console during streaming."""
-        from io import StringIO
-
-        import pytest
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        # Simulate output: progress line, then a full traceback
-        output_text = (
-            "Downloading model.safetensors: 100%\n"
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/python3.13/site-packages/requests/adapters.py", line 667\n'
-            "    resp = conn.urlopen(...)\n"
-            "requests.exceptions.ConnectionError: Connection refused\n"
-        )
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO(output_text)
-        mock_proc.returncode = 1
-        mock_proc.wait.return_value = 1
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console_output = StringIO()
-        console = Console(file=console_output, no_color=True)
-
-        with pytest.raises(DownloadError):
-            _run_download("test/repo", local_dir, console)
-
-        printed = console_output.getvalue()
-        # Progress line should be printed
-        assert "Downloading model.safetensors" in printed
-        # Traceback lines should NOT be printed to console
-        assert "Traceback (most recent call last)" not in printed
-        assert "File " not in printed
-        assert "resp = conn.urlopen" not in printed
-        assert "ConnectionError" not in printed
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_traceback_still_captured_for_error_handler(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Traceback lines are still captured in error message for extraction."""
-        from io import StringIO
-
-        import pytest
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        output_text = (
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/python3.13/something.py", line 10\n'
-            "    do_stuff()\n"
-            "OSError: Network error\n"
-        )
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO(output_text)
-        mock_proc.returncode = 1
-        mock_proc.wait.return_value = 1
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console = Console(file=StringIO(), no_color=True)
-
-        with pytest.raises(DownloadError) as exc_info:
-            _run_download("test/repo", local_dir, console)
-
-        # The error message should contain the filtered (clean) error
-        error_msg = str(exc_info.value)
-        assert "Network error" in error_msg
-        # But not the raw traceback frames
-        assert "Traceback (most recent call last)" not in error_msg
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_normal_output_still_printed(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Non-traceback lines are still streamed to console normally."""
-        from io import StringIO
-
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        output_text = (
-            "Fetching 5 files\n"
-            "Downloading config.json: 100%\n"
-            "Downloading model.safetensors: 100%\n"
-        )
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO(output_text)
-        mock_proc.returncode = 0
-        mock_proc.wait.return_value = 0
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console_output = StringIO()
-        console = Console(file=console_output, no_color=True)
-
-        _run_download("test/repo", local_dir, console)
-
-        printed = console_output.getvalue()
-        assert "Fetching 5 files" in printed
-        assert "config.json" in printed
-        assert "model.safetensors" in printed
-
-    @patch("mlx_stack.core.pull.subprocess.Popen")
-    def test_multiple_tracebacks_all_suppressed(
-        self,
-        mock_popen: MagicMock,
-        tmp_path: Path,
-    ) -> None:
-        """Multiple traceback blocks in output are all suppressed from console."""
-        from io import StringIO
-
-        import pytest
-        from rich.console import Console
-
-        from mlx_stack.core.pull import _run_download
-
-        output_text = (
-            "Starting download...\n"
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/retry.py", line 5\n'
-            "    attempt()\n"
-            "TimeoutError: first attempt failed\n"
-            "Retrying...\n"
-            "Traceback (most recent call last):\n"
-            '  File "/usr/lib/retry.py", line 5\n'
-            "    attempt()\n"
-            "TimeoutError: second attempt failed\n"
-        )
-        mock_proc = MagicMock()
-        mock_proc.stdout = StringIO(output_text)
-        mock_proc.returncode = 1
-        mock_proc.wait.return_value = 1
-        mock_popen.return_value = mock_proc
-
-        local_dir = tmp_path / "model"
-        local_dir.mkdir()
-        console_output = StringIO()
-        console = Console(file=console_output, no_color=True)
-
-        with pytest.raises(DownloadError):
-            _run_download("test/repo", local_dir, console)
-
-        printed = console_output.getvalue()
-        # Normal lines printed
-        assert "Starting download..." in printed
-        assert "Retrying..." in printed
-        # All traceback lines suppressed
-        assert "Traceback" not in printed
-        assert "TimeoutError" not in printed
-        assert "File " not in printed
+        assert not hasattr(pull_module, "_filter_traceback")
 
 
 # =========================================================================== #
