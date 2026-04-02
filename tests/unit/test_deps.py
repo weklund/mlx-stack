@@ -107,7 +107,7 @@ class TestGetInstalledVersion:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout="vllm-mlx v0.2.6\nlitellm v1.67.2\n",
+            stdout="vllm-mlx v0.2.6\nlitellm v1.83.0\n",
         )
         result = _get_installed_version("vllm-mlx")
         assert result == "0.2.6"
@@ -118,10 +118,10 @@ class TestGetInstalledVersion:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout="vllm-mlx v0.2.6\nlitellm v1.67.2\n",
+            stdout="vllm-mlx v0.2.6\nlitellm v1.83.0\n",
         )
         result = _get_installed_version("litellm")
-        assert result == "1.67.2"
+        assert result == "1.83.0"
 
     def test_returns_none_when_uv_not_found(self, mock_which: MagicMock) -> None:
         mock_which.return_value = None
@@ -211,12 +211,12 @@ class TestGetInstalledVersion:
             stdout=(
                 "vllm-mlx v0.2.6\n"
                 "- vllm-mlx\n"
-                "litellm v1.67.2\n"
+                "litellm v1.83.0\n"
                 "- litellm\n"
             ),
         )
         assert _get_installed_version("vllm-mlx") == "0.2.6"
-        assert _get_installed_version("litellm") == "1.67.2"
+        assert _get_installed_version("litellm") == "1.83.0"
 
 
 # --------------------------------------------------------------------------- #
@@ -313,7 +313,7 @@ class TestInstallTool:
     ) -> None:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
-        _install_tool("litellm", "1.67.2")
+        _install_tool("litellm", "1.83.0")
 
         # First call should be "Installing..."
         first_print = mock_console.print.call_args_list[0]
@@ -321,6 +321,34 @@ class TestInstallTool:
         # Second call should be success
         second_print = mock_console.print.call_args_list[1]
         assert "installed successfully" in str(second_print)
+
+    def test_litellm_installs_with_proxy_extra(
+        self,
+        mock_which: MagicMock,
+        mock_subprocess_run: MagicMock,
+        mock_console: MagicMock,
+    ) -> None:
+        """litellm install spec includes [proxy] extra for proxy dependencies."""
+        mock_which.return_value = "/usr/local/bin/uv"
+        mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        _install_tool("litellm", "1.83.0")
+
+        cmd = mock_subprocess_run.call_args[0][0]
+        assert cmd == ["/usr/local/bin/uv", "tool", "install", "litellm[proxy]==1.83.0"]
+
+    def test_vllm_mlx_installs_without_extra(
+        self,
+        mock_which: MagicMock,
+        mock_subprocess_run: MagicMock,
+        mock_console: MagicMock,
+    ) -> None:
+        """vllm-mlx install spec has no extras."""
+        mock_which.return_value = "/usr/local/bin/uv"
+        mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
+        _install_tool("vllm-mlx", "0.2.6")
+
+        cmd = mock_subprocess_run.call_args[0][0]
+        assert cmd == ["/usr/local/bin/uv", "tool", "install", "vllm-mlx==0.2.6"]
 
 
 # --------------------------------------------------------------------------- #
@@ -407,13 +435,13 @@ class TestCheckDependency:
         mock_which.side_effect = ["/usr/local/bin/litellm", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout="litellm v1.67.2\n",
+            stdout="litellm v1.83.0\n",
         )
         status = check_dependency("litellm")
         assert status.name == "litellm"
-        assert status.pinned_version == "1.67.2"
+        assert status.pinned_version == "1.83.0"
         assert status.installed is True
-        assert status.installed_version == "1.67.2"
+        assert status.installed_version == "1.83.0"
         assert status.version_match is True
 
 
@@ -541,7 +569,7 @@ class TestEnsureDependency:
         ensure_dependency("litellm")
 
         console_prints = [str(c) for c in mock_console.print.call_args_list]
-        cmd_found = any("uv tool install litellm==1.67.2" in p for p in console_prints)
+        cmd_found = any("uv tool install litellm==1.83.0" in p for p in console_prints)
         assert cmd_found, f"Expected upgrade command in: {console_prints}"
 
     def test_unknown_tool_raises_value_error(self) -> None:
@@ -674,11 +702,11 @@ class TestErrorMessages:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.side_effect = subprocess.TimeoutExpired(cmd="uv", timeout=300)
         with pytest.raises(DependencyInstallError) as exc_info:
-            _install_tool("litellm", "1.67.2")
+            _install_tool("litellm", "1.83.0")
 
         error_msg = str(exc_info.value)
         assert "Install manually with:" in error_msg
-        assert "uv tool install litellm==1.67.2" in error_msg
+        assert "uv tool install litellm[proxy]==1.83.0" in error_msg
 
 
 # --------------------------------------------------------------------------- #
@@ -719,7 +747,7 @@ class TestEdgeCases:
             stdout=(
                 "ruff v0.8.0\n"
                 "vllm-mlx v0.2.6\n"
-                "litellm v1.67.2\n"
+                "litellm v1.83.0\n"
                 "mypy v1.13.0\n"
             ),
         )
@@ -735,11 +763,11 @@ class TestEdgeCases:
             stdout=(
                 "ruff v0.8.0\n"
                 "vllm-mlx v0.2.6\n"
-                "litellm v1.67.2\n"
+                "litellm v1.83.0\n"
                 "mypy v1.13.0\n"
             ),
         )
-        assert _get_installed_version("litellm") == "1.67.2"
+        assert _get_installed_version("litellm") == "1.83.0"
 
     def test_install_tool_with_special_version(
         self,

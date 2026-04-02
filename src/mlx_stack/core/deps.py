@@ -27,7 +27,13 @@ from rich.console import Console
 
 PINNED_VERSIONS: dict[str, str] = {
     "vllm-mlx": "0.2.6",
-    "litellm": "1.67.2",
+    "litellm": "1.83.0",  # first post-CVE-2026-33634 verified release
+}
+
+# Extras required for specific tools (e.g. litellm needs [proxy] for the
+# proxy server dependencies like backoff, prisma, etc.)
+_TOOL_EXTRAS: dict[str, str] = {
+    "litellm": "proxy",
 }
 
 # Map tool name to the CLI binary name used for PATH lookup
@@ -149,7 +155,11 @@ def _install_tool(tool: str, version: str) -> None:
         )
         raise DependencyError(msg)
 
-    install_spec = f"{tool}=={version}"
+    extra = _TOOL_EXTRAS.get(tool)
+    if extra:
+        install_spec = f"{tool}[{extra}]=={version}"
+    else:
+        install_spec = f"{tool}=={version}"
     cmd = [uv_path, "tool", "install", install_spec]
     cmd_str = f"uv tool install {install_spec}"
 
