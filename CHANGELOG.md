@@ -9,10 +9,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 ### Bug Fixes
 
-* correct inverted sign on benchmark delta display ([ae7d209](https://github.com/weklund/mlx-stack/commit/ae7d20981e48b6033de9ed05115a2754576fd2a7))
-* correct inverted sign on benchmark delta percentage display ([5801fec](https://github.com/weklund/mlx-stack/commit/5801fece52a2ab4df2d1a44ba0ab8bd6b6d69449))
+* correct inverted sign on benchmark delta percentage display ([ae7d209](https://github.com/weklund/mlx-stack/commit/ae7d20981e48b6033de9ed05115a2754576fd2a7))
 * pass explicit token to release-please action ([96c9c68](https://github.com/weklund/mlx-stack/commit/96c9c686f21873a2b1a3b3596bcf87005e08843e))
-* pass explicit token to release-please action ([2febc92](https://github.com/weklund/mlx-stack/commit/2febc92d3049ba997036e3564fc3201d9f1ef44a))
 
 ## [0.1.0] - 2025-03-31
 
