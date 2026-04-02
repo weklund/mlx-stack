@@ -26,7 +26,13 @@ jobs:
         if: ${{ steps.release.outputs.release_created == 'true' }}
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit ${{ steps.release.outputs.tag_name }} --repo ${{ github.repository }} --generate-notes --notes ""
+        run: |
+          gh api repos/${{ github.repository }}/releases/generate-notes \
+            -f tag_name=${{ steps.release.outputs.tag_name }} \
+            --jq '.body' \
+          | gh release edit ${{ steps.release.outputs.tag_name }} \
+              --repo ${{ github.repository }} \
+              --notes-file -
 
   ci:
     name: CI
