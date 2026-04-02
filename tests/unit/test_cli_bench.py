@@ -465,6 +465,132 @@ class TestClassificationDisplay:
 
 
 # --------------------------------------------------------------------------- #
+# Test: Delta sign correctness
+# --------------------------------------------------------------------------- #
+
+
+class TestDeltaSignDisplay:
+    """Tests that delta percentages display the correct sign.
+
+    delta_pct is (catalog - measured) / catalog * 100, so:
+    - positive delta = measured below catalog (slower)
+    - negative delta = measured above catalog (faster)
+    - zero delta = exact match
+    """
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_below_catalog_shows_positive_delta(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """Measured 60 vs catalog 85 → delta_pct=+29.4 → should display +29.4%."""
+        result_data = BenchmarkResult_(
+            model_id="test-model",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=80.0, gen_tps=60.0,
+                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                ),
+            ],
+            prompt_tps_mean=80.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=60.0,
+            gen_tps_std=0.0,
+            classifications=[
+                MetricClassification(
+                    metric="gen_tps",
+                    measured=60.0,
+                    catalog=85.0,
+                    delta_pct=29.4,
+                    classification="WARN",
+                ),
+            ],
+            catalog_data_available=True,
+        )
+        mock_bench.return_value = result_data
+
+        result = runner.invoke(cli, ["bench", "fast"])
+        assert result.exit_code == 0
+        assert "+29.4%" in result.output
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_above_catalog_shows_negative_delta(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """Measured 90 vs catalog 85 → delta_pct=-5.9 → should display -5.9%."""
+        result_data = BenchmarkResult_(
+            model_id="test-model",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=100.0, gen_tps=90.0,
+                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                ),
+            ],
+            prompt_tps_mean=100.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=90.0,
+            gen_tps_std=0.0,
+            classifications=[
+                MetricClassification(
+                    metric="gen_tps",
+                    measured=90.0,
+                    catalog=85.0,
+                    delta_pct=-5.9,
+                    classification="PASS",
+                ),
+            ],
+            catalog_data_available=True,
+        )
+        mock_bench.return_value = result_data
+
+        result = runner.invoke(cli, ["bench", "fast"])
+        assert result.exit_code == 0
+        assert "-5.9%" in result.output
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_exact_match_shows_zero_delta(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """Measured == catalog → delta_pct=0.0 → should display +0.0%."""
+        result_data = BenchmarkResult_(
+            model_id="test-model",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=155.0, gen_tps=85.0,
+                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                ),
+            ],
+            prompt_tps_mean=155.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=85.0,
+            gen_tps_std=0.0,
+            classifications=[
+                MetricClassification(
+                    metric="gen_tps",
+                    measured=85.0,
+                    catalog=85.0,
+                    delta_pct=0.0,
+                    classification="PASS",
+                ),
+            ],
+            catalog_data_available=True,
+        )
+        mock_bench.return_value = result_data
+
+        result = runner.invoke(cli, ["bench", "fast"])
+        assert result.exit_code == 0
+        assert "+0.0%" in result.output
+
+
+# --------------------------------------------------------------------------- #
 # Test: Tool-calling display variants
 # --------------------------------------------------------------------------- #
 
