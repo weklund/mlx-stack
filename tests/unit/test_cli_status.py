@@ -23,6 +23,7 @@ from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
 from mlx_stack.core.stack_status import (
+    ServiceHealth,
     ServiceStatus,
     StatusResult,
     _load_stack_for_status,
@@ -509,7 +510,7 @@ class TestStatusToDict:
                     tier="standard",
                     model="big-model",
                     port=8000,
-                    status="healthy",
+                    status=ServiceHealth.HEALTHY,
                     uptime=3600.0,
                     uptime_display="1h",
                     response_time=0.05,
@@ -519,7 +520,7 @@ class TestStatusToDict:
                     tier="fast",
                     model="fast-model",
                     port=8001,
-                    status="stopped",
+                    status=ServiceHealth.STOPPED,
                     uptime=None,
                     uptime_display="-",
                     response_time=None,
@@ -558,7 +559,7 @@ class TestStatusToDict:
                     tier="t1",
                     model="m1",
                     port=8000,
-                    status="healthy",
+                    status=ServiceHealth.HEALTHY,
                     uptime=60.0,
                     uptime_display="1m",
                     response_time=0.1,
@@ -724,7 +725,6 @@ class TestStatusCli:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-STATUS-003: Table shows per-tier names, models, ports, and distinct statuses."""
-        from mlx_stack.core.stack_status import ServiceHealth
 
         _write_stack_yaml(mlx_stack_home)
 
