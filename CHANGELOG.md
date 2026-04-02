@@ -4,6 +4,14 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.2](https://github.com/weklund/mlx-stack/compare/v0.3.1...v0.3.2) (2026-04-02)
+
+
+### Bug Fixes
+
+* correct inverted sign on benchmark delta percentage display ([ae7d209](https://github.com/weklund/mlx-stack/commit/ae7d20981e48b6033de9ed05115a2754576fd2a7))
+* pass explicit token to release-please action ([96c9c68](https://github.com/weklund/mlx-stack/commit/96c9c686f21873a2b1a3b3596bcf87005e08843e))
+
 ## [0.1.0] - 2025-03-31
 
 Initial release of mlx-stack — a CLI control plane for local LLM inference infrastructure on Apple Silicon.
