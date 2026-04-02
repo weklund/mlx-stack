@@ -35,6 +35,7 @@ from mlx_stack.core.pull import (
     ConversionError,
     DiskSpaceError,
     DownloadError,
+    GatedModelError,
     InvalidModelError,
     ModelInventoryEntry,
     PullError,
@@ -65,6 +66,7 @@ def _make_entry(
     disk_size_gb: float = 4.5,
     disk_size_gb_int8: float = 8.5,
     disk_size_gb_bf16: float = 16.0,
+    gated: bool = False,
 ) -> CatalogEntry:
     """Create a CatalogEntry for testing."""
     return CatalogEntry(
@@ -101,6 +103,7 @@ def _make_entry(
             "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
         },
         tags=["balanced", "agent-ready"],
+        gated=gated,
     )
 
 
@@ -1244,3 +1247,103 @@ class TestPullModelsIntegration:
         assert result.exit_code == 0
         # The model directory or catalog name should appear
         assert "qwen3.5-8b-4bit" in result.output or "Qwen 3.5 8B" in result.output
+
+
+# =========================================================================== #
+# Gated model handling tests
+# =========================================================================== #
+
+
+class TestGatedModelHandling:
+    """Tests for gated model pre-flight check and error handling."""
+
+    @patch("mlx_stack.core.pull.get_token", return_value=None)
+    def test_gated_model_without_token_raises(
+        self,
+        mock_token: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Gated model without HF token raises GatedModelError."""
+        import pytest
+
+        catalog = [_make_entry(gated=True)]
+        with pytest.raises(GatedModelError, match="requires HuggingFace authentication"):
+            pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    @patch("mlx_stack.core.pull.get_token", return_value="hf_test_token")
+    def test_gated_model_with_token_proceeds(
+        self,
+        mock_token: MagicMock,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Gated model with valid token proceeds to download."""
+        catalog = [_make_entry(gated=True)]
+        result = pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
+        assert result.already_existed is False
+        mock_download.assert_called_once()
+
+    @patch("mlx_stack.core.pull.get_token", return_value=None)
+    def test_non_gated_model_skips_token_check(
+        self,
+        mock_token: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Non-gated model does not check for token."""
+        catalog = [_make_entry(gated=False)]
+        with patch("mlx_stack.core.pull.download_model"):
+            with patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0)):
+                pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
+        # get_token was not called (non-gated path doesn't reach the check)
+        mock_token.assert_not_called()
+
+    @patch("mlx_stack.core.pull.snapshot_download")
+    def test_gated_repo_error_caught(
+        self,
+        mock_snapshot: MagicMock,
+        tmp_path: Path,
+    ) -> None:
+        """GatedRepoError from snapshot_download becomes GatedModelError."""
+        from io import StringIO
+        from unittest.mock import MagicMock as Mock
+
+        import pytest
+        from huggingface_hub.errors import GatedRepoError as HfGatedRepoError
+        from rich.console import Console
+
+        from mlx_stack.core.pull import _run_download
+
+        # GatedRepoError requires a response object
+        mock_response = Mock()
+        mock_response.status_code = 403
+        mock_response.headers = {}
+        mock_response.url = "https://huggingface.co/test/repo"
+        mock_snapshot.side_effect = HfGatedRepoError(
+            "gated repo", response=mock_response
+        )
+
+        local_dir = tmp_path / "model"
+        local_dir.mkdir()
+        console = Console(file=StringIO())
+
+        with pytest.raises(GatedModelError, match="gated model"):
+            _run_download("test/repo", local_dir, console)
+
+    @patch("mlx_stack.core.pull.get_token", return_value=None)
+    @patch("mlx_stack.core.pull.load_catalog")
+    def test_cli_gated_error_shows_auth_required(
+        self,
+        mock_catalog: MagicMock,
+        mock_token: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """CLI shows 'Authentication required' for gated model errors."""
+        mock_catalog.return_value = [_make_entry(gated=True)]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
+        assert result.exit_code == 1
+        assert "Authentication required" in result.output

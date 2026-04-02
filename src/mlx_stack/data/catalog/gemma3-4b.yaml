@@ -4,6 +4,7 @@ family: Gemma 3
 params_b: 4.0
 architecture: transformer
 min_mlx_lm_version: "0.22.0"
+gated: true
 sources:
   int4:
     hf_repo: mlx-community/gemma-3-4b-it-4bit

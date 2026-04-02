@@ -98,6 +98,7 @@ def _make_entry(
     benchmarks: dict[str, BenchmarkResult] | None = None,
     tags: list[str] | None = None,
     memory_gb: float = 5.5,
+    gated: bool = False,
 ) -> CatalogEntry:
     """Create a CatalogEntry for testing."""
     if benchmarks is None:
@@ -130,6 +131,7 @@ def _make_entry(
         ),
         benchmarks=benchmarks,
         tags=tags or [],
+        gated=gated,
     )
 
 
@@ -1192,3 +1194,64 @@ class TestTotalEstimatedMemory:
         assert result["total_memory_gb"] > 0
         # Total memory should be reasonable (less than total system memory)
         assert result["total_memory_gb"] < profile.memory_gb
+
+
+# =========================================================================== #
+# Gated model exclusion tests
+# =========================================================================== #
+
+
+class TestGatedModelExclusion:
+    """Tests that gated models are excluded from default init."""
+
+    def test_init_excludes_gated_models(self, mlx_stack_home: Path) -> None:
+        """Default init excludes gated models from tier assignments."""
+        profile = _make_profile()
+        _write_profile(mlx_stack_home, profile)
+
+        # Create catalog where the best model is gated
+        catalog = [
+            _make_entry(
+                model_id="gated-best",
+                name="Gated Best",
+                quality_overall=99,
+                gated=True,
+            ),
+            _make_entry(
+                model_id="open-good",
+                name="Open Good",
+                quality_overall=70,
+                gated=False,
+            ),
+        ]
+
+        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
+             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+            result = run_init(intent="balanced", force=True)
+
+        tier_model_ids = {t["model"] for t in result["stack"]["tiers"]}
+        assert "gated-best" not in tier_model_ids
+        assert "open-good" in tier_model_ids
+
+    def test_add_gated_model_warns(self, mlx_stack_home: Path) -> None:
+        """Adding a gated model via --add produces a warning."""
+        profile = _make_profile()
+        _write_profile(mlx_stack_home, profile)
+
+        catalog = [
+            _make_entry(model_id="open-model", name="Open Model"),
+            _make_entry(model_id="gated-model", name="Gated Model", gated=True),
+        ]
+
+        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
+             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+            result = run_init(
+                intent="balanced",
+                add_models=["gated-model"],
+                force=True,
+            )
+
+        warnings = result["warnings"]
+        gated_warnings = [w for w in warnings if "gated" in w.lower()]
+        assert len(gated_warnings) >= 1
+        assert "HuggingFace authentication" in gated_warnings[0]

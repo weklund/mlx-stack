@@ -4,6 +4,7 @@ family: Llama 3.3
 params_b: 8.0
 architecture: transformer
 min_mlx_lm_version: "0.22.0"
+gated: true
 sources:
   int4:
     hf_repo: mlx-community/Llama-3.3-8B-Instruct-4bit
