@@ -297,6 +297,17 @@ The built-in catalog includes 15 models across 5 families:
 
 Each entry includes benchmark data for common Apple Silicon configurations, quality scores, and capability metadata (tool calling, thinking/reasoning, vision).
 
+Some models (Gemma 3, Llama 3.3) are **gated** on HuggingFace and require accepting a license before download. `mlx-stack init --accept-defaults` automatically selects non-gated models so the zero-config path works without authentication. To use gated models:
+
+```bash
+# 1. Accept the model license on huggingface.co
+# 2. Set your token
+export HF_TOKEN=hf_...
+
+# 3. Pull the gated model
+mlx-stack pull gemma3-12b
+```
+
 ## Architecture Details
 
 mlx-stack manages a **tiered local inference stack** with three layers:

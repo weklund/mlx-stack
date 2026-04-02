@@ -127,6 +127,7 @@ class CatalogEntry:
     quality: QualityScores
     benchmarks: dict[str, BenchmarkResult]
     tags: list[str] = field(default_factory=list)
+    gated: bool = False
 
 
 # --------------------------------------------------------------------------- #
@@ -335,6 +336,7 @@ def _parse_entry(data: dict[str, Any]) -> CatalogEntry:
             quality=quality,
             benchmarks=benchmarks,
             tags=list(data.get("tags", [])),
+            gated=bool(data.get("gated", False)),
         )
     except (ValueError, TypeError) as exc:
         msg = f"Catalog entry '{model_id}': invalid top-level field value: {exc}"

@@ -18,6 +18,7 @@ from mlx_stack.core.pull import (
     ConversionError,
     DiskSpaceError,
     DownloadError,
+    GatedModelError,
     InvalidModelError,
     PullError,
     pull_model,
@@ -79,6 +80,9 @@ def pull(model: str, quant: str | None, bench: bool, force: bool) -> None:
         raise SystemExit(1) from None
     except DiskSpaceError as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
+        raise SystemExit(1) from None
+    except GatedModelError as exc:
+        console.print(f"[bold red]Authentication required:[/bold red] {exc}")
         raise SystemExit(1) from None
     except DownloadError as exc:
         console.print(f"[bold red]Download error:[/bold red] {exc}")

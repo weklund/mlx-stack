@@ -410,6 +410,7 @@ def score_and_filter(
     budget_gb: float,
     quant: str = _DEFAULT_QUANT,
     saved_benchmarks: dict[str, Any] | None = None,
+    exclude_gated: bool = False,
 ) -> list[ScoredModel]:
     """Score all catalog models and filter by memory budget.
 
@@ -423,6 +424,8 @@ def score_and_filter(
         budget_gb: Memory budget in GB.
         quant: Quantization level.
         saved_benchmarks: Optional saved benchmark data.
+        exclude_gated: If True, exclude gated models that require
+            HuggingFace authentication.
 
     Returns:
         List of ScoredModel instances within budget, sorted by score descending.
@@ -439,6 +442,9 @@ def score_and_filter(
     scored: list[ScoredModel] = []
 
     for entry in catalog:
+        if exclude_gated and entry.gated:
+            continue
+
         try:
             model = score_model(entry, profile, weights, budget_gb, quant, saved_benchmarks)
         except ScoringError:
@@ -558,6 +564,7 @@ def recommend(
     budget_gb_override: float | None = None,
     quant: str = _DEFAULT_QUANT,
     saved_benchmarks: dict[str, Any] | None = None,
+    exclude_gated: bool = False,
 ) -> RecommendationResult:
     """Generate a recommendation for the given hardware and intent.
 
@@ -576,6 +583,7 @@ def recommend(
             percentage-based calculation.
         quant: Default quantization level.
         saved_benchmarks: Optional saved benchmark data from bench --save.
+        exclude_gated: If True, exclude gated models from recommendations.
 
     Returns:
         A RecommendationResult with tier assignments and all scored models.
@@ -596,7 +604,8 @@ def recommend(
 
     # Score and filter
     scored = score_and_filter(
-        catalog, profile, intent, budget_gb, quant, saved_benchmarks
+        catalog, profile, intent, budget_gb, quant, saved_benchmarks,
+        exclude_gated=exclude_gated,
     )
 
     # Assign tiers

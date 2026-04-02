@@ -19,6 +19,7 @@ from mlx_stack.core.catalog import (
     CatalogError,
     QualityScores,
     QuantSource,
+    _parse_entry,
     get_entry_by_id,
     load_catalog,
     load_catalog_from_directory,
@@ -793,3 +794,47 @@ def _make_valid_entry() -> dict:
         },
         "tags": ["test"],
     }
+
+
+# =========================================================================== #
+# Gated field tests
+# =========================================================================== #
+
+
+class TestGatedField:
+    """Tests for the CatalogEntry.gated field."""
+
+    def test_gated_defaults_to_false(self) -> None:
+        """CatalogEntry without gated field defaults to False."""
+        data = _make_valid_entry()
+        entry = _parse_entry(data)
+        assert entry.gated is False
+
+    def test_gated_true_from_yaml(self) -> None:
+        """CatalogEntry with gated: true parses correctly."""
+        data = _make_valid_entry()
+        data["gated"] = True
+        entry = _parse_entry(data)
+        assert entry.gated is True
+
+    def test_gated_false_explicit(self) -> None:
+        """Explicit gated: false parses correctly."""
+        data = _make_valid_entry()
+        data["gated"] = False
+        entry = _parse_entry(data)
+        assert entry.gated is False
+
+    def test_shipped_catalog_gated_models(self) -> None:
+        """Shipped catalog has exactly 4 gated models."""
+        catalog = load_catalog()
+        gated = [e for e in catalog if e.gated]
+        gated_ids = {e.id for e in gated}
+        assert gated_ids == {"gemma3-4b", "gemma3-12b", "gemma3-27b", "llama3.3-8b"}
+
+    def test_shipped_catalog_non_gated_models(self) -> None:
+        """Shipped catalog non-gated models all have gated=False."""
+        catalog = load_catalog()
+        non_gated = [e for e in catalog if not e.gated]
+        assert len(non_gated) == len(catalog) - 4
+        for entry in non_gated:
+            assert entry.gated is False

@@ -376,6 +376,7 @@ def run_init(
             profile=profile,
             intent=intent,
             budget_pct=budget_pct,
+            exclude_gated=True,
         )
     except ScoringError as exc:
         msg = f"Recommendation failed: {exc}"
@@ -431,6 +432,14 @@ def run_init(
             except ScoringError as exc:
                 msg = f"Cannot add model '{model_id}': {exc}"
                 raise InitError(msg) from None
+
+            # Warn if the model is gated (requires HuggingFace auth)
+            if entry.gated:
+                warnings.append(
+                    f"Model '{model_id}' is gated and requires HuggingFace "
+                    f"authentication. Set HF_TOKEN or run 'huggingface-cli login' "
+                    f"before pulling."
+                )
 
             # Warn if exceeding budget (per spec: warn, not block)
             total_memory = sum(t.model.memory_gb for t in tiers) + scored.memory_gb

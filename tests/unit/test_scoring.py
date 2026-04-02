@@ -69,6 +69,7 @@ def _make_entry(
     thinking: bool = False,
     benchmarks: dict[str, BenchmarkResult] | None = None,
     tags: list[str] | None = None,
+    gated: bool = False,
 ) -> CatalogEntry:
     """Helper to create a CatalogEntry for testing."""
     if benchmarks is None:
@@ -103,6 +104,7 @@ def _make_entry(
         ),
         benchmarks=benchmarks,
         tags=tags or ["balanced"],
+        gated=gated,
     )
 
 
@@ -1401,3 +1403,54 @@ class TestIntentDifferentiation:
         # The balanced-model should win because its composite score is higher
         # even though slow-quality has higher raw quality
         assert standard.model.entry.id == "balanced-model"
+
+
+# =========================================================================== #
+# Gated model filtering tests
+# =========================================================================== #
+
+
+class TestExcludeGated:
+    """Tests for exclude_gated parameter in score_and_filter."""
+
+    def test_exclude_gated_filters_gated_models(self, m4_max_128_profile: HardwareProfile) -> None:
+        """Gated models are excluded when exclude_gated=True."""
+        open_model = _make_entry(model_id="open-model", name="Open Model")
+        gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
+
+        scored = score_and_filter(
+            [open_model, gated_model], m4_max_128_profile, "balanced", 51.2,
+            exclude_gated=True,
+        )
+        scored_ids = {m.entry.id for m in scored}
+        assert "open-model" in scored_ids
+        assert "gated-model" not in scored_ids
+
+    def test_exclude_gated_false_includes_all(self, m4_max_128_profile: HardwareProfile) -> None:
+        """All models included when exclude_gated=False (default)."""
+        open_model = _make_entry(model_id="open-model", name="Open Model")
+        gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
+
+        scored = score_and_filter(
+            [open_model, gated_model], m4_max_128_profile, "balanced", 51.2,
+            exclude_gated=False,
+        )
+        scored_ids = {m.entry.id for m in scored}
+        assert "open-model" in scored_ids
+        assert "gated-model" in scored_ids
+
+    def test_recommend_exclude_gated(self, m4_max_128_profile: HardwareProfile) -> None:
+        """Gated models excluded from tier assignments via recommend()."""
+        open_model = _make_entry(model_id="open-model", name="Open Model")
+        gated_model = _make_entry(
+            model_id="gated-model", name="Gated Model",
+            quality_overall=99, gated=True,
+        )
+
+        result = recommend(
+            [open_model, gated_model], m4_max_128_profile,
+            exclude_gated=True,
+        )
+        tier_ids = {t.model.entry.id for t in result.tiers}
+        assert "gated-model" not in tier_ids
+        assert "open-model" in tier_ids

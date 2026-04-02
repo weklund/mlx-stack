@@ -19,6 +19,8 @@ from pathlib import Path
 from typing import Any
 
 from huggingface_hub import snapshot_download
+from huggingface_hub.errors import GatedRepoError
+from huggingface_hub.utils import get_token
 from rich.console import Console
 
 from mlx_stack.core.catalog import CatalogEntry, QuantSource, get_entry_by_id, load_catalog
@@ -40,6 +42,10 @@ class DiskSpaceError(PullError):
 
 class DownloadError(PullError):
     """Raised when model download fails."""
+
+
+class GatedModelError(DownloadError):
+    """Raised when a gated model requires HuggingFace authentication."""
 
 
 class ConversionError(PullError):
@@ -321,6 +327,14 @@ def _run_download(
     """
     try:
         snapshot_download(repo_id=hf_repo, local_dir=str(local_dir))
+    except GatedRepoError:
+        msg = (
+            f"Access denied for {hf_repo} — this is a gated model.\n"
+            f"Your HuggingFace token does not have access.\n"
+            f"Accept the model license at: https://huggingface.co/{hf_repo}\n"
+            f"Then retry: mlx-stack pull"
+        )
+        raise GatedModelError(msg) from None
     except Exception as exc:
         msg = f"Download failed for {hf_repo}: {exc}"
         raise DownloadError(msg) from None
@@ -571,6 +585,22 @@ def pull_model(
             "Run 'mlx-stack models --catalog' to see available models."
         )
         raise InvalidModelError(msg)
+
+    # 1b. Pre-flight auth check for gated models
+    if entry.gated and get_token() is None:
+        msg = (
+            f"Model '{entry.name}' requires HuggingFace authentication "
+            f"(gated model).\n\n"
+            f"To download gated models:\n"
+            f"  1. Accept the model license on HuggingFace\n"
+            f"  2. Authenticate using ONE of:\n"
+            f"     - export HF_TOKEN=hf_...    "
+            f"(get a token at huggingface.co/settings/tokens)\n"
+            f"     - huggingface-cli login\n\n"
+            f"Or use a non-gated alternative:\n"
+            f"  mlx-stack models --catalog"
+        )
+        raise GatedModelError(msg)
 
     # 2. Determine quantization
     if quant is None:
