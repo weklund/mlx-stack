@@ -20,6 +20,7 @@ import json
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
+import pytest
 from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
@@ -619,8 +620,9 @@ class TestDownloadModel:
         self,
         mock_run: MagicMock,
         tmp_path: Path,
+        capsys: pytest.CaptureFixture[str],
     ) -> None:
-        """Successful download on first attempt."""
+        """Successful download on first attempt shows completion message."""
         from rich.console import Console
 
         from mlx_stack.core.pull import download_model
@@ -628,7 +630,15 @@ class TestDownloadModel:
         local_dir = tmp_path / "model"
         console = Console()
         download_model("mlx-community/test-4bit", local_dir, console)
-        mock_run.assert_called_once()
+
+        # Verify correct repo and path were passed to the download function
+        args = mock_run.call_args
+        assert args[0][0] == "mlx-community/test-4bit"
+        assert args[0][1] == local_dir
+
+        # Verify user-facing success message was printed
+        output = capsys.readouterr().out
+        assert "Download complete" in output
 
     @patch("mlx_stack.core.pull._run_download")
     def test_retry_on_first_failure(
@@ -1022,7 +1032,7 @@ class TestPullCLI:
         mock_download: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-PULL-006: --force re-downloads."""
+        """VAL-PULL-006: --force re-downloads even when model exists."""
         mock_catalog.return_value = [_make_entry()]
 
         # Create existing model
@@ -1034,7 +1044,9 @@ class TestPullCLI:
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--force"])
         assert result.exit_code == 0
-        mock_download.assert_called_once()
+        # Must show success message (not the "already exists" skip)
+        assert "is ready" in result.output
+        assert "already exists" not in result.output
 
     @patch(
         "mlx_stack.core.pull.download_model",
@@ -1135,14 +1147,23 @@ class TestPullCLI:
         mock_download: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-CROSS-014: --bench flag accepted and runs after download."""
+        """VAL-CROSS-014: --bench flag runs benchmark and shows output."""
         mock_catalog.return_value = [_make_entry()]
 
-        with patch("mlx_stack.cli.pull._run_post_download_bench") as mock_bench:
+        with patch("mlx_stack.core.benchmark.run_benchmark") as mock_bench:
+            mock_bench.return_value = MagicMock(
+                prompt_tps_mean=150.0,
+                prompt_tps_std=5.0,
+                gen_tps_mean=80.0,
+                gen_tps_std=2.5,
+            )
             runner = CliRunner()
             result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--bench"])
             assert result.exit_code == 0
-            mock_bench.assert_called_once()
+            # Must show benchmark output to the user
+            assert "Running post-download benchmark" in result.output
+            assert "Prompt TPS" in result.output
+            assert "Gen TPS" in result.output
 
     @patch("mlx_stack.core.pull.download_model")
     @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))

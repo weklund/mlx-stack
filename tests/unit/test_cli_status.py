@@ -723,27 +723,50 @@ class TestStatusCli:
         mock_status: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-STATUS-003: Table shows tier names, models, ports."""
+        """VAL-STATUS-003: Table shows per-tier names, models, ports, and distinct statuses."""
+        from mlx_stack.core.stack_status import ServiceHealth
+
         _write_stack_yaml(mlx_stack_home)
 
-        mock_status.return_value = {
-            "status": "healthy",
-            "pid": 12345,
-            "uptime": 150.0,
-            "response_time": 0.05,
-        }
+        def side_effect(service_name: str, port: int, health_path: str = "") -> dict[str, Any]:
+            if service_name == "standard":
+                return {
+                    "status": ServiceHealth.HEALTHY,
+                    "pid": 12345,
+                    "uptime": 150.0,
+                    "response_time": 0.05,
+                }
+            if service_name == "fast":
+                return {
+                    "status": ServiceHealth.CRASHED,
+                    "pid": 99999,
+                    "uptime": None,
+                    "response_time": None,
+                }
+            return {
+                "status": ServiceHealth.STOPPED,
+                "pid": None,
+                "uptime": None,
+                "response_time": None,
+            }
+
+        mock_status.side_effect = side_effect
 
         runner = CliRunner()
         result = runner.invoke(cli, ["status"])
 
         assert result.exit_code == 0
+        # Tier names and models present
         assert "standard" in result.output
         assert "fast" in result.output
         assert "big-model" in result.output
         assert "fast-model" in result.output
+        # Ports present
         assert "8000" in result.output
         assert "8001" in result.output
-        assert "healthy" in result.output
+        # Each tier's distinct status must appear — verifies per-tier rendering
+        assert ServiceHealth.HEALTHY in result.output
+        assert ServiceHealth.CRASHED in result.output
 
     @patch("mlx_stack.core.stack_status.get_service_status")
     @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)

@@ -16,6 +16,7 @@ Implements 5-state reporting per service:
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from enum import StrEnum
 from typing import Any
 
 from mlx_stack.core.paths import get_stacks_dir
@@ -33,6 +34,16 @@ from mlx_stack.core.stack_up import LITELLM_HEALTH_PATH, LITELLM_SERVICE_NAME
 VLLM_HEALTH_PATH = "/v1/models"
 
 
+class ServiceHealth(StrEnum):
+    """Health state of a managed service."""
+
+    HEALTHY = "healthy"
+    DEGRADED = "degraded"
+    DOWN = "down"
+    CRASHED = "crashed"
+    STOPPED = "stopped"
+
+
 # --------------------------------------------------------------------------- #
 # Data classes
 # --------------------------------------------------------------------------- #
@@ -45,7 +56,7 @@ class ServiceStatus:
     tier: str
     model: str
     port: int
-    status: str  # "healthy", "degraded", "down", "crashed", "stopped"
+    status: ServiceHealth
     uptime: float | None  # seconds, None for stopped/crashed
     uptime_display: str  # human-readable string or "-"
     response_time: float | None  # seconds, None if no HTTP response
@@ -171,7 +182,7 @@ def run_status(stack_name: str = "default") -> StatusResult:
             tier=tier_name,
             model=model,
             port=port,
-            status=svc_status["status"],
+            status=ServiceHealth(svc_status["status"]),
             uptime=svc_status["uptime"],
             uptime_display=format_uptime(svc_status["uptime"]),
             response_time=svc_status["response_time"],
@@ -190,7 +201,7 @@ def run_status(stack_name: str = "default") -> StatusResult:
         tier="litellm",
         model="proxy",
         port=litellm_port,
-        status=litellm_status["status"],
+        status=ServiceHealth(litellm_status["status"]),
         uptime=litellm_status["uptime"],
         uptime_display=format_uptime(litellm_status["uptime"]),
         response_time=litellm_status["response_time"],

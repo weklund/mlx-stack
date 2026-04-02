@@ -14,17 +14,22 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
-from mlx_stack.core.stack_status import StatusResult, run_status, status_to_dict
+from mlx_stack.core.stack_status import (
+    ServiceHealth,
+    StatusResult,
+    run_status,
+    status_to_dict,
+)
 
 console = Console(stderr=True)
 
 # Status display styling — maps state to Rich markup
-_STATUS_STYLES: dict[str, str] = {
-    "healthy": "[bold green]healthy[/bold green]",
-    "degraded": "[bold yellow]degraded[/bold yellow]",
-    "down": "[bold red]down[/bold red]",
-    "crashed": "[bold red]crashed[/bold red]",
-    "stopped": "[dim]stopped[/dim]",
+_STATUS_STYLES: dict[ServiceHealth, str] = {
+    ServiceHealth.HEALTHY: "[bold green]healthy[/bold green]",
+    ServiceHealth.DEGRADED: "[bold yellow]degraded[/bold yellow]",
+    ServiceHealth.DOWN: "[bold red]down[/bold red]",
+    ServiceHealth.CRASHED: "[bold red]crashed[/bold red]",
+    ServiceHealth.STOPPED: "[dim]stopped[/dim]",
 }
 
 
