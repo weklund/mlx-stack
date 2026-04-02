@@ -1,6 +1,6 @@
 # mlx-stack
 
-**CLI control plane for local LLM inference infrastructure on Apple Silicon.**
+**Run multiple LLMs simultaneously on Apple Silicon. One endpoint. Automatic routing. Always on.**
 
 [![CI](https://github.com/weklund/mlx-stack/actions/workflows/ci.yml/badge.svg)](https://github.com/weklund/mlx-stack/actions/workflows/ci.yml)
 [![PyPI](https://img.shields.io/pypi/v/mlx-stack.svg)](https://pypi.org/project/mlx-stack/)
@@ -10,20 +10,60 @@
 
 ---
 
-## Table of Contents
+Most local LLM tools serve **one model at a time** and leave you to figure out which model to run on your hardware. mlx-stack serves **three models simultaneously** — each optimized for a different workload — behind a single OpenAI-compatible endpoint that routes requests automatically. It turns your Mac into an always-on inference server that agents and apps can hit like a cloud API.
 
-- [Architecture](#architecture)
-- [Feature Highlights](#feature-highlights)
-- [Installation](#installation)
-- [Quick Start](#quick-start)
-- [CLI Reference](#cli-reference)
-- [Configuration](#configuration)
-- [24/7 Operation](#247-operation)
-- [Model Catalog](#model-catalog)
-- [Architecture Details](#architecture-details)
-- [Development](#development)
-- [Contributing](#contributing)
-- [License](#license)
+```bash
+uv tool install mlx-stack
+mlx-stack init --accept-defaults   # detects hardware, picks models, generates configs
+mlx-stack up                       # 3 model servers + API gateway, one command
+# → OpenAI-compatible API at http://localhost:4000/v1
+```
+
+## Why mlx-stack?
+
+### Other tools give you a model. mlx-stack gives you infrastructure.
+
+Ollama, LM Studio, and llama.cpp are great at running a single model. But if you're building agents, serving multiple workloads, or running local inference 24/7, you need more than a model runner — you need a **control plane**.
+
+|  | mlx-stack | Ollama | LM Studio | llama.cpp |
+|--|-----------|--------|-----------|-----------|
+| Simultaneous models | 3 tiers + cloud fallback | 1 at a time | 1 at a time | 1 at a time |
+| API routing & fallback | Automatic tier-based routing, cascade fallback | Single endpoint | Single endpoint | No API layer |
+| Hardware-aware model selection | Scores models against your exact chip (M1–M5 Pro/Max/Ultra) | Manual selection | Manual selection | Manual selection |
+| 24/7 headless operation | Watchdog, auto-restart, flap detection, LaunchAgent | Manual monitoring | GUI required | Manual monitoring |
+| Agent-optimized | `agent-fleet` intent, tool-call parser routing | General-purpose | General-purpose | General-purpose |
+| Apple Silicon optimization | Native MLX, per-chip bandwidth profiling | Generic backend | Generic backend | Generic GGUF |
+| Cloud escape hatch | OpenRouter fallback when local capacity is exceeded | None | None | None |
+
+### Built for agents, not just chat
+
+Most local LLM tools are designed for interactive chat. mlx-stack is designed for **agentic workloads** where different requests need different models:
+
+- **Fast tier** — Low-latency model for tool calls, autocomplete, quick decisions
+- **Standard tier** — High-quality model for reasoning, code generation, complex instructions
+- **Long-context tier** — Extended context model for document processing, large codebases
+
+Your agent framework hits one endpoint (`localhost:4000/v1`) and targets tiers by model name. If a tier goes down, requests automatically cascade to the next healthy tier — or to cloud models via OpenRouter as a last resort.
+
+### Turn a Mac Mini into an inference server
+
+mlx-stack is built for unattended operation. Install the LaunchAgent and walk away:
+
+```bash
+mlx-stack install   # starts on login, restarts on crash, runs forever
+```
+
+The watchdog monitors every service, auto-restarts crashed processes with exponential backoff, detects flapping services to prevent restart loops, and rotates logs to prevent unbounded disk usage. Your Mac Mini serves local inference like a cloud endpoint — no babysitting required.
+
+### Your hardware, your stack — automatically
+
+Instead of googling "what model should I run on M4 Max with 128GB," mlx-stack profiles your chip, measures bandwidth, and scores every model in its catalog against your exact hardware:
+
+```bash
+mlx-stack recommend --intent agent-fleet
+```
+
+The recommendation engine filters models to your memory budget, scores them across speed, quality, tool-calling capability, and memory efficiency, then assigns the optimal model to each tier. Saved benchmarks from `mlx-stack bench --save` override catalog estimates for even more precise scoring.
 
 ## Architecture
 
@@ -60,13 +100,20 @@
 
 mlx-stack orchestrates [vllm-mlx](https://github.com/vllm-project/vllm) model servers and a [LiteLLM](https://github.com/BerriAI/litellm) API gateway to serve large language models locally on Apple Silicon Macs. Each tier runs a dedicated model optimized for a specific workload — quality, speed, or long-context — and LiteLLM routes requests through a single OpenAI-compatible endpoint with automatic fallback.
 
-## Feature Highlights
+## Table of Contents
 
-- **Hardware-Aware Recommendations** — Detects your Apple Silicon chip (M1–M5, Pro/Max/Ultra), measures memory bandwidth, and recommends an optimal model stack tuned to your exact hardware.
-- **Tiered Model Serving** — Assigns models to `standard`, `fast`, and `longctx` tiers so agents and apps can target the right balance of quality and speed per request.
-- **24/7 Unattended Operation** — Built-in watchdog with auto-restart, flap detection, exponential backoff, and macOS LaunchAgent integration for always-on inference on headless Mac Minis.
-- **One-Command Setup** — `mlx-stack init --accept-defaults` profiles your hardware, picks models, generates configs, and gets you from zero to a running OpenAI-compatible endpoint in minutes.
-- **15-Model Curated Catalog** — Ships with benchmark data for Qwen 3.5, Gemma 3, DeepSeek R1, Nemotron, and Llama 3.3 families — with quality scores, tool-calling metadata, and per-hardware performance data.
+- [Why mlx-stack?](#why-mlx-stack)
+- [Architecture](#architecture)
+- [Installation](#installation)
+- [Quick Start](#quick-start)
+- [CLI Reference](#cli-reference)
+- [Configuration](#configuration)
+- [24/7 Operation](#247-operation)
+- [Model Catalog](#model-catalog)
+- [Architecture Details](#architecture-details)
+- [Development](#development)
+- [Contributing](#contributing)
+- [License](#license)
 
 ## Installation
 
