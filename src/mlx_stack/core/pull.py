@@ -20,7 +20,7 @@ from typing import Any
 
 from huggingface_hub import snapshot_download
 from huggingface_hub.errors import GatedRepoError
-from huggingface_hub.utils import get_token
+from huggingface_hub.utils._auth import get_token
 from rich.console import Console
 
 from mlx_stack.core.catalog import CatalogEntry, QuantSource, get_entry_by_id, load_catalog
