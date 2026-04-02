@@ -34,6 +34,7 @@ from mlx_stack.core.process import (
     write_pid_file,
 )
 from mlx_stack.core.stack_status import (
+    ServiceHealth,
     ServiceStatus,
     run_status,
 )
@@ -576,10 +577,10 @@ def poll_cycle(
         # Try to reset flap state if service has been stable
         reset_flap_state(tracker)
 
-        if svc.status != "crashed":
+        if svc.status != ServiceHealth.CRASHED:
             # Service is not crashed — reset consecutive failure counter
             # if it was previously restarted and is now healthy
-            if svc.status == "healthy" and tracker.consecutive_failures > 0:
+            if svc.status == ServiceHealth.HEALTHY and tracker.consecutive_failures > 0:
                 tracker.consecutive_failures = 0
             continue
 

@@ -433,18 +433,18 @@ class TestPollCycle:
     ) -> None:
         state = WatchdogState()
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="healthy", uptime=100.0, uptime_display="1m 40s",
+                    status=ServiceHealth.HEALTHY, uptime=100.0, uptime_display="1m 40s",
                     response_time=0.1, pid=1234,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
             ]
@@ -471,18 +471,18 @@ class TestPollCycle:
     ) -> None:
         state = WatchdogState()
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="crashed", uptime=None, uptime_display="-",
+                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
                     response_time=None, pid=1234,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="healthy", uptime=200.0, uptime_display="3m 20s",
+                    status=ServiceHealth.HEALTHY, uptime=200.0, uptime_display="3m 20s",
                     response_time=0.05, pid=5678,
                 ),
             ]
@@ -513,13 +513,13 @@ class TestPollCycle:
         """Stopped services (no PID file) should NOT be restarted."""
         state = WatchdogState()
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
             ]
@@ -552,13 +552,13 @@ class TestPollCycle:
             last_restart_time=time.monotonic(),
         )
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="crashed", uptime=None, uptime_display="-",
+                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
                     response_time=None, pid=1234,
                 ),
             ]
@@ -592,13 +592,13 @@ class TestPollCycle:
             consecutive_failures=0,
         )
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="crashed", uptime=None, uptime_display="-",
+                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
                     response_time=None, pid=1234,
                 ),
             ]
@@ -626,13 +626,13 @@ class TestPollCycle:
         """Failed restart should increment consecutive_failures."""
         state = WatchdogState()
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="crashed", uptime=None, uptime_display="-",
+                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
                     response_time=None, pid=1234,
                 ),
             ]
@@ -714,13 +714,13 @@ class TestPollCycle:
             last_restart_time=time.monotonic() - 100,
         )
 
-        from mlx_stack.core.stack_status import ServiceStatus, StatusResult
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="healthy", uptime=100.0, uptime_display="1m 40s",
+                    status=ServiceHealth.HEALTHY, uptime=100.0, uptime_display="1m 40s",
                     response_time=0.1, pid=1234,
                 ),
             ]

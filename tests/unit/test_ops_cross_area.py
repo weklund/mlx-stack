@@ -607,7 +607,7 @@ class TestLaunchdWatchdogIntegration:
 
         A crashed service has a PID file but the process is dead.
         """
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         # Create a stale PID file (simulates crashed process)
         pid_file = pids_dir / "fast.pid"
@@ -625,7 +625,7 @@ class TestLaunchdWatchdogIntegration:
                 tier="fast",
                 model="qwen3.5-3b",
                 port=8000,
-                status="crashed",
+                status=ServiceHealth.CRASHED,
                 uptime=None,
                 uptime_display="-",
                 response_time=None,
@@ -635,7 +635,7 @@ class TestLaunchdWatchdogIntegration:
                 tier="standard",
                 model="qwen3.5-8b",
                 port=8001,
-                status="healthy",
+                status=ServiceHealth.HEALTHY,
                 uptime=120.0,
                 uptime_display="2m",
                 response_time=0.1,
@@ -733,7 +733,7 @@ class TestLaunchdWatchdogIntegration:
         rotation and restart when triggered.
         """
         from mlx_stack.core.launchd import generate_plist, write_plist
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         # Step 1: Generate and write plist
         plist_path = mlx_stack_home / "com.mlx-stack.watchdog.plist"
@@ -764,7 +764,7 @@ class TestLaunchdWatchdogIntegration:
                 tier="standard",
                 model="qwen3.5-8b",
                 port=8001,
-                status="crashed",
+                status=ServiceHealth.CRASHED,
                 uptime=None,
                 uptime_display="-",
                 response_time=None,
@@ -820,7 +820,7 @@ class TestDownUpWatchdogInteraction:
         The watchdog only restarts crashed services (PID file exists,
         process dead), not stopped services (no PID file).
         """
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         # No PID files — services are stopped (as after `down`)
         state = WatchdogState()
@@ -834,7 +834,7 @@ class TestDownUpWatchdogInteraction:
                 tier="fast",
                 model="qwen3.5-3b",
                 port=8000,
-                status="stopped",
+                status=ServiceHealth.STOPPED,
                 uptime=None,
                 uptime_display="-",
                 response_time=None,
@@ -844,7 +844,7 @@ class TestDownUpWatchdogInteraction:
                 tier="standard",
                 model="qwen3.5-8b",
                 port=8001,
-                status="stopped",
+                status=ServiceHealth.STOPPED,
                 uptime=None,
                 uptime_display="-",
                 response_time=None,
@@ -884,7 +884,7 @@ class TestDownUpWatchdogInteraction:
         If one of these services crashes later, the watchdog detects it
         and restarts it.
         """
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         state = WatchdogState()
 
@@ -898,7 +898,7 @@ class TestDownUpWatchdogInteraction:
                 tier="fast",
                 model="qwen3.5-3b",
                 port=8000,
-                status="healthy",
+                status=ServiceHealth.HEALTHY,
                 uptime=60.0,
                 uptime_display="1m",
                 response_time=0.05,
@@ -908,7 +908,7 @@ class TestDownUpWatchdogInteraction:
                 tier="standard",
                 model="qwen3.5-8b",
                 port=8001,
-                status="healthy",
+                status=ServiceHealth.HEALTHY,
                 uptime=55.0,
                 uptime_display="55s",
                 response_time=0.08,
@@ -945,7 +945,7 @@ class TestDownUpWatchdogInteraction:
                 tier="fast",
                 model="qwen3.5-3b",
                 port=8000,
-                status="crashed",
+                status=ServiceHealth.CRASHED,
                 uptime=None,
                 uptime_display="-",
                 response_time=None,
@@ -955,7 +955,7 @@ class TestDownUpWatchdogInteraction:
                 tier="standard",
                 model="qwen3.5-8b",
                 port=8001,
-                status="healthy",
+                status=ServiceHealth.HEALTHY,
                 uptime=85.0,
                 uptime_display="1m 25s",
                 response_time=0.08,
@@ -995,7 +995,7 @@ class TestDownUpWatchdogInteraction:
         After down: watchdog sees stopped services, does nothing.
         After up: watchdog monitors services, restarts crashes.
         """
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         state = WatchdogState()
 
@@ -1010,12 +1010,12 @@ class TestDownUpWatchdogInteraction:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
             ]
@@ -1044,12 +1044,12 @@ class TestDownUpWatchdogInteraction:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="healthy", uptime=10.0, uptime_display="10s",
+                    status=ServiceHealth.HEALTHY, uptime=10.0, uptime_display="10s",
                     response_time=0.05, pid=20001,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="healthy", uptime=8.0, uptime_display="8s",
+                    status=ServiceHealth.HEALTHY, uptime=8.0, uptime_display="8s",
                     response_time=0.08, pid=20002,
                 ),
             ]
@@ -1077,7 +1077,7 @@ class TestDownUpWatchdogInteraction:
 
         `status` should be able to run during poll cycles without conflict.
         """
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         state = WatchdogState()
 
@@ -1092,7 +1092,7 @@ class TestDownUpWatchdogInteraction:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="healthy", uptime=60.0, uptime_display="1m",
+                    status=ServiceHealth.HEALTHY, uptime=60.0, uptime_display="1m",
                     response_time=0.05, pid=10001,
                 ),
             ]
@@ -1143,7 +1143,7 @@ class TestFullOpsLifecycle:
             write_plist,
         )
         from mlx_stack.core.process import remove_pid_file, write_pid_file
-        from mlx_stack.core.stack_status import ServiceStatus
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus
 
         # --- Step 1: init (already done by stack_definition fixture) ---
         stacks_dir = mlx_stack_home / "stacks"
@@ -1190,12 +1190,12 @@ class TestFullOpsLifecycle:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="healthy", uptime=300.0, uptime_display="5m",
+                    status=ServiceHealth.HEALTHY, uptime=300.0, uptime_display="5m",
                     response_time=0.05, pid=30001,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="healthy", uptime=300.0, uptime_display="5m",
+                    status=ServiceHealth.HEALTHY, uptime=300.0, uptime_display="5m",
                     response_time=0.08, pid=30002,
                 ),
             ]
@@ -1284,12 +1284,12 @@ class TestFullOpsLifecycle:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="crashed", uptime=None, uptime_display="-",
+                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
                     response_time=None, pid=30001,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="healthy", uptime=600.0, uptime_display="10m",
+                    status=ServiceHealth.HEALTHY, uptime=600.0, uptime_display="10m",
                     response_time=0.08, pid=30002,
                 ),
             ]
@@ -1334,12 +1334,12 @@ class TestFullOpsLifecycle:
             mock_result.services = [
                 ServiceStatus(
                     tier="fast", model="qwen3.5-3b", port=8000,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
                 ServiceStatus(
                     tier="standard", model="qwen3.5-8b", port=8001,
-                    status="stopped", uptime=None, uptime_display="-",
+                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
                     response_time=None, pid=None,
                 ),
             ]

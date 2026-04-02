@@ -638,7 +638,13 @@ class TestInstallAgent:
             path, was_reinstall = install_agent("/usr/bin/mlx-stack")
 
         assert was_reinstall is False
-        mock_write.assert_called_once()
+        assert path is mock_plist_path
+
+        # Verify plist data contains correct binary and label
+        plist_data = mock_write.call_args[0][0]
+        assert plist_data["Label"] == "com.mlx-stack.watchdog"
+        assert plist_data["ProgramArguments"][0] == "/usr/bin/mlx-stack"
+        assert "watch" in plist_data["ProgramArguments"]
 
     def test_reinstall(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
