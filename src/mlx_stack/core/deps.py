@@ -90,6 +90,14 @@ class DependencyStatus:
 _console = Console(stderr=True)
 
 
+def _build_install_spec(tool: str, version: str) -> str:
+    """Build the pip/uv install specifier for a tool, including extras."""
+    extra = _TOOL_EXTRAS.get(tool)
+    if extra:
+        return f"{tool}[{extra}]=={version}"
+    return f"{tool}=={version}"
+
+
 def _find_binary(tool: str) -> str | None:
     """Return the full path to a tool's binary, or ``None`` if not found.
 
@@ -125,7 +133,7 @@ def _get_installed_version(tool: str) -> str | None:
     if result.returncode != 0:
         return None
 
-    # Parse lines like "vllm-mlx v0.2.6" or "litellm v1.67.2"
+    # Parse lines like "vllm-mlx v0.2.6" or "litellm v1.83.0"
     for line in result.stdout.splitlines():
         # Match "<tool> v<version>" pattern
         pattern = rf"^{re.escape(tool)}\s+v?(\S+)"
@@ -155,11 +163,7 @@ def _install_tool(tool: str, version: str) -> None:
         )
         raise DependencyError(msg)
 
-    extra = _TOOL_EXTRAS.get(tool)
-    if extra:
-        install_spec = f"{tool}[{extra}]=={version}"
-    else:
-        install_spec = f"{tool}=={version}"
+    install_spec = _build_install_spec(tool, version)
     cmd = [uv_path, "tool", "install", install_spec]
     cmd_str = f"uv tool install {install_spec}"
 
@@ -278,7 +282,7 @@ def ensure_dependency(tool: str) -> DependencyStatus:
 
         # Verify post-install
         if not _verify_post_install(tool):
-            cmd_str = f"uv tool install {tool}=={status.pinned_version}"
+            cmd_str = f"uv tool install {_build_install_spec(tool, status.pinned_version)}"
             msg = (
                 f"{tool} was not found on PATH after installation.\n"
                 f"This may be because the uv tool bin directory is not in your PATH.\n\n"
@@ -325,7 +329,7 @@ def _warn_version_mismatch(tool: str, status: DependencyStatus) -> None:
     """
     pinned = status.pinned_version
     installed = status.installed_version or "unknown"
-    cmd = f"uv tool install {tool}=={pinned}"
+    cmd = f"uv tool install {_build_install_spec(tool, pinned)}"
     _console.print(
         f"[yellow]⚠ {tool} version mismatch: "
         f"installed v{installed}, expected v{pinned}.[/yellow]\n"

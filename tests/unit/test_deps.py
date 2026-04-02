@@ -21,6 +21,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from mlx_stack.core.deps import (
+    _TOOL_EXTRAS,
     PINNED_VERSIONS,
     DependencyError,
     DependencyInstallError,
@@ -569,7 +570,7 @@ class TestEnsureDependency:
         ensure_dependency("litellm")
 
         console_prints = [str(c) for c in mock_console.print.call_args_list]
-        cmd_found = any("uv tool install litellm==1.83.0" in p for p in console_prints)
+        cmd_found = any("uv tool install litellm[proxy]==1.83.0" in p for p in console_prints)
         assert cmd_found, f"Expected upgrade command in: {console_prints}"
 
     def test_unknown_tool_raises_value_error(self) -> None:
@@ -782,3 +783,14 @@ class TestEdgeCases:
 
         args = mock_subprocess_run.call_args[0][0]
         assert args[3] == "vllm-mlx==0.3.0rc1"
+
+
+class TestToolExtrasSync:
+    """Guard against _TOOL_EXTRAS drifting out of sync with PINNED_VERSIONS."""
+
+    def test_extras_keys_are_valid_tools(self) -> None:
+        """Every key in _TOOL_EXTRAS must also be in PINNED_VERSIONS."""
+        for tool in _TOOL_EXTRAS:
+            assert tool in PINNED_VERSIONS, (
+                f"_TOOL_EXTRAS has '{tool}' which is not in PINNED_VERSIONS"
+            )
