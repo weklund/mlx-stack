@@ -292,7 +292,7 @@ dev = [
 requires-dist = [
     { name = "click", specifier = ">=8.1" },
     { name = "httpx", specifier = ">=0.27" },
-    { name = "huggingface-hub", extras = ["cli"], specifier = ">=1.8.0" },
+    { name = "huggingface-hub", specifier = ">=1.8.0" },
     { name = "psutil", specifier = ">=5.9" },
     { name = "pyyaml", specifier = ">=6.0" },
     { name = "rich", specifier = ">=13.0" },
