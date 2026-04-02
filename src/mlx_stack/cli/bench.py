@@ -141,12 +141,8 @@ def _display_results(result: BenchmarkResult_, out: Console, save: bool = False)
             else:
                 result_style = "[bold red]FAIL[/bold red]"
 
-            # Format delta
+            # Format delta — positive means below catalog, negative means above
             delta_str = f"{cls.delta_pct:+.1f}%"
-            if cls.delta_pct > 0:
-                delta_str = f"-{cls.delta_pct:.1f}%"  # Below catalog
-            else:
-                delta_str = f"+{abs(cls.delta_pct):.1f}%"  # Above catalog
 
             metric_name = cls.metric.replace("_", " ").title().replace("Tps", "TPS")
 
