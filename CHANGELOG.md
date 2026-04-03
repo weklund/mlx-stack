@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.3](https://github.com/weklund/mlx-stack/compare/v0.3.2...v0.3.3) (2026-04-02)
+
+
+### Bug Fixes
+
+* replace raw status strings with ServiceHealth enum and assert behavior in tests ([#13](https://github.com/weklund/mlx-stack/issues/13)) ([ef0161c](https://github.com/weklund/mlx-stack/commit/ef0161c9f0b64096917fd06045786aad49fe8c93))
+
 ## [0.3.2](https://github.com/weklund/mlx-stack/compare/v0.3.1...v0.3.2) (2026-04-02)
 
 
