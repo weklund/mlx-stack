@@ -43,63 +43,49 @@ class TestProfileKnownChip:
     """VAL-PROFILE-001: Known Apple Silicon chip detection and display."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_exits_zero(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_exits_zero(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert result.exit_code == 0
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_chip_name(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_chip_name(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "Apple M4 Pro" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_gpu_cores(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_gpu_cores(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "20" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_memory(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_memory(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "64 GB" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_bandwidth(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_bandwidth(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "273.0 GB/s" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_profile_id(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_profile_id(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "m4-pro-64" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_no_warning_for_known_chip(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_no_warning_for_known_chip(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
@@ -112,36 +98,28 @@ class TestProfileUnknownChip:
     """VAL-PROFILE-002: Unknown chip estimation with bench suggestion."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_exits_zero(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_exits_zero(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_unknown_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert result.exit_code == 0
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_estimate_label(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_estimate_label(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_unknown_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "estimate" in result.output.lower()
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_shows_bench_suggestion(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_shows_bench_suggestion(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_unknown_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "bench --save" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_profile_still_written(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_profile_still_written(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_unknown_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
@@ -157,9 +135,7 @@ class TestProfileNonAppleSilicon:
     """VAL-PROFILE-003: Non-Apple-Silicon rejection."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_nonzero_exit(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_nonzero_exit(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "mlx-stack requires Apple Silicon (M1 or later)"
         )
@@ -168,9 +144,7 @@ class TestProfileNonAppleSilicon:
         assert result.exit_code != 0
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_error_message(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_error_message(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "mlx-stack requires Apple Silicon (M1 or later)"
         )
@@ -179,9 +153,7 @@ class TestProfileNonAppleSilicon:
         assert "requires Apple Silicon" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_no_traceback(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_no_traceback(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "mlx-stack requires Apple Silicon (M1 or later)"
         )
@@ -190,9 +162,7 @@ class TestProfileNonAppleSilicon:
         assert "Traceback" not in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_no_profile_written(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_no_profile_written(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "mlx-stack requires Apple Silicon (M1 or later)"
         )
@@ -206,9 +176,7 @@ class TestProfileJsonFormat:
     """VAL-PROFILE-004: Profile JSON is valid, complete, and correctly located."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_valid_json(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_valid_json(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         runner.invoke(cli, ["profile"])
@@ -218,9 +186,7 @@ class TestProfileJsonFormat:
         assert isinstance(data, dict)
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_all_required_fields(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_all_required_fields(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         runner.invoke(cli, ["profile"])
@@ -235,9 +201,7 @@ class TestProfileJsonFormat:
         assert "profile_id" in data
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_field_types(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_field_types(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         runner.invoke(cli, ["profile"])
@@ -252,9 +216,7 @@ class TestProfileJsonFormat:
         assert isinstance(data["profile_id"], str)
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_profile_id_pattern(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_profile_id_pattern(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         runner.invoke(cli, ["profile"])
@@ -265,9 +227,7 @@ class TestProfileJsonFormat:
         assert data["profile_id"] == "m4-pro-64"
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_all_values_non_null(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_all_values_non_null(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         runner.invoke(cli, ["profile"])
@@ -283,18 +243,14 @@ class TestProfileRichTable:
     """VAL-PROFILE-005: Output is a Rich-formatted table."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_table_header_present(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_table_header_present(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
         assert "Hardware Profile" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_table_has_property_labels(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_table_has_property_labels(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
         result = runner.invoke(cli, ["profile"])
@@ -305,9 +261,7 @@ class TestProfileRichTable:
         assert "Profile ID" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_table_has_borders(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_table_has_borders(self, mock_detect: object, mlx_stack_home: Path) -> None:
         """Rich tables include box-drawing characters or similar formatting."""
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()
@@ -322,9 +276,7 @@ class TestProfileOverwrite:
     """VAL-PROFILE-006: Re-running profile overwrites existing data."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_overwrite(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_overwrite(self, mock_detect: object, mlx_stack_home: Path) -> None:
         # First run with M1
         hw1 = HardwareProfile("Apple M1", 8, 16, 68.25, False)
         mock_detect.return_value = hw1  # type: ignore[attr-defined]
@@ -348,9 +300,7 @@ class TestProfileErrorHandling:
     """VAL-PROFILE-007: System command failures handled gracefully."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_sysctl_error_no_traceback(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_sysctl_error_no_traceback(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "sysctl failed for key 'machdep.cpu.brand_string': Operation not permitted"
         )
@@ -361,9 +311,7 @@ class TestProfileErrorHandling:
         assert "Error" in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_profiler_error_no_traceback(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_profiler_error_no_traceback(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "system_profiler command not found — are you running on macOS?"
         )
@@ -373,9 +321,7 @@ class TestProfileErrorHandling:
         assert "Traceback" not in result.output
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_descriptive_error_message(
-        self, mock_detect: object, mlx_stack_home: Path
-    ) -> None:
+    def test_descriptive_error_message(self, mock_detect: object, mlx_stack_home: Path) -> None:
         mock_detect.side_effect = HardwareError(  # type: ignore[attr-defined]
             "sysctl timed out reading key 'hw.memsize'"
         )
@@ -388,9 +334,7 @@ class TestProfileAutoCreatesDirectory:
     """VAL-SETUP-004: Profile auto-creates ~/.mlx-stack/ on first use."""
 
     @patch("mlx_stack.cli.profile.detect_hardware")
-    def test_creates_data_dir(
-        self, mock_detect: object, clean_mlx_stack_home: Path
-    ) -> None:
+    def test_creates_data_dir(self, mock_detect: object, clean_mlx_stack_home: Path) -> None:
         assert not clean_mlx_stack_home.exists()
         mock_detect.return_value = _mock_known_hardware()  # type: ignore[attr-defined]
         runner = CliRunner()

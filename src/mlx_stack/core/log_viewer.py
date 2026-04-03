@@ -13,7 +13,7 @@ import re
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 from mlx_stack.core.config import get_value
@@ -50,12 +50,11 @@ class LogFileInfo:
         """Return human-readable file size."""
         if self.size_bytes < 1024:
             return f"{self.size_bytes} B"
-        elif self.size_bytes < 1024 * 1024:
+        if self.size_bytes < 1024 * 1024:
             return f"{self.size_bytes / 1024:.1f} KB"
-        elif self.size_bytes < 1024 * 1024 * 1024:
+        if self.size_bytes < 1024 * 1024 * 1024:
             return f"{self.size_bytes / (1024 * 1024):.1f} MB"
-        else:
-            return f"{self.size_bytes / (1024 * 1024 * 1024):.1f} GB"
+        return f"{self.size_bytes / (1024 * 1024 * 1024):.1f} GB"
 
     @property
     def modified_display(self) -> str:
@@ -101,9 +100,7 @@ def list_log_files() -> list[LogFileInfo]:
                     name=path.name,
                     service=service,
                     size_bytes=stat.st_size,
-                    modified=datetime.fromtimestamp(
-                        stat.st_mtime, tz=timezone.utc
-                    ),
+                    modified=datetime.fromtimestamp(stat.st_mtime, tz=UTC),
                 )
                 results.append(info)
             except OSError:
@@ -234,7 +231,7 @@ def follow_log(
 
             if current_size > position:
                 try:
-                    with open(log_path, "r", encoding="utf-8", errors="replace") as f:
+                    with open(log_path, encoding="utf-8", errors="replace") as f:
                         f.seek(position)
                         new_content = f.read()
                         if new_content:

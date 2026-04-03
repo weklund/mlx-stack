@@ -27,9 +27,7 @@ class TestGetDataHome:
         result = get_data_home()
         assert result == mlx_stack_home
 
-    def test_default_is_home_dot_mlx_stack(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_default_is_home_dot_mlx_stack(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("MLX_STACK_HOME", raising=False)
         result = get_data_home()
         assert result == Path.home() / ".mlx-stack"

@@ -95,6 +95,7 @@ def _get_tier_names_from_stack(stack_name: str = "default") -> list[str]:
         catalog = None
 
     if catalog is not None:
+
         def sort_key(tier: dict[str, Any]) -> tuple[float, str]:
             model_id = tier.get("model", "")
             entry = get_entry_by_id(catalog, model_id)
@@ -226,10 +227,7 @@ def run_down(
         valid_tiers = _get_valid_tier_names(stack_name)
         if valid_tiers and tier_filter not in valid_tiers:
             valid_list = ", ".join(sorted(valid_tiers))
-            msg = (
-                f"Unknown tier '{tier_filter}'. "
-                f"Valid tiers: {valid_list}"
-            )
+            msg = f"Unknown tier '{tier_filter}'. Valid tiers: {valid_list}"
             raise DownError(msg)
 
     # --- Check if anything is running ---
@@ -277,11 +275,13 @@ def _run_shutdown(
             svc_result = _stop_single_service(tier_filter)
             result.services.append(svc_result)
         else:
-            result.services.append(ServiceStopResult(
-                name=tier_filter,
-                pid=None,
-                status="not-running",
-            ))
+            result.services.append(
+                ServiceStopResult(
+                    name=tier_filter,
+                    pid=None,
+                    status="not-running",
+                )
+            )
         return result
 
     # --- Full shutdown: determine order ---

@@ -6,9 +6,11 @@ archived log reading, and on-demand rotation.
 
 from __future__ import annotations
 
+import contextlib
 import gzip
 import threading
 import time
+from datetime import UTC
 from pathlib import Path
 
 from mlx_stack.core.log_viewer import (
@@ -39,9 +41,7 @@ def _create_log(logs_dir: Path, service: str, content: str = "") -> Path:
     return log_path
 
 
-def _create_archive(
-    logs_dir: Path, service: str, number: int, content: str
-) -> Path:
+def _create_archive(logs_dir: Path, service: str, number: int, content: str) -> Path:
     """Create a gzip archive for a service."""
     logs_dir.mkdir(parents=True, exist_ok=True)
     archive_path = logs_dir / f"{service}.log.{number}.gz"
@@ -60,57 +60,57 @@ class TestLogFileInfo:
 
     def test_size_display_bytes(self) -> None:
         """Sizes under 1KB show in bytes."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         info = LogFileInfo(
             name="test.log",
             service="test",
             size_bytes=500,
-            modified=datetime.now(tz=timezone.utc),
+            modified=datetime.now(tz=UTC),
         )
         assert info.size_display == "500 B"
 
     def test_size_display_kilobytes(self) -> None:
-        """Sizes 1KB–1MB show in KB."""
-        from datetime import datetime, timezone
+        """Sizes 1KB-1MB show in KB."""
+        from datetime import datetime
 
         info = LogFileInfo(
             name="test.log",
             service="test",
             size_bytes=2048,
-            modified=datetime.now(tz=timezone.utc),
+            modified=datetime.now(tz=UTC),
         )
         assert info.size_display == "2.0 KB"
 
     def test_size_display_megabytes(self) -> None:
-        """Sizes 1MB–1GB show in MB."""
-        from datetime import datetime, timezone
+        """Sizes 1MB-1GB show in MB."""
+        from datetime import datetime
 
         info = LogFileInfo(
             name="test.log",
             service="test",
             size_bytes=5 * 1024 * 1024,
-            modified=datetime.now(tz=timezone.utc),
+            modified=datetime.now(tz=UTC),
         )
         assert info.size_display == "5.0 MB"
 
     def test_size_display_gigabytes(self) -> None:
         """Sizes >= 1GB show in GB."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
         info = LogFileInfo(
             name="test.log",
             service="test",
             size_bytes=2 * 1024 * 1024 * 1024,
-            modified=datetime.now(tz=timezone.utc),
+            modified=datetime.now(tz=UTC),
         )
         assert info.size_display == "2.0 GB"
 
     def test_modified_display(self) -> None:
         """Modified time is formatted as expected."""
-        from datetime import datetime, timezone
+        from datetime import datetime
 
-        dt = datetime(2025, 3, 15, 14, 30, 45, tzinfo=timezone.utc)
+        dt = datetime(2025, 3, 15, 14, 30, 45, tzinfo=UTC)
         info = LogFileInfo(
             name="test.log",
             service="test",
@@ -303,10 +303,8 @@ class TestFollowLog:
             stop_event.set()
 
         def run_follow() -> None:
-            try:
+            with contextlib.suppress(KeyboardInterrupt):
                 follow_log(log, num_lines=5, output_callback=writer)
-            except KeyboardInterrupt:
-                pass
 
         thread = threading.Thread(target=run_follow, daemon=True)
         thread.start()
@@ -343,10 +341,8 @@ class TestFollowLog:
                 new_content_event.set()
 
         def run_follow() -> None:
-            try:
+            with contextlib.suppress(KeyboardInterrupt):
                 follow_log(log, num_lines=1, output_callback=writer)
-            except KeyboardInterrupt:
-                pass
 
         thread = threading.Thread(target=run_follow, daemon=True)
         thread.start()
@@ -385,10 +381,8 @@ class TestFollowLog:
                 post_truncation_event.set()
 
         def run_follow() -> None:
-            try:
+            with contextlib.suppress(KeyboardInterrupt):
                 follow_log(log, num_lines=2, output_callback=writer)
-            except KeyboardInterrupt:
-                pass
 
         thread = threading.Thread(target=run_follow, daemon=True)
         thread.start()

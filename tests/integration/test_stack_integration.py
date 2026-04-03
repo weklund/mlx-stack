@@ -116,7 +116,8 @@ class TestStackLifecycle:
             )
             data = response.json()
             content = data["choices"][0]["message"]["content"]
-            assert content and len(content.strip()) > 0
+            assert content
+            assert len(content.strip()) > 0
 
             # Inference directly to vllm-mlx
             response = httpx.post(
@@ -142,9 +143,7 @@ class TestStackLifecycle:
         # Verify no PID files remain
         pids_dir = integration_home / "pids"
         remaining = list(pids_dir.glob("*.pid"))
-        assert len(remaining) == 0, (
-            f"PID files remain: {[p.name for p in remaining]}"
-        )
+        assert len(remaining) == 0, f"PID files remain: {[p.name for p in remaining]}"
 
     def test_litellm_routing(
         self,
@@ -249,9 +248,7 @@ class TestStackLifecycle:
             assert response.status_code == 200
             data = response.json()
             model_ids = [m["id"] for m in data.get("data", [])]
-            assert "fast" in model_ids, (
-                f"Tier 'fast' not in model list: {model_ids}"
-            )
+            assert "fast" in model_ids, f"Tier 'fast' not in model list: {model_ids}"
 
     def test_concurrent_requests(
         self,
@@ -299,9 +296,7 @@ class TestStackLifecycle:
                     return await asyncio.gather(*tasks)
 
             results = asyncio.run(run_concurrent())
-            assert all(s == 200 for s in results), (
-                f"Some concurrent requests failed: {results}"
-            )
+            assert all(s == 200 for s in results), f"Some concurrent requests failed: {results}"
 
     def test_clean_shutdown_no_orphans(
         self,
@@ -336,11 +331,7 @@ class TestStackLifecycle:
         # Verify: no PID files
         pids_dir = integration_home / "pids"
         remaining = list(pids_dir.glob("*.pid"))
-        assert len(remaining) == 0, (
-            f"PID files remain: {[p.name for p in remaining]}"
-        )
+        assert len(remaining) == 0, f"PID files remain: {[p.name for p in remaining]}"
 
         # Verify: socket bind succeeds (port truly free)
-        assert not is_port_in_use(vllm_port), (
-            f"Port {vllm_port} still in use after cleanup"
-        )
+        assert not is_port_in_use(vllm_port), f"Port {vllm_port} still in use after cleanup"

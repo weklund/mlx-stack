@@ -187,9 +187,7 @@ def check_flapping(
     cutoff = now - window_seconds
 
     # Prune old timestamps outside the window
-    tracker.restart_timestamps = [
-        ts for ts in tracker.restart_timestamps if ts > cutoff
-    ]
+    tracker.restart_timestamps = [ts for ts in tracker.restart_timestamps if ts > cutoff]
 
     if len(tracker.restart_timestamps) >= max_restarts:
         tracker.is_flapping = True
@@ -303,8 +301,7 @@ def restart_service(
 
             if service_name == LITELLM_SERVICE_NAME:
                 return _restart_litellm(service_name, stack, litellm_binary)
-            else:
-                return _restart_tier(service_name, stack, vllm_binary)
+            return _restart_tier(service_name, stack, vllm_binary)
     except LockError:
         logger.warning(
             "Could not acquire lock to restart '%s' — another operation is in progress.",
@@ -518,6 +515,7 @@ def setup_signal_handlers(state: WatchdogState) -> None:
     Args:
         state: The watchdog state — sets shutdown_requested flag.
     """
+
     def handler(signum: int, frame: Any) -> None:
         state.shutdown_requested = True
 
@@ -570,9 +568,7 @@ def poll_cycle(
     # Check each service for crashed state
     for svc in status_result.services:
         service_name = svc.tier
-        tracker = state.service_trackers.setdefault(
-            service_name, ServiceTracker()
-        )
+        tracker = state.service_trackers.setdefault(service_name, ServiceTracker())
 
         # Try to reset flap state if service has been stable
         reset_flap_state(tracker)
@@ -593,8 +589,7 @@ def poll_cycle(
         if check_flapping(tracker, max_restarts):
             result.flapping_services.append(service_name)
             logger.warning(
-                "Service '%s' marked as flapping after %d restarts. "
-                "Stopping auto-restart.",
+                "Service '%s' marked as flapping after %d restarts. Stopping auto-restart.",
                 service_name,
                 max_restarts,
             )
@@ -728,7 +723,7 @@ def run_watchdog(
                 status_callback(result, state)
 
             if restart_callback is not None and result.restarts_attempted > 0:
-                for record in state.restart_log[-result.restarts_attempted:]:
+                for record in state.restart_log[-result.restarts_attempted :]:
                     restart_callback(record)
 
             # Sleep in small increments so we can check shutdown flag

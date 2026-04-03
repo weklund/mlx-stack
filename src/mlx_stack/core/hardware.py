@@ -170,7 +170,7 @@ def detect_memory_gb() -> int:
         msg = f"Unexpected hw.memsize value: {raw!r}"
         raise HardwareError(msg) from None
 
-    return memsize_bytes // (1024 ** 3)
+    return memsize_bytes // (1024**3)
 
 
 def detect_gpu_cores() -> int:

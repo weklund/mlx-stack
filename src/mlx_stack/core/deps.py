@@ -158,8 +158,7 @@ def _install_tool(tool: str, version: str) -> None:
     uv_path = shutil.which("uv")
     if uv_path is None:
         msg = (
-            "uv is not available on PATH. "
-            "Install it from https://docs.astral.sh/uv/ and try again."
+            "uv is not available on PATH. Install it from https://docs.astral.sh/uv/ and try again."
         )
         raise DependencyError(msg)
 
@@ -177,17 +176,10 @@ def _install_tool(tool: str, version: str) -> None:
             timeout=300,
         )
     except subprocess.TimeoutExpired:
-        msg = (
-            f"Installation timed out: {cmd_str}\n\n"
-            f"Install manually with: {cmd_str}"
-        )
+        msg = f"Installation timed out: {cmd_str}\n\nInstall manually with: {cmd_str}"
         raise DependencyInstallError(msg) from None
     except OSError as exc:
-        msg = (
-            f"Failed to run: {cmd_str}\n"
-            f"Error: {exc}\n\n"
-            f"Install manually with: {cmd_str}"
-        )
+        msg = f"Failed to run: {cmd_str}\nError: {exc}\n\nInstall manually with: {cmd_str}"
         raise DependencyInstallError(msg) from None
 
     if result.returncode != 0:
@@ -288,7 +280,7 @@ def ensure_dependency(tool: str) -> DependencyStatus:
                 f"This may be because the uv tool bin directory is not in your PATH.\n\n"
                 f"Try running:\n"
                 f"  {cmd_str}\n"
-                f"  export PATH=\"$HOME/.local/bin:$PATH\""
+                f'  export PATH="$HOME/.local/bin:$PATH"'
             )
             raise DependencyInstallError(msg)
 
@@ -314,10 +306,7 @@ def ensure_all_dependencies() -> list[DependencyStatus]:
         DependencyError: If any dependency cannot be installed.
         DependencyInstallError: If any auto-install fails.
     """
-    results: list[DependencyStatus] = []
-    for tool in PINNED_VERSIONS:
-        results.append(ensure_dependency(tool))
-    return results
+    return [ensure_dependency(tool) for tool in PINNED_VERSIONS]
 
 
 def _warn_version_mismatch(tool: str, status: DependencyStatus) -> None:

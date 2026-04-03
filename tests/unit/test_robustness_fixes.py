@@ -310,8 +310,8 @@ class TestSigkillVerification:
         # Process stays alive through grace, dies after SIGKILL
         mock_alive.side_effect = [True, True, True, False]
         mock_monotonic.side_effect = [
-            0.0,   # deadline = 10.0
-            5.0,   # still within grace
+            0.0,  # deadline = 10.0
+            5.0,  # still within grace
             11.0,  # past grace → SIGKILL
         ]
 
@@ -334,7 +334,7 @@ class TestSigkillVerification:
         # Process never dies (survives SIGKILL — e.g. zombie or kernel hold)
         mock_alive.return_value = True
         mock_monotonic.side_effect = [
-            0.0,   # deadline = 10.0
+            0.0,  # deadline = 10.0
             11.0,  # past grace → SIGKILL
         ]
 

@@ -15,6 +15,7 @@ Provides:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import plistlib
 import shutil
@@ -102,10 +103,7 @@ def check_platform() -> None:
         PlatformError: If not running on macOS (darwin).
     """
     if sys.platform != "darwin":
-        msg = (
-            "launchd integration is only available on macOS. "
-            f"Current platform: {sys.platform}"
-        )
+        msg = f"launchd integration is only available on macOS. Current platform: {sys.platform}"
         raise PlatformError(msg)
 
 
@@ -120,10 +118,7 @@ def check_init_prerequisite() -> None:
     """
     stack_path = get_stacks_dir() / "default.yaml"
     if not stack_path.exists():
-        msg = (
-            "No stack configuration found. "
-            "Run 'mlx-stack init' first."
-        )
+        msg = "No stack configuration found. Run 'mlx-stack init' first."
         raise PrerequisiteError(msg)
 
 
@@ -152,10 +147,7 @@ def _resolve_mlx_stack_binary() -> str:
     if candidate.exists():
         return str(candidate)
 
-    msg = (
-        "Could not find the mlx-stack binary on PATH. "
-        "Ensure mlx-stack is properly installed."
-    )
+    msg = "Could not find the mlx-stack binary on PATH. Ensure mlx-stack is properly installed."
     raise LaunchdError(msg)
 
 
@@ -186,10 +178,7 @@ def _build_environment_variables(mlx_stack_binary: str) -> dict[str, str]:
     ]
 
     # Ensure binary_dir is first, then add standard paths not already present
-    path_components = [binary_dir]
-    for p in standard_paths:
-        if p != binary_dir:
-            path_components.append(p)
+    path_components = [binary_dir, *(p for p in standard_paths if p != binary_dir)]
 
     env["PATH"] = ":".join(path_components)
 
@@ -475,10 +464,8 @@ def install_agent(mlx_stack_binary: str | None = None) -> tuple[Path, bool]:
     was_reinstall = plist_path.exists()
     if was_reinstall:
         # Bootout old agent before writing new plist
-        try:
+        with contextlib.suppress(LaunchdError):
             unload_agent(plist_path)
-        except LaunchdError:
-            pass  # Best-effort unload of old agent
 
     # Write new plist
     write_plist(plist_data, plist_path)

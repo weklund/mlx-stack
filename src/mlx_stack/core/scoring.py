@@ -203,8 +203,7 @@ def _resolve_benchmark(
         except (ValueError, TypeError):
             # Malformed saved benchmark data — fall through to catalog lookup
             logger.warning(
-                "Ignoring malformed saved benchmark for model '%s': "
-                "invalid numeric values",
+                "Ignoring malformed saved benchmark for model '%s': invalid numeric values",
                 entry.id,
             )
 
@@ -374,9 +373,7 @@ def score_model(
     Raises:
         ScoringError: If benchmark data cannot be resolved.
     """
-    gen_tps, memory_gb, is_estimated = _resolve_benchmark(
-        entry, profile, quant, saved_benchmarks
-    )
+    gen_tps, memory_gb, is_estimated = _resolve_benchmark(entry, profile, quant, saved_benchmarks)
 
     speed_score = _normalize_gen_tps_log(gen_tps)
     quality_score = _normalize_quality(entry.quality.overall)
@@ -506,11 +503,13 @@ def assign_tiers(
         key=lambda m: (-m.composite_score, m.entry.id),
     )
     standard_model = standard_candidates[0]
-    assignments.append(TierAssignment(
-        tier=TIER_STANDARD,
-        model=standard_model,
-        quant=_DEFAULT_QUANT,
-    ))
+    assignments.append(
+        TierAssignment(
+            tier=TIER_STANDARD,
+            model=standard_model,
+            quant=_DEFAULT_QUANT,
+        )
+    )
     used_model_ids.add(standard_model.entry.id)
 
     # --- Fast tier: highest gen_tps, different from standard ---
@@ -520,11 +519,13 @@ def assign_tiers(
     )
     if fast_candidates:
         fast_model = fast_candidates[0]
-        assignments.append(TierAssignment(
-            tier=TIER_FAST,
-            model=fast_model,
-            quant=_DEFAULT_QUANT,
-        ))
+        assignments.append(
+            TierAssignment(
+                tier=TIER_FAST,
+                model=fast_model,
+                quant=_DEFAULT_QUANT,
+            )
+        )
         used_model_ids.add(fast_model.entry.id)
 
     # --- Longctx tier: architecturally diverse, only for larger budgets ---
@@ -541,11 +542,13 @@ def assign_tiers(
         )
         if longctx_candidates:
             longctx_model = longctx_candidates[0]
-            assignments.append(TierAssignment(
-                tier=TIER_LONGCTX,
-                model=longctx_model,
-                quant=_DEFAULT_QUANT,
-            ))
+            assignments.append(
+                TierAssignment(
+                    tier=TIER_LONGCTX,
+                    model=longctx_model,
+                    quant=_DEFAULT_QUANT,
+                )
+            )
             used_model_ids.add(longctx_model.entry.id)
 
     return assignments
@@ -604,7 +607,12 @@ def recommend(
 
     # Score and filter
     scored = score_and_filter(
-        catalog, profile, intent, budget_gb, quant, saved_benchmarks,
+        catalog,
+        profile,
+        intent,
+        budget_gb,
+        quant,
+        saved_benchmarks,
         exclude_gated=exclude_gated,
     )
 

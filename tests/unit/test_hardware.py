@@ -32,6 +32,7 @@ from mlx_stack.core.hardware import (
 # Helper: mock subprocess.run
 # --------------------------------------------------------------------------- #
 
+
 def _make_completed(
     stdout: str = "", returncode: int = 0, stderr: str = ""
 ) -> subprocess.CompletedProcess[str]:
@@ -175,7 +176,7 @@ class TestDetectMemoryGb:
     @patch("mlx_stack.core.hardware._run_sysctl")
     def test_invalid_value(self, mock_sysctl: object) -> None:
         mock_sysctl.return_value = "not-a-number"  # type: ignore[attr-defined]
-        with pytest.raises(HardwareError, match="Unexpected hw.memsize"):
+        with pytest.raises(HardwareError, match=r"Unexpected hw\.memsize"):
             detect_memory_gb()
 
 
@@ -229,7 +230,7 @@ class TestBandwidthLookup:
         assert len(CHIP_SPECS) == 17
 
     @pytest.mark.parametrize(
-        "chip,expected_bw",
+        ("chip", "expected_bw"),
         [
             ("Apple M1", 68.25),
             ("Apple M1 Pro", 200.0),
@@ -292,9 +293,7 @@ class TestDetectHardware:
 
     @patch("mlx_stack.core.hardware._run_system_profiler")
     @patch("mlx_stack.core.hardware._run_sysctl")
-    def test_known_chip_full_detection(
-        self, mock_sysctl: object, mock_profiler: object
-    ) -> None:
+    def test_known_chip_full_detection(self, mock_sysctl: object, mock_profiler: object) -> None:
         def sysctl_side_effect(key: str) -> str:
             if key == "machdep.cpu.brand_string":
                 return "Apple M4 Pro"
@@ -316,9 +315,7 @@ class TestDetectHardware:
 
     @patch("mlx_stack.core.hardware._run_system_profiler")
     @patch("mlx_stack.core.hardware._run_sysctl")
-    def test_unknown_chip_uses_estimate(
-        self, mock_sysctl: object, mock_profiler: object
-    ) -> None:
+    def test_unknown_chip_uses_estimate(self, mock_sysctl: object, mock_profiler: object) -> None:
         def sysctl_side_effect(key: str) -> str:
             if key == "machdep.cpu.brand_string":
                 return "Apple M6"

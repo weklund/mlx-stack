@@ -80,7 +80,7 @@ def _display_local_models() -> None:
             indicator_style = "bold green" if model.is_active else ""
 
             # Display name: prefer catalog name, fall back to directory name
-            display_name = model.catalog_name if model.catalog_name else model.name
+            display_name = model.catalog_name or model.name
 
             # Size
             size_str = format_size(model.disk_size_bytes)
@@ -217,7 +217,7 @@ def _display_catalog(
         local_style = "bold green" if cm.is_local else ""
 
         # Parameters
-        params_str = f"{cm.params_b:.1f}B" if cm.params_b >= 1.0 else f"{cm.params_b:.1f}B"
+        params_str = f"{cm.params_b:.1f}B"
 
         # Quantizations
         quants_str = ", ".join(cm.quants)
@@ -270,7 +270,9 @@ def _display_catalog(
 @click.option("--family", default=None, help="Filter catalog by model family (e.g., 'qwen3.5').")
 @click.option("--tag", default=None, help="Filter catalog by tag (e.g., 'agent-ready').")
 @click.option(
-    "--tool-calling", "tool_calling", is_flag=True,
+    "--tool-calling",
+    "tool_calling",
+    is_flag=True,
     help="Filter catalog to tool-calling-capable models only.",
 )
 def models(

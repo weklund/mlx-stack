@@ -125,9 +125,7 @@ def _make_entry(
         architecture="transformer",
         min_mlx_lm_version="0.22.0",
         sources={
-            "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit", disk_size_gb=4.5
-            ),
+            "int4": QuantSource(hf_repo=f"mlx-community/{model_id}-4bit", disk_size_gb=4.5),
         },
         capabilities=Capabilities(
             tool_calling=True,
@@ -136,13 +134,9 @@ def _make_entry(
             reasoning_parser=None,
             vision=False,
         ),
-        quality=QualityScores(
-            overall=70, coding=65, reasoning=60, instruction_following=72
-        ),
+        quality=QualityScores(overall=70, coding=65, reasoning=60, instruction_following=72),
         benchmarks={
-            "m4-max-128": BenchmarkResult(
-                prompt_tps=100.0, gen_tps=50.0, memory_gb=memory_gb
-            ),
+            "m4-max-128": BenchmarkResult(prompt_tps=100.0, gen_tps=50.0, memory_gb=memory_gb),
         },
         tags=[],
     )
@@ -333,9 +327,7 @@ class TestPreflightInStartup:
         statuses = {t.name: t.status for t in result.tiers}
         # big-model (standard) should be skipped — not on disk
         assert statuses["standard"] == "skipped"
-        message = next(
-            t.error for t in result.tiers if t.name == "standard"
-        ) or ""
+        message = next(t.error for t in result.tiers if t.name == "standard") or ""
         assert "not found locally" in message
         # fast-model (fast) should be healthy — on disk
         assert statuses["fast"] == "healthy"

@@ -178,16 +178,18 @@ def run_status(stack_name: str = "default") -> StatusResult:
             health_path=VLLM_HEALTH_PATH,
         )
 
-        result.services.append(ServiceStatus(
-            tier=tier_name,
-            model=model,
-            port=port,
-            status=ServiceHealth(svc_status["status"]),
-            uptime=svc_status["uptime"],
-            uptime_display=format_uptime(svc_status["uptime"]),
-            response_time=svc_status["response_time"],
-            pid=svc_status["pid"],
-        ))
+        result.services.append(
+            ServiceStatus(
+                tier=tier_name,
+                model=model,
+                port=port,
+                status=ServiceHealth(svc_status["status"]),
+                uptime=svc_status["uptime"],
+                uptime_display=format_uptime(svc_status["uptime"]),
+                response_time=svc_status["response_time"],
+                pid=svc_status["pid"],
+            )
+        )
 
     # --- Check LiteLLM ---
     litellm_port = _get_litellm_port()
@@ -197,16 +199,18 @@ def run_status(stack_name: str = "default") -> StatusResult:
         health_path=LITELLM_HEALTH_PATH,
     )
 
-    result.services.append(ServiceStatus(
-        tier="litellm",
-        model="proxy",
-        port=litellm_port,
-        status=ServiceHealth(litellm_status["status"]),
-        uptime=litellm_status["uptime"],
-        uptime_display=format_uptime(litellm_status["uptime"]),
-        response_time=litellm_status["response_time"],
-        pid=litellm_status["pid"],
-    ))
+    result.services.append(
+        ServiceStatus(
+            tier="litellm",
+            model="proxy",
+            port=litellm_port,
+            status=ServiceHealth(litellm_status["status"]),
+            uptime=litellm_status["uptime"],
+            uptime_display=format_uptime(litellm_status["uptime"]),
+            response_time=litellm_status["response_time"],
+            pid=litellm_status["pid"],
+        )
+    )
 
     return result
 
@@ -220,9 +224,8 @@ def status_to_dict(result: StatusResult) -> dict[str, Any]:
     Returns:
         A dict suitable for ``json.dumps``.
     """
-    services_list: list[dict[str, Any]] = []
-    for svc in result.services:
-        services_list.append({
+    services_list: list[dict[str, Any]] = [
+        {
             "tier": svc.tier,
             "model": svc.model,
             "port": svc.port,
@@ -231,7 +234,9 @@ def status_to_dict(result: StatusResult) -> dict[str, Any]:
             "uptime_display": svc.uptime_display,
             "pid": svc.pid,
             "response_time": svc.response_time,
-        })
+        }
+        for svc in result.services
+    ]
 
     return {
         "services": services_list,

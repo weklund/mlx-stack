@@ -703,11 +703,16 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="test", pid=12345, port=8000, log_path=Path("/tmp/test.log"),
+            name="test",
+            pid=12345,
+            port=8000,
+            log_path=Path("/tmp/test.log"),
             pid_path=Path("/tmp/test.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up()
@@ -752,11 +757,16 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            name="fast",
+            pid=12345,
+            port=8001,
+            log_path=Path("/tmp/fast.log"),
             pid_path=Path("/tmp/fast.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up(tier_filter="fast")
@@ -809,11 +819,16 @@ class TestRunUp:
 
         mock_port_conflict.side_effect = port_conflict_side_effect
         mock_start_service.return_value = ServiceInfo(
-            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            name="fast",
+            pid=12345,
+            port=8001,
+            log_path=Path("/tmp/fast.log"),
             pid_path=Path("/tmp/fast.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up()
@@ -870,11 +885,16 @@ class TestRunUp:
 
         mock_port_conflict.side_effect = port_conflict_side_effect
         mock_start_service.return_value = ServiceInfo(
-            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            name="fast",
+            pid=12345,
+            port=8001,
+            log_path=Path("/tmp/fast.log"),
             pid_path=Path("/tmp/fast.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up()
@@ -925,15 +945,18 @@ class TestRunUp:
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
 
         # Port occupied but owner unknown (e.g., macOS permission issue)
-        mock_port_conflict.side_effect = lambda port: (
-            (0, "<unknown>") if port == 8000 else None
-        )
+        mock_port_conflict.side_effect = lambda port: (0, "<unknown>") if port == 8000 else None
         mock_start_service.return_value = ServiceInfo(
-            name="fast", pid=12345, port=8001, log_path=Path("/tmp/fast.log"),
+            name="fast",
+            pid=12345,
+            port=8001,
+            log_path=Path("/tmp/fast.log"),
             pid_path=Path("/tmp/fast.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up()
@@ -978,7 +1001,10 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="test", pid=12345, port=8000, log_path=Path("/tmp/test.log"),
+            name="test",
+            pid=12345,
+            port=8000,
+            log_path=Path("/tmp/test.log"),
             pid_path=Path("/tmp/test.pid"),
         )
 
@@ -1115,11 +1141,16 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="test", pid=99999, port=8000, log_path=Path("/tmp/test.log"),
+            name="test",
+            pid=99999,
+            port=8000,
+            log_path=Path("/tmp/test.log"),
             pid_path=Path("/tmp/test.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         result = run_up()
@@ -1213,18 +1244,24 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="test", pid=12345, port=8000, log_path=Path("/tmp/test.log"),
+            name="test",
+            pid=12345,
+            port=8000,
+            log_path=Path("/tmp/test.log"),
             pid_path=Path("/tmp/test.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         run_up()
 
         # Check that start_service was called for litellm with env dict
         litellm_calls = [
-            c for c in mock_start_service.call_args_list
+            c
+            for c in mock_start_service.call_args_list
             if c.kwargs.get("service_name") == LITELLM_SERVICE_NAME
             or (c.args and c.args[0] == LITELLM_SERVICE_NAME)
         ]
@@ -1274,11 +1311,16 @@ class TestRunUp:
         mock_lock.return_value.__enter__ = MagicMock(return_value=None)
         mock_lock.return_value.__exit__ = MagicMock(return_value=False)
         mock_start_service.return_value = ServiceInfo(
-            name="test", pid=12345, port=8000, log_path=Path("/tmp/test.log"),
+            name="test",
+            pid=12345,
+            port=8000,
+            log_path=Path("/tmp/test.log"),
             pid_path=Path("/tmp/test.pid"),
         )
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.5, status_code=200,
+            healthy=True,
+            response_time=0.5,
+            status_code=200,
         )
 
         with patch("mlx_stack.core.stack_up.psutil.virtual_memory") as mock_vmem:
@@ -1310,7 +1352,10 @@ class TestCLIOutput:
                 TierStatus(name="fast", model="fast-model", port=8001, status="healthy"),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000, status="healthy",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="healthy",
             ),
         )
 
@@ -1333,12 +1378,17 @@ class TestCLIOutput:
         mock_run_up.return_value = UpResult(
             tiers=[
                 TierStatus(
-                    name="standard", model="big-model", port=8000,
+                    name="standard",
+                    model="big-model",
+                    port=8000,
                     status="already-running",
                 ),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000, status="already-running",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="already-running",
             ),
             already_running=True,
         )
@@ -1358,16 +1408,24 @@ class TestCLIOutput:
         mock_run_up.return_value = UpResult(
             tiers=[
                 TierStatus(
-                    name="standard", model="big-model", port=8000,
-                    status="failed", error="Health check timeout",
+                    name="standard",
+                    model="big-model",
+                    port=8000,
+                    status="failed",
+                    error="Health check timeout",
                 ),
                 TierStatus(
-                    name="fast", model="fast-model", port=8001,
+                    name="fast",
+                    model="fast-model",
+                    port=8001,
                     status="healthy",
                 ),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000, status="healthy",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="healthy",
             ),
         )
 
@@ -1387,13 +1445,19 @@ class TestCLIOutput:
         mock_run_up.return_value = UpResult(
             tiers=[
                 TierStatus(
-                    name="standard", model="big-model", port=8000,
-                    status="failed", error="Port conflict",
+                    name="standard",
+                    model="big-model",
+                    port=8000,
+                    status="failed",
+                    error="Port conflict",
                 ),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000,
-                status="skipped", error="All model servers failed",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="skipped",
+                error="All model servers failed",
             ),
         )
 
@@ -1427,7 +1491,10 @@ class TestCLIOutput:
                 TierStatus(name="standard", model="big-model", port=8000, status="healthy"),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000, status="healthy",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="healthy",
             ),
             warnings=["Estimated memory usage (50.0 GB) exceeds available (10.0 GB)"],
         )
@@ -1447,17 +1514,24 @@ class TestCLIOutput:
         mock_run_up.return_value = UpResult(
             tiers=[
                 TierStatus(
-                    name="standard", model="big-model", port=8000,
+                    name="standard",
+                    model="big-model",
+                    port=8000,
                     status="skipped",
                     error="Port 8000 already in use by PID 54321 (node)",
                 ),
                 TierStatus(
-                    name="fast", model="fast-model", port=8001,
+                    name="fast",
+                    model="fast-model",
+                    port=8001,
                     status="healthy",
                 ),
             ],
             litellm=TierStatus(
-                name="litellm", model="proxy", port=4000, status="healthy",
+                name="litellm",
+                model="proxy",
+                port=4000,
+                status="healthy",
             ),
         )
 
@@ -1503,9 +1577,7 @@ class TestConfigPropagation:
         assert result.litellm.port == 5001
 
         # Dry-run commands should reference port 5001
-        litellm_cmds = [
-            c for c in result.dry_run_commands if c["service"] == "litellm"
-        ]
+        litellm_cmds = [c for c in result.dry_run_commands if c["service"] == "litellm"]
         assert len(litellm_cmds) == 1
         assert "5001" in litellm_cmds[0]["command"]
 

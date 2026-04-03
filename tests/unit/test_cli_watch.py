@@ -21,13 +21,13 @@ from mlx_stack.core.watchdog import WatchdogError, WatchdogState
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner() -> CliRunner:
     """Create a Click CliRunner."""
     return CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict:
     """Create a test stack definition."""
     stacks_dir = mlx_stack_home / "stacks"
@@ -93,34 +93,24 @@ class TestWatchHelp:
 class TestWatchParameterValidation:
     """Tests for watch command parameter validation."""
 
-    def test_invalid_interval_zero(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_invalid_interval_zero(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch", "--interval", "0"])
         assert result.exit_code != 0
         assert "positive integer" in result.output.lower() or "Invalid" in result.output
 
-    def test_invalid_interval_negative(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_invalid_interval_negative(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch", "--interval", "-5"])
         assert result.exit_code != 0
 
-    def test_invalid_max_restarts_zero(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_invalid_max_restarts_zero(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch", "--max-restarts", "0"])
         assert result.exit_code != 0
 
-    def test_invalid_restart_delay_negative(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_invalid_restart_delay_negative(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch", "--restart-delay", "-1"])
         assert result.exit_code != 0
 
-    def test_invalid_interval_non_integer(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_invalid_interval_non_integer(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch", "--interval", "abc"])
         assert result.exit_code != 0
 
@@ -133,9 +123,7 @@ class TestWatchParameterValidation:
 class TestWatchNoStack:
     """Tests for watch command when no stack is configured."""
 
-    def test_no_stack_exits_with_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_no_stack_exits_with_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch"])
         assert result.exit_code != 0
         assert "init" in result.output.lower() or "stack" in result.output.lower()
@@ -269,9 +257,12 @@ class TestWatchInvocation:
                 cli,
                 [
                     "watch",
-                    "--interval", "45",
-                    "--max-restarts", "10",
-                    "--restart-delay", "15",
+                    "--interval",
+                    "45",
+                    "--max-restarts",
+                    "10",
+                    "--restart-delay",
+                    "15",
                     "--daemon",
                 ],
             )

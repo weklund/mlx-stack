@@ -170,9 +170,7 @@ def _prompt_model_selection(
     Input like '1:int8,3' = model 1 as int8, model 3 as default quant.
     """
     if accept_defaults:
-        return [
-            (i, s.model.quant) for i, s in enumerate(scored) if s.is_recommended
-        ]
+        return [(i, s.model.quant) for i, s in enumerate(scored) if s.is_recommended]
 
     out.print()
     raw = click.prompt(
@@ -184,9 +182,7 @@ def _prompt_model_selection(
 
     if not raw.strip():
         # Accept defaults
-        return [
-            (i, s.model.quant) for i, s in enumerate(scored) if s.is_recommended
-        ]
+        return [(i, s.model.quant) for i, s in enumerate(scored) if s.is_recommended]
 
     # Parse input
     selections: list[tuple[int, str]] = []
@@ -245,8 +241,8 @@ def _display_final_status(tiers: list[Any], litellm_port: int) -> None:
     out.print(
         f"    curl http://localhost:{litellm_port}/v1/chat/completions \\\n"
         f"      -H 'Content-Type: application/json' \\\n"
-        f"      -d '{{\"model\":\"{tiers[0].tier_name}\","
-        f"\"messages\":[{{\"role\":\"user\",\"content\":\"Hello!\"}}]}}'"
+        f'      -d \'{{"model":"{tiers[0].tier_name}",'
+        f'"messages":[{{"role":"user","content":"Hello!"}}]}}\''
     )
     out.print()
     out.print("  [dim]Manage your stack:[/dim]")
@@ -343,10 +339,7 @@ def setup(
         raise SystemExit(1) from None
 
     if not all_models:
-        console.print(
-            "[bold red]Error:[/bold red] No models found. "
-            "Check your network connection."
-        )
+        console.print("[bold red]Error:[/bold red] No models found. Check your network connection.")
         raise SystemExit(1) from None
 
     scored = score_and_filter(all_models, intent, budget_gb)
@@ -400,25 +393,29 @@ def setup(
                     thinking=s.model.thinking,
                     has_benchmark=s.model.has_benchmark,
                 )
-                selected_models.append(ScoredDiscoveredModel(
-                    model=new_model,
-                    composite_score=s.composite_score,
-                    speed_score=s.speed_score,
-                    quality_score=s.quality_score,
-                    tool_calling_score=s.tool_calling_score,
-                    memory_efficiency_score=s.memory_efficiency_score,
-                    is_recommended=True,
-                ))
+                selected_models.append(
+                    ScoredDiscoveredModel(
+                        model=new_model,
+                        composite_score=s.composite_score,
+                        speed_score=s.speed_score,
+                        quality_score=s.quality_score,
+                        tool_calling_score=s.tool_calling_score,
+                        memory_efficiency_score=s.memory_efficiency_score,
+                        is_recommended=True,
+                    )
+                )
             else:
-                selected_models.append(ScoredDiscoveredModel(
-                    model=s.model,
-                    composite_score=s.composite_score,
-                    speed_score=s.speed_score,
-                    quality_score=s.quality_score,
-                    tool_calling_score=s.tool_calling_score,
-                    memory_efficiency_score=s.memory_efficiency_score,
-                    is_recommended=True,
-                ))
+                selected_models.append(
+                    ScoredDiscoveredModel(
+                        model=s.model,
+                        composite_score=s.composite_score,
+                        speed_score=s.speed_score,
+                        quality_score=s.quality_score,
+                        tool_calling_score=s.tool_calling_score,
+                        memory_efficiency_score=s.memory_efficiency_score,
+                        is_recommended=True,
+                    )
+                )
 
     # ── Step 4: Tier assignment ──────────────────────────────────────────
     tiers = assign_tiers(selected_models)
@@ -443,7 +440,7 @@ def setup(
             raise SystemExit(0) from None
 
     try:
-        stack_path, litellm_path = generate_config(
+        stack_path, _litellm_path = generate_config(
             profile=profile,
             intent=intent,
             tier_mappings=tiers,
@@ -458,7 +455,7 @@ def setup(
     out.print("  " + "─" * 40)
 
     models_to_pull = [t.model for t in tiers]
-    for i, model in enumerate(models_to_pull, 1):
+    for i, _model in enumerate(models_to_pull, 1):
         out.print(f"  [bold][{i}/{len(models_to_pull)}][/bold]", end=" ")
 
     try:

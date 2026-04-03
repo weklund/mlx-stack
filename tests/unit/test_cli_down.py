@@ -295,7 +295,10 @@ class TestRunDown:
             patch(
                 "mlx_stack.core.stack_down._stop_single_service",
                 return_value=ServiceStopResult(
-                    name="litellm", pid=1001, status="stopped", graceful=True,
+                    name="litellm",
+                    pid=1001,
+                    status="stopped",
+                    graceful=True,
                 ),
             ),
         ):
@@ -310,12 +313,14 @@ class TestRunDown:
         """VAL-DOWN-003: Lock conflict raises LockError."""
         _create_pid_file(mlx_stack_home, "fast", 1001)
 
-        with patch(
-            "mlx_stack.core.stack_down.acquire_lock",
-            side_effect=LockError("Another operation is running"),
+        with (
+            patch(
+                "mlx_stack.core.stack_down.acquire_lock",
+                side_effect=LockError("Another operation is running"),
+            ),
+            pytest.raises(LockError, match="Another operation"),
         ):
-            with pytest.raises(LockError, match="Another operation"):
-                run_down()
+            run_down()
 
     def test_tier_filter_stops_only_specified_tier(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier stops only the specified tier."""
@@ -443,14 +448,21 @@ class TestRunDown:
 
         results_map = {
             "litellm": ServiceStopResult(
-                name="litellm", pid=1003, status="stopped", graceful=True,
+                name="litellm",
+                pid=1003,
+                status="stopped",
+                graceful=True,
             ),
             "standard": ServiceStopResult(
-                name="standard", pid=1001, status="stale",
+                name="standard",
+                pid=1001,
+                status="stale",
                 error="Process 1001 already dead; cleaned up stale PID file.",
             ),
             "fast": ServiceStopResult(
-                name="fast", pid=None, status="corrupt",
+                name="fast",
+                pid=None,
+                status="corrupt",
                 error="PID file contained non-numeric content; removed.",
             ),
         }
@@ -536,7 +548,10 @@ class TestRunDown:
             patch(
                 "mlx_stack.core.stack_down._stop_single_service",
                 return_value=ServiceStopResult(
-                    name="fast", pid=12345, status="stopped", graceful=True,
+                    name="fast",
+                    pid=12345,
+                    status="stopped",
+                    graceful=True,
                 ),
             ),
         ):
@@ -579,13 +594,22 @@ class TestDownCli:
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
-                    name="litellm", pid=1003, status="stopped", graceful=True,
+                    name="litellm",
+                    pid=1003,
+                    status="stopped",
+                    graceful=True,
                 ),
                 ServiceStopResult(
-                    name="fast", pid=1002, status="stopped", graceful=True,
+                    name="fast",
+                    pid=1002,
+                    status="stopped",
+                    graceful=True,
                 ),
                 ServiceStopResult(
-                    name="standard", pid=1001, status="stopped", graceful=False,
+                    name="standard",
+                    pid=1001,
+                    status="stopped",
+                    graceful=False,
                 ),
             ],
         )
@@ -605,10 +629,16 @@ class TestDownCli:
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
-                    name="fast", pid=1002, status="stopped", graceful=True,
+                    name="fast",
+                    pid=1002,
+                    status="stopped",
+                    graceful=True,
                 ),
                 ServiceStopResult(
-                    name="standard", pid=1001, status="stopped", graceful=False,
+                    name="standard",
+                    pid=1001,
+                    status="stopped",
+                    graceful=False,
                 ),
             ],
         )
@@ -627,7 +657,10 @@ class TestDownCli:
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
-                    name="standard", pid=1001, status="stopped", graceful=False,
+                    name="standard",
+                    pid=1001,
+                    status="stopped",
+                    graceful=False,
                 ),
             ],
         )
@@ -647,7 +680,10 @@ class TestDownCli:
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
-                    name="fast", pid=1002, status="stopped", graceful=True,
+                    name="fast",
+                    pid=1002,
+                    status="stopped",
+                    graceful=True,
                 ),
             ],
         )
@@ -664,7 +700,10 @@ class TestDownCli:
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
-                    name="fast", pid=1002, status="stopped", graceful=True,
+                    name="fast",
+                    pid=1002,
+                    status="stopped",
+                    graceful=True,
                 ),
             ],
         )
@@ -801,11 +840,11 @@ class TestDownEndToEnd:
             proc_mock = MagicMock()
             proc_mock.status.side_effect = [
                 "running",  # alive check for litellm
-                "zombie",   # dead after SIGTERM for litellm
+                "zombie",  # dead after SIGTERM for litellm
                 "running",  # alive check for tier
-                "zombie",   # dead after SIGTERM for tier
+                "zombie",  # dead after SIGTERM for tier
                 "running",  # alive check for tier
-                "zombie",   # dead after SIGTERM for tier
+                "zombie",  # dead after SIGTERM for tier
             ]
             mock_psutil.Process.return_value = proc_mock
             mock_psutil.STATUS_ZOMBIE = "zombie"
@@ -901,7 +940,10 @@ class TestShutdownOrder:
         def mock_stop(name: str) -> ServiceStopResult:
             order.append(name)
             return ServiceStopResult(
-                name=name, pid=1000, status="stopped", graceful=True,
+                name=name,
+                pid=1000,
+                status="stopped",
+                graceful=True,
             )
 
         with (
@@ -956,7 +998,10 @@ class TestShutdownOrder:
         def mock_stop(name: str) -> ServiceStopResult:
             order.append(name)
             return ServiceStopResult(
-                name=name, pid=1000, status="stopped", graceful=True,
+                name=name,
+                pid=1000,
+                status="stopped",
+                graceful=True,
             )
 
         with (

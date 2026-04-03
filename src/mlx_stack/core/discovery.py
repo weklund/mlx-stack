@@ -60,15 +60,15 @@ class DiscoveredModel:
 # --------------------------------------------------------------------------- #
 
 _QUANT_PATTERNS: list[tuple[re.Pattern, str]] = [
-    (re.compile(r"-4bit(?:s)?$", re.I), "int4"),
-    (re.compile(r"-8bit(?:s)?$", re.I), "int8"),
-    (re.compile(r"-bf16$", re.I), "bf16"),
-    (re.compile(r"-fp16$", re.I), "fp16"),
-    (re.compile(r"-6bit$", re.I), "int6"),
-    (re.compile(r"-5bit$", re.I), "int5"),
+    (re.compile(r"-4bit(?:s)?$", re.IGNORECASE), "int4"),
+    (re.compile(r"-8bit(?:s)?$", re.IGNORECASE), "int8"),
+    (re.compile(r"-bf16$", re.IGNORECASE), "bf16"),
+    (re.compile(r"-fp16$", re.IGNORECASE), "fp16"),
+    (re.compile(r"-6bit$", re.IGNORECASE), "int6"),
+    (re.compile(r"-5bit$", re.IGNORECASE), "int5"),
 ]
 
-_PARAMS_PATTERN = re.compile(r"(\d+(?:\.\d+)?)B(?!it)", re.I)
+_PARAMS_PATTERN = re.compile(r"(\d+(?:\.\d+)?)B(?!it)", re.IGNORECASE)
 
 
 def infer_quant_from_repo(repo_name: str) -> str:
@@ -193,7 +193,7 @@ def query_hf_models(
     """
     try:
         api = HfApi()
-        models = list(
+        return list(
             api.list_models(
                 author=author,
                 pipeline_tag=pipeline_tag,
@@ -201,7 +201,6 @@ def query_hf_models(
                 limit=limit,
             )
         )
-        return models
     except Exception as exc:
         msg = f"HuggingFace API query failed: {exc}"
         raise DiscoveryError(msg) from None
@@ -354,12 +353,15 @@ def discover_models(
 
             downloads = getattr(hf_model, "downloads", 0) or 0
             model = _build_discovered_model(
-                repo, downloads, benchmark_data, hardware_profile_id,
+                repo,
+                downloads,
+                benchmark_data,
+                hardware_profile_id,
             )
             models.append(model)
 
         # Add benchmark-only models not found in HF results
-        for repo, bench in benchmark_data.get("models", {}).items():
+        for repo in benchmark_data.get("models", {}):
             quant = infer_quant_from_repo(repo)
             if quant != default_quant:
                 continue

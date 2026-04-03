@@ -168,23 +168,16 @@ def _display_results(result: BenchmarkResult_, out: Console, save: bool = False)
         out.print(Text("Tool Calling", style="bold cyan"))
         tc = result.tool_call_result
         if tc.success:
-            out.print(
-                f"  [green]✓ Valid tool call[/green] — "
-                f"round-trip: {tc.round_trip_time:.2f}s"
-            )
+            out.print(f"  [green]✓ Valid tool call[/green] — round-trip: {tc.round_trip_time:.2f}s")
         else:
-            out.print(
-                f"  [red]✗ Tool call failed[/red] — {tc.error}"
-            )
+            out.print(f"  [red]✗ Tool call failed[/red] — {tc.error}")
         out.print()
     elif not result.tool_call_result:
         # Check if model supports tool calling from entry
         if not result.catalog_data_available:
             pass  # Skip silently if no catalog data
         else:
-            out.print(
-                "[dim]Tool calling: skipped (model does not support tool calling)[/dim]"
-            )
+            out.print("[dim]Tool calling: skipped (model does not support tool calling)[/dim]")
             out.print()
 
     # Iteration details
@@ -212,6 +205,8 @@ def _display_results(result: BenchmarkResult_, out: Console, save: bool = False)
 
     # Save confirmation
     if save:
-        out.print("[green]✓ Results saved.[/green] "
-                  "These will be used by 'recommend' and 'init' for scoring.")
+        out.print(
+            "[green]✓ Results saved.[/green] "
+            "These will be used by 'recommend' and 'init' for scoring."
+        )
         out.print()

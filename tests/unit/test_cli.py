@@ -114,7 +114,8 @@ class TestDataHomeAutoCreation:
     """Tests for data-home gating: only state-writing commands create it."""
 
     def test_bare_command_does_not_create_data_home(
-        self, clean_mlx_stack_home: Path,
+        self,
+        clean_mlx_stack_home: Path,
     ) -> None:
         """Running bare mlx-stack (help) does NOT create the data directory."""
         assert not clean_mlx_stack_home.exists()
@@ -124,7 +125,8 @@ class TestDataHomeAutoCreation:
         assert not clean_mlx_stack_home.exists()
 
     def test_readonly_subcommand_does_not_create_data_home(
-        self, clean_mlx_stack_home: Path,
+        self,
+        clean_mlx_stack_home: Path,
     ) -> None:
         """Read-only subcommands do NOT create the data directory."""
         assert not clean_mlx_stack_home.exists()
@@ -133,7 +135,8 @@ class TestDataHomeAutoCreation:
         assert not clean_mlx_stack_home.exists()
 
     def test_state_writing_subcommand_creates_data_home(
-        self, clean_mlx_stack_home: Path,
+        self,
+        clean_mlx_stack_home: Path,
     ) -> None:
         """State-writing subcommands (config set) auto-create the data directory."""
         assert not clean_mlx_stack_home.exists()
@@ -143,7 +146,8 @@ class TestDataHomeAutoCreation:
         assert clean_mlx_stack_home.is_dir()
 
     def test_existing_data_home_not_affected(
-        self, mlx_stack_home: Path,
+        self,
+        mlx_stack_home: Path,
     ) -> None:
         """Running CLI when data home already exists doesn't cause errors."""
         assert mlx_stack_home.exists()

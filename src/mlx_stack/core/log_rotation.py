@@ -149,11 +149,7 @@ def _delete_excess_archives(base: Path, stem: str, max_files: int) -> None:
     import re
 
     pattern = re.compile(rf"^{re.escape(stem)}\.(\d+)\.gz$")
-    archives: list[Path] = []
-
-    for path in base.iterdir():
-        if pattern.match(path.name) and path.is_file():
-            archives.append(path)
+    archives = [path for path in base.iterdir() if pattern.match(path.name) and path.is_file()]
 
     # We need room for the new archive that will become .1.gz after
     # shifting, so keep at most max_files - 1 existing archives.
@@ -211,9 +207,8 @@ def _copy_and_compress(src: Path, dst_gz: Path) -> None:
         shutil.copy2(str(src), str(tmp_path))
 
         # Compress the copy
-        with open(tmp_path, "rb") as f_in:
-            with gzip.open(str(dst_gz), "wb") as f_out:
-                shutil.copyfileobj(f_in, f_out)
+        with open(tmp_path, "rb") as f_in, gzip.open(str(dst_gz), "wb") as f_out:
+            shutil.copyfileobj(f_in, f_out)
     finally:
         # Clean up temporary file
         if tmp_path.exists():
@@ -228,4 +223,4 @@ def _truncate_file(path: Path) -> None:
     Args:
         path: Path to the file to truncate.
     """
-    open(path, "w").close()  # noqa: SIM115
+    open(path, "w").close()

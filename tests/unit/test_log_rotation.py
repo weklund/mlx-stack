@@ -12,7 +12,7 @@ from pathlib import Path
 
 import pytest
 
-from mlx_stack.core.log_rotation import LogRotationError, rotate_log  # noqa: I001
+from mlx_stack.core.log_rotation import LogRotationError, rotate_log
 
 # --------------------------------------------------------------------------- #
 # Helpers

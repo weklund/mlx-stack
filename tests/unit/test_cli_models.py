@@ -894,15 +894,21 @@ class TestCatalogFilters:
         """--family filters catalog to matching family only."""
         catalog = [
             _make_entry(
-                model_id="qwen-a", name="Qwen A", family="Qwen 3.5",
+                model_id="qwen-a",
+                name="Qwen A",
+                family="Qwen 3.5",
                 tags=["balanced"],
             ),
             _make_entry(
-                model_id="qwen-b", name="Qwen B", family="Qwen 3.5",
+                model_id="qwen-b",
+                name="Qwen B",
+                family="Qwen 3.5",
                 tags=["balanced"],
             ),
             _make_entry(
-                model_id="gemma-a", name="Gemma A", family="Gemma 3",
+                model_id="gemma-a",
+                name="Gemma A",
+                family="Gemma 3",
                 tags=["balanced"],
             ),
         ]
@@ -939,11 +945,13 @@ class TestCatalogFilters:
         """--tag filters catalog to models with the specified tag."""
         catalog = [
             _make_entry(
-                model_id="agent-model", name="Agent Model",
+                model_id="agent-model",
+                name="Agent Model",
                 tags=["agent-ready", "balanced"],
             ),
             _make_entry(
-                model_id="basic-model", name="Basic Model",
+                model_id="basic-model",
+                name="Basic Model",
                 tags=["balanced"],
             ),
         ]
@@ -963,11 +971,13 @@ class TestCatalogFilters:
         """--tool-calling filters to tool-calling-capable models only."""
         catalog = [
             _make_entry(
-                model_id="with-tools", name="With Tools",
+                model_id="with-tools",
+                name="With Tools",
                 tool_calling=True,
             ),
             _make_entry(
-                model_id="no-tools", name="No Tools",
+                model_id="no-tools",
+                name="No Tools",
                 tool_calling=False,
             ),
         ]
@@ -987,18 +997,24 @@ class TestCatalogFilters:
         """Multiple filters are applied together (AND logic)."""
         catalog = [
             _make_entry(
-                model_id="match", name="Match Both",
-                family="Qwen 3.5", tool_calling=True,
+                model_id="match",
+                name="Match Both",
+                family="Qwen 3.5",
+                tool_calling=True,
                 tags=["agent-ready"],
             ),
             _make_entry(
-                model_id="family-only", name="Family Only",
-                family="Qwen 3.5", tool_calling=False,
+                model_id="family-only",
+                name="Family Only",
+                family="Qwen 3.5",
+                tool_calling=False,
                 tags=[],
             ),
             _make_entry(
-                model_id="tools-only", name="Tools Only",
-                family="Gemma 3", tool_calling=True,
+                model_id="tools-only",
+                name="Tools Only",
+                family="Gemma 3",
+                tool_calling=True,
                 tags=["agent-ready"],
             ),
         ]
@@ -1029,9 +1045,7 @@ class TestCatalogFilters:
             patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
             patch("mlx_stack.cli.models.load_profile", return_value=None),
         ):
-            result = runner.invoke(
-                cli, ["models", "--catalog", "--family", "nonexistent"]
-            )
+            result = runner.invoke(cli, ["models", "--catalog", "--family", "nonexistent"])
 
         assert result.exit_code == 0
         assert "No models match" in result.output
@@ -1057,9 +1071,7 @@ class TestCatalogFilters:
         """VAL-CATALOG-002: Filter real catalog by family."""
         runner = CliRunner()
         with patch("mlx_stack.cli.models.load_profile", return_value=None):
-            result = runner.invoke(
-                cli, ["models", "--catalog", "--family", "qwen 3.5"]
-            )
+            result = runner.invoke(cli, ["models", "--catalog", "--family", "qwen 3.5"])
 
         assert result.exit_code == 0
         assert "Qwen 3.5" in result.output
@@ -1072,9 +1084,7 @@ class TestCatalogFilters:
         """VAL-CATALOG-002: Filter real catalog by tool-calling capability."""
         runner = CliRunner()
         with patch("mlx_stack.cli.models.load_profile", return_value=None):
-            result = runner.invoke(
-                cli, ["models", "--catalog", "--tool-calling"]
-            )
+            result = runner.invoke(cli, ["models", "--catalog", "--tool-calling"])
 
         assert result.exit_code == 0
         # Should have some models but not all 15
@@ -1332,12 +1342,8 @@ class TestSourceQuantAwareRemoteDetection:
         # Local has the int8 variant, not int4
         _create_model_dir(models_dir, "qwen3.5-8b-8bit", size_bytes=1000)
 
-        local_models = scan_local_models(
-            models_dir=models_dir, catalog=catalog, stack=stack
-        )
-        remote = get_remote_stack_models(
-            local_models=local_models, stack=stack, catalog=catalog
-        )
+        local_models = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        remote = get_remote_stack_models(local_models=local_models, stack=stack, catalog=catalog)
 
         # The int4 model should show as remote since only int8 is local
         assert len(remote) == 1
@@ -1363,12 +1369,8 @@ class TestSourceQuantAwareRemoteDetection:
 
         _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
 
-        local_models = scan_local_models(
-            models_dir=models_dir, catalog=catalog, stack=stack
-        )
-        remote = get_remote_stack_models(
-            local_models=local_models, stack=stack, catalog=catalog
-        )
+        local_models = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        remote = get_remote_stack_models(local_models=local_models, stack=stack, catalog=catalog)
 
         assert len(remote) == 0
 
@@ -1399,12 +1401,8 @@ class TestSourceQuantAwareRemoteDetection:
         # Only qwen is downloaded locally
         _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
 
-        local_models = scan_local_models(
-            models_dir=models_dir, catalog=catalog, stack=stack
-        )
-        remote = get_remote_stack_models(
-            local_models=local_models, stack=stack, catalog=catalog
-        )
+        local_models = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
+        remote = get_remote_stack_models(local_models=local_models, stack=stack, catalog=catalog)
 
         assert len(remote) == 1
         assert remote[0]["model_id"] == "nemotron-8b"

@@ -302,12 +302,15 @@ class TestRunStatus:
         }
 
         def side_effect(service_name: str, port: int, health_path: str = "") -> dict[str, Any]:
-            return status_map.get(service_name, {
-                "status": "stopped",
-                "pid": None,
-                "uptime": None,
-                "response_time": None,
-            })
+            return status_map.get(
+                service_name,
+                {
+                    "status": "stopped",
+                    "pid": None,
+                    "uptime": None,
+                    "response_time": None,
+                },
+            )
 
         mock_status.side_effect = side_effect
 
@@ -1244,8 +1247,14 @@ class TestEdgeCases:
     ) -> None:
         """VAL-STATUS-001/004: All five states present in JSON."""
         tiers = [
-            {"name": f"t{i}", "model": f"m{i}", "quant": "int4",
-             "source": f"s{i}", "port": 8000 + i, "vllm_flags": {}}
+            {
+                "name": f"t{i}",
+                "model": f"m{i}",
+                "quant": "int4",
+                "source": f"s{i}",
+                "port": 8000 + i,
+                "vllm_flags": {},
+            }
             for i in range(4)
         ]
         stack = _make_stack_yaml(tiers=tiers)
@@ -1258,11 +1267,9 @@ class TestEdgeCases:
             st = status_list[idx]
             return {
                 "status": st,
-                "pid": 1000 + idx if st not in ("stopped",) else None,
+                "pid": 1000 + idx if st != "stopped" else None,
                 "uptime": 100.0 if st in ("healthy", "degraded", "down") else None,
-                "response_time": 0.1 if st == "healthy" else (
-                    3.0 if st == "degraded" else None
-                ),
+                "response_time": 0.1 if st == "healthy" else (3.0 if st == "degraded" else None),
             }
 
         mock_status.side_effect = side_effect

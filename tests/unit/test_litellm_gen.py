@@ -121,10 +121,7 @@ class TestCloudFallback:
             tiers=_make_tiers(1),
             openrouter_key="sk-or-test123",
         )
-        cloud_entries = [
-            e for e in config["model_list"]
-            if e["model_name"] == "premium"
-        ]
+        cloud_entries = [e for e in config["model_list"] if e["model_name"] == "premium"]
         assert len(cloud_entries) == 2
 
     def test_cloud_entries_use_openrouter_prefix(self) -> None:
@@ -133,10 +130,7 @@ class TestCloudFallback:
             tiers=_make_tiers(1),
             openrouter_key="sk-or-test123",
         )
-        cloud_entries = [
-            e for e in config["model_list"]
-            if e["model_name"] == "premium"
-        ]
+        cloud_entries = [e for e in config["model_list"] if e["model_name"] == "premium"]
         for entry in cloud_entries:
             assert entry["litellm_params"]["model"].startswith("openrouter/")
 
@@ -146,10 +140,7 @@ class TestCloudFallback:
             tiers=_make_tiers(1),
             openrouter_key="sk-or-test123",
         )
-        cloud_entries = [
-            e for e in config["model_list"]
-            if e["model_name"] == "premium"
-        ]
+        cloud_entries = [e for e in config["model_list"] if e["model_name"] == "premium"]
         for entry in cloud_entries:
             assert entry["litellm_params"]["api_key"] == "os.environ/OPENROUTER_API_KEY"
 

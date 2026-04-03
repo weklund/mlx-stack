@@ -129,12 +129,14 @@ def _get_active_stack_models(stack: dict[str, Any] | None) -> list[dict[str, str
     for tier in tiers:
         model_id = tier.get("model", "")
         if model_id:
-            result.append({
-                "model_id": model_id,
-                "quant": tier.get("quant", ""),
-                "source": tier.get("source", ""),
-                "tier": tier.get("name", ""),
-            })
+            result.append(
+                {
+                    "model_id": model_id,
+                    "quant": tier.get("quant", ""),
+                    "source": tier.get("source", ""),
+                    "tier": tier.get("name", ""),
+                }
+            )
     return result
 
 
@@ -242,7 +244,7 @@ def _match_to_catalog(dirname: str, catalog: list[CatalogEntry]) -> CatalogEntry
     """
     lower = dirname.lower()
     for entry in catalog:
-        for _quant, source in entry.sources.items():
+        for source in entry.sources.values():
             # Extract repo name from hf_repo (after the /)
             repo_name = (
                 source.hf_repo.rsplit("/", 1)[-1] if "/" in source.hf_repo else source.hf_repo
@@ -310,24 +312,23 @@ def scan_local_models(
             stack_source = stack_entry.get("source", "")
             stack_quant = stack_entry.get("quant", "")
             stack_model_id = stack_entry.get("model_id", "")
-            source_dir = (
-                stack_source.rsplit("/", 1)[-1]
-                if "/" in stack_source
-                else stack_source
-            )
+            source_dir = stack_source.rsplit("/", 1)[-1] if "/" in stack_source else stack_source
 
             # Primary match: source directory name matches AND quant matches
-            if source_dir and source_dir == dirname:
-                # Source dir match found — verify quant compatibility
-                if not stack_quant or quant == "unknown" or stack_quant == quant:
-                    is_active = True
-                    break
+            if (
+                source_dir
+                and source_dir == dirname
+                and (not stack_quant or quant == "unknown" or stack_quant == quant)
+            ):
+                is_active = True
+                break
 
             # Secondary match: model_id matches dirname AND quant matches
-            if stack_model_id == dirname:
-                if not stack_quant or quant == "unknown" or stack_quant == quant:
-                    is_active = True
-                    break
+            if stack_model_id == dirname and (
+                not stack_quant or quant == "unknown" or stack_quant == quant
+            ):
+                is_active = True
+                break
 
             # Tertiary match: catalog entry ID matches stack model ID,
             # AND the local model's source matches the catalog source for
@@ -406,27 +407,27 @@ def get_remote_stack_models(
         model_id = stack_entry["model_id"]
         stack_source = stack_entry.get("source", "")
         stack_quant = stack_entry.get("quant", "int4")
-        source_dir = (
-            stack_source.rsplit("/", 1)[-1]
-            if "/" in stack_source
-            else stack_source
-        )
+        source_dir = stack_source.rsplit("/", 1)[-1] if "/" in stack_source else stack_source
 
         # Check if locally available using source+quant-aware matching
         is_local = False
 
         for lm in local_models:
             # Match by source directory name + quant
-            if source_dir and source_dir == lm.name:
-                if not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant:
-                    is_local = True
-                    break
+            if (
+                source_dir
+                and source_dir == lm.name
+                and (not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant)
+            ):
+                is_local = True
+                break
 
             # Match by model_id as dirname + quant
-            if model_id == lm.name:
-                if not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant:
-                    is_local = True
-                    break
+            if model_id == lm.name and (
+                not stack_quant or lm.quant == "unknown" or stack_quant == lm.quant
+            ):
+                is_local = True
+                break
 
             # Match by catalog entry with quant-aware source matching
             cat_entry = _find_catalog_entry(catalog, model_id)
@@ -518,7 +519,7 @@ def list_catalog_models(
                     break
         # Also check if dirname matches any catalog entry's source repo
         for entry in catalog:
-            for _quant, source in entry.sources.items():
+            for source in entry.sources.values():
                 repo_name = (
                     source.hf_repo.rsplit("/", 1)[-1] if "/" in source.hf_repo else source.hf_repo
                 )

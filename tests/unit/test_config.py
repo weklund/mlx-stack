@@ -6,6 +6,7 @@ masking, file I/O, and config operations (get, set, list, reset).
 
 from __future__ import annotations
 
+import contextlib
 from pathlib import Path
 
 import pytest
@@ -335,20 +336,16 @@ class TestGetSet:
 
     def test_invalid_key_not_written_to_file(self, mlx_stack_home: Path) -> None:
         config_path = get_config_path()
-        try:
+        with contextlib.suppress(ConfigError):
             set_value("bad-key", "value")
-        except ConfigError:
-            pass
         if config_path.exists():
             content = config_path.read_text()
             assert "bad-key" not in content
 
     def test_invalid_value_not_written_to_file(self, mlx_stack_home: Path) -> None:
         config_path = get_config_path()
-        try:
+        with contextlib.suppress(ConfigValidationError):
             set_value("default-quant", "int6")
-        except ConfigValidationError:
-            pass
         if config_path.exists():
             content = config_path.read_text()
             assert "int6" not in content
@@ -461,7 +458,7 @@ class TestGetAllConfig:
         set_value("openrouter-key", "sk-secret-key-12345")
         entries = get_all_config()
         key_entry = next(e for e in entries if e["name"] == "openrouter-key")
-        assert "sk-secret-key-12345" != key_entry["masked_value"]
+        assert key_entry["masked_value"] != "sk-secret-key-12345"
         assert "****" in key_entry["masked_value"]
 
     def test_corrupt_file_raises(self, mlx_stack_home: Path) -> None:

@@ -9,12 +9,13 @@ cleans up partial downloads on failure.
 
 from __future__ import annotations
 
+import contextlib
 import json
 import shutil
 import subprocess
 import time
 from dataclasses import asdict, dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -164,7 +165,8 @@ def add_to_inventory(entry: ModelInventoryEntry) -> None:
 
     # Remove existing entry for same model_id + quant
     entries = [
-        e for e in entries
+        e
+        for e in entries
         if not (e.get("model_id") == entry.model_id and e.get("quant") == entry.quant)
     ]
 
@@ -216,18 +218,14 @@ def resolve_source(
     """
     if quant not in entry.sources:
         available = ", ".join(sorted(entry.sources.keys()))
-        msg = (
-            f"Quantization '{quant}' is not available for {entry.name}. "
-            f"Available: {available}"
-        )
+        msg = f"Quantization '{quant}' is not available for {entry.name}. Available: {available}"
         raise PullError(msg)
 
     source = entry.sources[quant]
 
     if source.convert_from:
         return source, "converted"
-    else:
-        return source, "mlx-community"
+    return source, "mlx-community"
 
 
 # --------------------------------------------------------------------------- #
@@ -372,10 +370,7 @@ def download_model(
         except DownloadError as exc:
             last_error = exc
             if attempt < max_retries:
-                console.print(
-                    f"[yellow]Download attempt {attempt} failed. "
-                    f"Retrying...[/yellow]"
-                )
+                console.print(f"[yellow]Download attempt {attempt} failed. Retrying...[/yellow]")
                 time.sleep(2)  # Brief pause before retry
             else:
                 break
@@ -463,11 +458,7 @@ def convert_model(
         )
     except FileNotFoundError:
         _cleanup_partial(local_dir)
-        msg = (
-            "mlx_lm not found. Install it with:\n"
-            "  pip install mlx_lm\n"
-            "Or: uv pip install mlx_lm"
-        )
+        msg = "mlx_lm not found. Install it with:\n  pip install mlx_lm\nOr: uv pip install mlx_lm"
         raise ConversionError(msg) from None
     except subprocess.TimeoutExpired:
         _cleanup_partial(local_dir)
@@ -499,10 +490,8 @@ def _cleanup_partial(local_dir: Path) -> None:
         local_dir: The directory to remove.
     """
     if local_dir.exists():
-        try:
+        with contextlib.suppress(OSError):
             shutil.rmtree(local_dir)
-        except OSError:
-            pass
 
 
 # --------------------------------------------------------------------------- #
@@ -678,14 +667,12 @@ def pull_model(
         hf_repo=source.hf_repo,
         local_path=str(local_path),
         disk_size_gb=source.disk_size_gb,
-        downloaded_at=datetime.now(timezone.utc).isoformat(),
+        downloaded_at=datetime.now(UTC).isoformat(),
     )
     add_to_inventory(inv)
 
     console.print()
-    console.print(
-        f"[bold green]✓ {entry.name} ({quant}) is ready.[/bold green]"
-    )
+    console.print(f"[bold green]✓ {entry.name} ({quant}) is ready.[/bold green]")
     console.print(f"  Location: {local_path}")
 
     return PullResult(

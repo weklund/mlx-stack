@@ -17,7 +17,7 @@ from __future__ import annotations
 import json
 import platform
 from dataclasses import asdict, dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 
 # --------------------------------------------------------------------------- #
@@ -56,7 +56,7 @@ class CompatibilityMatrix:
 
     def __post_init__(self) -> None:
         if not self.timestamp:
-            self.timestamp = datetime.now(timezone.utc).isoformat()
+            self.timestamp = datetime.now(UTC).isoformat()
         if not self.platform:
             self.platform = f"{platform.system()} {platform.release()}"
 
@@ -73,7 +73,7 @@ class CompatibilityMatrix:
         out_dir = output_dir or REPORT_DIR
         out_dir.mkdir(parents=True, exist_ok=True)
 
-        ts = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        ts = datetime.now(UTC).strftime("%Y%m%dT%H%M%SZ")
         path = out_dir / f"compatibility-matrix-{ts}.json"
 
         data = {

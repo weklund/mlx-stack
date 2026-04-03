@@ -12,7 +12,7 @@ from __future__ import annotations
 
 import math
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -167,14 +167,16 @@ def score_and_filter(
             + weights.memory_efficiency * mem_eff
         )
 
-        scored.append(ScoredDiscoveredModel(
-            model=model,
-            composite_score=round(composite, 4),
-            speed_score=round(speed, 4),
-            quality_score=round(quality, 4),
-            tool_calling_score=tool,
-            memory_efficiency_score=round(mem_eff, 4),
-        ))
+        scored.append(
+            ScoredDiscoveredModel(
+                model=model,
+                composite_score=round(composite, 4),
+                speed_score=round(speed, 4),
+                quality_score=round(quality, 4),
+                tool_calling_score=tool,
+                memory_efficiency_score=round(mem_eff, 4),
+            )
+        )
 
     scored.sort(key=lambda s: s.composite_score, reverse=True)
     return scored
@@ -214,13 +216,11 @@ def select_defaults(
 
     # Pick fast: highest gen_tps that isn't the standard pick
     if len(scored_models) > 1:
-        fast_candidates = [
-            (i, s) for i, s in enumerate(scored_models)
-            if i not in selected_indices
-        ]
+        fast_candidates = [(i, s) for i, s in enumerate(scored_models) if i not in selected_indices]
         if fast_candidates:
             fast_candidates.sort(
-                key=lambda x: x[1].model.gen_tps or 0.0, reverse=True,
+                key=lambda x: x[1].model.gen_tps or 0.0,
+                reverse=True,
             )
             fast_idx, fast_model = fast_candidates[0]
             fast_mem = fast_model.model.memory_gb or 0.0
@@ -231,15 +231,17 @@ def select_defaults(
     result: list[ScoredDiscoveredModel] = []
     for i, s in enumerate(scored_models):
         if i in selected_indices:
-            result.append(ScoredDiscoveredModel(
-                model=s.model,
-                composite_score=s.composite_score,
-                speed_score=s.speed_score,
-                quality_score=s.quality_score,
-                tool_calling_score=s.tool_calling_score,
-                memory_efficiency_score=s.memory_efficiency_score,
-                is_recommended=True,
-            ))
+            result.append(
+                ScoredDiscoveredModel(
+                    model=s.model,
+                    composite_score=s.composite_score,
+                    speed_score=s.speed_score,
+                    quality_score=s.quality_score,
+                    tool_calling_score=s.tool_calling_score,
+                    memory_efficiency_score=s.memory_efficiency_score,
+                    is_recommended=True,
+                )
+            )
         else:
             result.append(s)
 
@@ -283,10 +285,12 @@ def assign_tiers(
         # Additional models
         for extra in remaining[1:]:
             n = len(mappings) - 1
-            mappings.append(TierMapping(
-                tier_name=f"added-{n}",
-                model=extra.model,
-            ))
+            mappings.append(
+                TierMapping(
+                    tier_name=f"added-{n}",
+                    model=extra.model,
+                )
+            )
 
     return mappings
 
@@ -332,14 +336,16 @@ def generate_config(
         if mapping.model.tool_calling:
             vllm_flags["enable_auto_tool_choice"] = True
 
-        tiers_config.append({
-            "name": mapping.tier_name,
-            "model": mapping.model.display_name,
-            "quant": mapping.model.quant,
-            "source": mapping.model.hf_repo,
-            "port": port,
-            "vllm_flags": vllm_flags,
-        })
+        tiers_config.append(
+            {
+                "name": mapping.tier_name,
+                "model": mapping.model.display_name,
+                "quant": mapping.model.quant,
+                "source": mapping.model.hf_repo,
+                "port": port,
+                "vllm_flags": vllm_flags,
+            }
+        )
         port += 1
 
     # Build stack YAML
@@ -348,7 +354,7 @@ def generate_config(
         "name": "default",
         "hardware_profile": profile.profile_id,
         "intent": intent,
-        "created": datetime.now(timezone.utc).isoformat(),
+        "created": datetime.now(UTC).isoformat(),
         "tiers": tiers_config,
     }
 
@@ -362,8 +368,7 @@ def generate_config(
 
     # Build LiteLLM config
     litellm_tiers = [
-        {"name": t["name"], "model": t["model"], "port": t["port"]}
-        for t in tiers_config
+        {"name": t["name"], "model": t["model"], "port": t["port"]} for t in tiers_config
     ]
     openrouter_key = str(get_value("openrouter-key") or "")
     litellm_config = generate_litellm_config(
@@ -427,19 +432,21 @@ def pull_setup_models(
                 hf_repo=model.hf_repo,
                 local_path=str(local_path),
                 disk_size_gb=model.memory_gb or 0.0,
-                downloaded_at=datetime.now(timezone.utc).isoformat(),
+                downloaded_at=datetime.now(UTC).isoformat(),
             )
             add_to_inventory(entry)
 
-        results.append(PullResult(
-            model_id=model.display_name,
-            name=model.display_name,
-            quant=model.quant,
-            source_type="mlx-community",
-            local_path=local_path,
-            already_existed=already_exists,
-            disk_size_gb=model.memory_gb or 0.0,
-        ))
+        results.append(
+            PullResult(
+                model_id=model.display_name,
+                name=model.display_name,
+                quant=model.quant,
+                source_type="mlx-community",
+                local_path=local_path,
+                already_existed=already_exists,
+                disk_size_gb=model.memory_gb or 0.0,
+            )
+        )
 
     return results
 

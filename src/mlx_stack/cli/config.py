@@ -138,9 +138,7 @@ def config_reset(yes: bool, force: bool) -> None:
         # Check if stdin is a TTY for interactive confirmation
         try:
             if click.get_text_stream("stdin").isatty():
-                confirmed = click.confirm(
-                    "Reset all configuration to defaults?", default=False
-                )
+                confirmed = click.confirm("Reset all configuration to defaults?", default=False)
             else:
                 console.print(
                     "[bold red]Error:[/bold red] Reset requires --yes or --force flag "

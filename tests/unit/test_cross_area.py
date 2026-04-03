@@ -87,10 +87,12 @@ def _make_entry(
         min_mlx_lm_version="0.22.0",
         sources={
             "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit", disk_size_gb=disk_size_gb,
+                hf_repo=f"mlx-community/{model_id}-4bit",
+                disk_size_gb=disk_size_gb,
             ),
             "int8": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-8bit", disk_size_gb=disk_size_gb * 2,
+                hf_repo=f"mlx-community/{model_id}-8bit",
+                disk_size_gb=disk_size_gb * 2,
             ),
         },
         capabilities=Capabilities(
@@ -211,9 +213,7 @@ def _write_saved_benchmarks(
     """Write saved benchmark data for the given profile."""
     benchmarks_dir = home / "benchmarks"
     benchmarks_dir.mkdir(parents=True, exist_ok=True)
-    (benchmarks_dir / f"{profile_id}.json").write_text(
-        json.dumps(benchmarks, indent=2)
-    )
+    (benchmarks_dir / f"{profile_id}.json").write_text(json.dumps(benchmarks, indent=2))
 
 
 def _write_inventory(home: Path, entries: list[dict[str, Any]]) -> None:
@@ -413,13 +413,18 @@ class TestCrossAreaEndToEnd:
             logs_dir.mkdir(parents=True, exist_ok=True)
             log_file = logs_dir / f"{service_name}.log"
             return ServiceInfo(
-                name=service_name, pid=pid, port=port,
-                log_path=log_file, pid_path=pid_file,
+                name=service_name,
+                pid=pid,
+                port=port,
+                log_path=log_file,
+                pid_path=pid_file,
             )
 
         mock_start_service.side_effect = fake_start_service
         mock_wait_healthy.return_value = HealthCheckResult(
-            healthy=True, response_time=0.1, status_code=200,
+            healthy=True,
+            response_time=0.1,
+            status_code=200,
         )
 
         runner = CliRunner()
@@ -443,16 +448,18 @@ class TestCrossAreaEndToEnd:
             local_path.mkdir(parents=True, exist_ok=True)
             (local_path / "config.json").write_text("{}")
 
-            inventory_entries.append({
-                "model_id": model_id,
-                "name": model_id,
-                "quant": quant,
-                "source_type": "mlx_community",
-                "hf_repo": source,
-                "local_path": str(local_path),
-                "disk_size_gb": 4.5,
-                "downloaded_at": "2026-03-24T00:00:00+00:00",
-            })
+            inventory_entries.append(
+                {
+                    "model_id": model_id,
+                    "name": model_id,
+                    "quant": quant,
+                    "source_type": "mlx_community",
+                    "hf_repo": source,
+                    "local_path": str(local_path),
+                    "disk_size_gb": 4.5,
+                    "downloaded_at": "2026-03-24T00:00:00+00:00",
+                }
+            )
 
         _write_inventory(mlx_stack_home, inventory_entries)
 
@@ -475,9 +482,7 @@ class TestCrossAreaEndToEnd:
         tier_names = {t["name"] for t in stack["tiers"]}
         pid_file_names = {p.stem for p in pid_files}
         for tier_name in tier_names:
-            assert tier_name in pid_file_names, (
-                f"No PID file for tier '{tier_name}'"
-            )
+            assert tier_name in pid_file_names, f"No PID file for tier '{tier_name}'"
         assert "litellm" in pid_file_names, "No PID file for litellm"
 
         # ---- Step 4: Mock GET /v1/models returning 200 ----
@@ -485,9 +490,7 @@ class TestCrossAreaEndToEnd:
         expected_models = [t["model"] for t in stack["tiers"]]
         mock_response = {
             "object": "list",
-            "data": [
-                {"id": f"openai/{m}", "object": "model"} for m in expected_models
-            ],
+            "data": [{"id": f"openai/{m}", "object": "model"} for m in expected_models],
         }
 
         import httpx
@@ -516,6 +519,7 @@ class TestCrossAreaEndToEnd:
             patch("mlx_stack.core.stack_down.read_pid_file") as mock_read_pid,
             patch("mlx_stack.core.stack_down.remove_pid_file") as mock_remove_pid,
         ):
+
             def read_pid_side_effect(name: str) -> int | None:
                 pid_file = pids_dir / f"{name}.pid"
                 if pid_file.exists():
@@ -585,17 +589,14 @@ class TestConfigPropagation:
         # But the tier ports in the stack should NOT be 5000 either
         stack = _read_stack_yaml(mlx_stack_home)
         tier_ports = {t["port"] for t in stack["tiers"]}
-        assert 5000 not in tier_ports, (
-            "LiteLLM port 5000 should not be used as a vllm tier port"
-        )
+        assert 5000 not in tier_ports, "LiteLLM port 5000 should not be used as a vllm tier port"
 
         # Verify the port 5000 is reflected in the stack or litellm config
         # (the actual litellm.yaml doesn't store the port since it's a
         # CLI flag, but the init output should mention it, and the
         # dry-run should use it)
         with (
-            patch("mlx_stack.core.stack_up.load_catalog",
-                  return_value=_make_test_catalog()),
+            patch("mlx_stack.core.stack_up.load_catalog", return_value=_make_test_catalog()),
             patch("mlx_stack.core.stack_up.get_value") as mock_get_val,
         ):
             mock_get_val.side_effect = lambda key: {
@@ -729,9 +730,7 @@ class TestConfigPropagation:
         assert mock_download.called, "download_model was never called"
         call_args = mock_download.call_args
         hf_repo = call_args[0][0] if call_args[0] else call_args[1].get("hf_repo", "")
-        assert "8bit" in hf_repo, (
-            f"Expected int8 HF repo (containing '8bit'), got: {hf_repo}"
-        )
+        assert "8bit" in hf_repo, f"Expected int8 HF repo (containing '8bit'), got: {hf_repo}"
 
         # Verify add_to_inventory was called with quant=int8
         assert mock_add_inv.called, "add_to_inventory was never called"
@@ -780,9 +779,7 @@ class TestConfigPropagation:
         result = runner.invoke(cli, ["up", "--dry-run"])
         assert result.exit_code == 0
         # The litellm command should use port 5001
-        assert "5001" in result.output, (
-            f"Port 5001 not found in dry-run output:\n{result.output}"
-        )
+        assert "5001" in result.output, f"Port 5001 not found in dry-run output:\n{result.output}"
 
     @patch("mlx_stack.core.stack_init.load_catalog")
     @patch("mlx_stack.core.stack_init.detect_hardware")
@@ -934,9 +931,7 @@ class TestBenchSaveOverridesCatalog:
         second_output = result.output
 
         # The saved gen_tps value (85.0) should appear
-        assert "85.0" in second_output, (
-            f"Expected saved gen_tps '85.0' in output:\n{second_output}"
-        )
+        assert "85.0" in second_output, f"Expected saved gen_tps '85.0' in output:\n{second_output}"
 
         # Parse the output line-by-line to find the medium-8b row
         # and verify it does NOT have 'est.' marker
@@ -946,9 +941,7 @@ class TestBenchSaveOverridesCatalog:
             f"'Medium 8B' not found in recommend output:\n{second_output}"
         )
         for line in medium_8b_lines:
-            assert "(est.)" not in line, (
-                f"Medium 8B still shows 'est.' after bench --save: {line}"
-            )
+            assert "(est.)" not in line, f"Medium 8B still shows 'est.' after bench --save: {line}"
 
     @patch("mlx_stack.cli.recommend.load_catalog")
     @patch("mlx_stack.cli.recommend.load_profile")
@@ -995,8 +988,7 @@ class TestBenchSaveOverridesCatalog:
         # Verify that the output text is actually different, proving
         # the saved benchmarks affected scoring.
         assert result_before.output != result_after.output, (
-            "Recommend output should differ after bench --save with "
-            "dramatically different gen_tps"
+            "Recommend output should differ after bench --save with dramatically different gen_tps"
         )
 
 
@@ -1221,9 +1213,7 @@ class TestDataConsistency:
                     )
 
             # Verify we actually tested something
-            assert has_tool_calling_tier, (
-                "No tool-calling tiers found in stack — test is vacuous"
-            )
+            assert has_tool_calling_tier, "No tool-calling tiers found in stack — test is vacuous"
 
     @patch("mlx_stack.core.stack_init.load_catalog")
     @patch("mlx_stack.core.stack_init.detect_hardware")

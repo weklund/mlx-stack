@@ -441,14 +441,16 @@ def get_all_config() -> list[dict[str, Any]]:
         is_default = key not in data
         value = data.get(key, default)
 
-        result.append({
-            "name": key,
-            "value": value,
-            "default": default,
-            "is_default": is_default,
-            "description": key_def.description,
-            "masked_value": mask_value(key, value),
-        })
+        result.append(
+            {
+                "name": key,
+                "value": value,
+                "default": default,
+                "is_default": is_default,
+                "description": key_def.description,
+                "masked_value": mask_value(key, value),
+            }
+        )
 
     return result
 

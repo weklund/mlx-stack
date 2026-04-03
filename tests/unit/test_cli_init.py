@@ -324,8 +324,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert result["stack"]["schema_version"] == 1
@@ -336,8 +338,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert result["stack"]["hardware_profile"] == profile.profile_id
@@ -348,8 +352,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="agent-fleet", force=True)
 
         assert result["stack"]["intent"] == "agent-fleet"
@@ -360,8 +366,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert result["stack"]["name"] == "default"
@@ -372,8 +380,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         created = result["stack"]["created"]
@@ -387,8 +397,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         for tier in result["stack"]["tiers"]:
@@ -405,8 +417,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         ports = [t["port"] for t in result["stack"]["tiers"]]
@@ -418,8 +432,10 @@ class TestStackDefinitionGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         ports = {t["port"] for t in result["stack"]["tiers"]}
@@ -440,8 +456,10 @@ class TestFileGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         stack_path = Path(result["stack_path"])
@@ -457,8 +475,10 @@ class TestFileGeneration:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         litellm_path = Path(result["litellm_path"])
@@ -472,8 +492,10 @@ class TestFileGeneration:
         profile = _make_profile()
         catalog = _make_test_catalog()
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert Path(result["stack_path"]).exists()
@@ -494,8 +516,10 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         num_tiers = len(result["stack"]["tiers"])
@@ -508,20 +532,21 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         tiers = result["stack"]["tiers"]
         model_list = result["litellm_config"]["model_list"]
 
         for tier in tiers:
-            matching = [
-                m for m in model_list
-                if m["model_name"] == tier["name"]
-            ]
+            matching = [m for m in model_list if m["model_name"] == tier["name"]]
             assert len(matching) == 1
-            assert matching[0]["litellm_params"]["api_base"] == f"http://localhost:{tier['port']}/v1"
+            assert (
+                matching[0]["litellm_params"]["api_base"] == f"http://localhost:{tier['port']}/v1"
+            )
 
     def test_model_uses_openai_prefix(self, mlx_stack_home: Path) -> None:
         """Model identifiers use openai/ prefix."""
@@ -529,8 +554,10 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         for entry in result["litellm_config"]["model_list"]:
@@ -542,8 +569,10 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         for entry in result["litellm_config"]["model_list"]:
@@ -555,8 +584,10 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         rs = result["litellm_config"]["router_settings"]
@@ -570,8 +601,10 @@ class TestLiteLLMConfigContent:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         litellm = result["litellm_config"]
@@ -598,9 +631,12 @@ class TestCloudFallback:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile), \
-             patch("mlx_stack.core.stack_init.get_value") as mock_get:
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+            patch("mlx_stack.core.stack_init.get_value") as mock_get,
+        ):
+
             def config_side_effect(key: str):
                 if key == "openrouter-key":
                     return "sk-or-test123"
@@ -611,6 +647,7 @@ class TestCloudFallback:
                 if key == "model-dir":
                     return str(mlx_stack_home / "models")
                 return ""
+
             mock_get.side_effect = config_side_effect
             result = run_init(intent="balanced", force=True)
 
@@ -620,8 +657,7 @@ class TestCloudFallback:
 
         # LiteLLM config should have premium entries
         premium = [
-            e for e in result["litellm_config"]["model_list"]
-            if e["model_name"] == "premium"
+            e for e in result["litellm_config"]["model_list"] if e["model_name"] == "premium"
         ]
         assert len(premium) > 0
 
@@ -631,15 +667,16 @@ class TestCloudFallback:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert "cloud_fallback" not in result["stack"]
 
         premium = [
-            e for e in result["litellm_config"]["model_list"]
-            if e["model_name"] == "premium"
+            e for e in result["litellm_config"]["model_list"] if e["model_name"] == "premium"
         ]
         assert len(premium) == 0
 
@@ -659,13 +696,17 @@ class TestOverwriteProtection:
         _write_profile(mlx_stack_home, profile)
 
         # Create initial stack
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             run_init(intent="balanced", force=True)
 
         # Try again without force
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             with pytest.raises(InitError, match="already exists"):
                 run_init(intent="balanced", force=False)
 
@@ -675,13 +716,17 @@ class TestOverwriteProtection:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             run_init(intent="balanced", force=True)
 
         # Overwrite with force
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert result["stack"]["schema_version"] == 1
@@ -701,8 +746,10 @@ class TestAddRemove:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(
                 intent="balanced",
                 remove_tiers=["fast"],
@@ -718,8 +765,10 @@ class TestAddRemove:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             with pytest.raises(InitError, match="Cannot remove tier"):
                 run_init(
                     intent="balanced",
@@ -733,8 +782,10 @@ class TestAddRemove:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(
                 intent="balanced",
                 add_models=["medium-model"],
@@ -750,8 +801,10 @@ class TestAddRemove:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             with pytest.raises(InitError, match="Unknown model"):
                 run_init(
                     intent="balanced",
@@ -765,8 +818,10 @@ class TestAddRemove:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             with pytest.raises(InitError, match="Invalid intent"):
                 run_init(intent="invalid", force=True)
 
@@ -846,8 +901,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert result.exit_code == 0
@@ -859,8 +916,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults", "--intent", "agent-fleet"])
 
         assert result.exit_code == 0
@@ -872,8 +931,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             # First init
             result = runner.invoke(cli, ["init", "--accept-defaults"])
             assert result.exit_code == 0
@@ -890,8 +951,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
             assert result.exit_code == 0
 
@@ -905,8 +968,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert "default.yaml" in result.output
@@ -919,8 +984,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert "standard" in result.output or "fast" in result.output
@@ -932,8 +999,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         # Should mention next steps
@@ -946,8 +1015,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         # Models are not downloaded, so should suggest pulling
@@ -960,8 +1031,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert result.exit_code == 0
@@ -982,8 +1055,10 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert result.exit_code == 0
@@ -1001,11 +1076,11 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
-            result = runner.invoke(
-                cli, ["init", "--accept-defaults", "--add", "medium-model"]
-            )
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
+            result = runner.invoke(cli, ["init", "--accept-defaults", "--add", "medium-model"])
 
         assert result.exit_code == 0
 
@@ -1016,11 +1091,11 @@ class TestCLIInit:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
-            result = runner.invoke(
-                cli, ["init", "--accept-defaults", "--remove", "fast"]
-            )
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
+            result = runner.invoke(cli, ["init", "--accept-defaults", "--remove", "fast"])
 
         assert result.exit_code == 0
 
@@ -1032,8 +1107,10 @@ class TestCLIInit:
 
         results = {}
         for intent_name in ["balanced", "agent-fleet"]:
-            with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-                 patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+            with (
+                patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+                patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+            ):
                 result = run_init(intent=intent_name, force=True)
                 results[intent_name] = result["stack"]
 
@@ -1047,8 +1124,10 @@ class TestCLIInit:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         for tier in result["stack"]["tiers"]:
@@ -1067,6 +1146,7 @@ class TestPortInUseDetection:
 
     def test_skips_port_in_use(self) -> None:
         """Ports detected as in-use are skipped, next available selected."""
+
         # Mock _is_port_available: 8000 is in use, 8001 is free
         def mock_available(port: int) -> bool:
             return port != 8000
@@ -1128,9 +1208,11 @@ class TestPortInUseDetection:
         def mock_available(port: int) -> bool:
             return port != 8000
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile), \
-             patch("mlx_stack.core.stack_init._is_port_available", side_effect=mock_available):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+            patch("mlx_stack.core.stack_init._is_port_available", side_effect=mock_available),
+        ):
             result = run_init(intent="balanced", force=True)
 
         tier_ports = [t["port"] for t in result["stack"]["tiers"]]
@@ -1153,8 +1235,10 @@ class TestTotalEstimatedMemory:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         assert "total_memory_gb" in result
@@ -1169,8 +1253,10 @@ class TestTotalEstimatedMemory:
         _write_profile(mlx_stack_home, profile)
 
         runner = CliRunner()
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = runner.invoke(cli, ["init", "--accept-defaults"])
 
         assert result.exit_code == 0
@@ -1184,8 +1270,10 @@ class TestTotalEstimatedMemory:
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         # The total should be positive. Note: individual models fit within budget,
@@ -1225,8 +1313,10 @@ class TestGatedModelExclusion:
             ),
         ]
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(intent="balanced", force=True)
 
         tier_model_ids = {t["model"] for t in result["stack"]["tiers"]}
@@ -1243,8 +1333,10 @@ class TestGatedModelExclusion:
             _make_entry(model_id="gated-model", name="Gated Model", gated=True),
         ]
 
-        with patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog), \
-             patch("mlx_stack.core.stack_init.load_profile", return_value=profile):
+        with (
+            patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
+            patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
+        ):
             result = run_init(
                 intent="balanced",
                 add_models=["gated-model"],

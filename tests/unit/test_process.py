@@ -251,10 +251,9 @@ class TestAcquireLock:
             pass
 
     def test_concurrent_lock_raises(self, mlx_stack_home: Path) -> None:
-        with acquire_lock():
-            with pytest.raises(LockError, match="Another mlx-stack operation"):
-                with acquire_lock():
-                    pass  # pragma: no cover
+        with acquire_lock(), pytest.raises(LockError, match="Another mlx-stack operation"):
+            with acquire_lock():
+                pass  # pragma: no cover
 
     def test_creates_data_home(self, clean_mlx_stack_home: Path) -> None:
         with acquire_lock():
@@ -332,9 +331,7 @@ class TestWaitForHealthy:
 
     @patch("mlx_stack.core.process.time.sleep")
     @patch("mlx_stack.core.process.http_health_check")
-    def test_healthy_after_retries(
-        self, mock_check: MagicMock, mock_sleep: MagicMock
-    ) -> None:
+    def test_healthy_after_retries(self, mock_check: MagicMock, mock_sleep: MagicMock) -> None:
         # First 2 calls fail, third succeeds
         mock_check.side_effect = [
             HealthCheckResult(healthy=False, response_time=None, status_code=None),
@@ -363,14 +360,14 @@ class TestWaitForHealthy:
         )
         # Simulate time passing past the deadline
         mock_monotonic.side_effect = [
-            0.0,   # deadline = 0 + 2 = 2
-            0.5,   # first iteration check
-            0.5,   # per_request_timeout check
-            1.0,   # after first check
-            1.5,   # sleep calculation
-            1.8,   # second iteration check
-            1.8,   # per_request_timeout check
-            2.5,   # after second check - past deadline
+            0.0,  # deadline = 0 + 2 = 2
+            0.5,  # first iteration check
+            0.5,  # per_request_timeout check
+            1.0,  # after first check
+            1.5,  # sleep calculation
+            1.8,  # second iteration check
+            1.8,  # per_request_timeout check
+            2.5,  # after second check - past deadline
         ]
 
         with pytest.raises(HealthCheckError, match="timed out"):
@@ -455,7 +452,9 @@ class TestCheckPortConflict:
     @patch("mlx_stack.core.process._find_pid_on_port", return_value=(42, "python"))
     @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
     def test_port_in_use_with_owner(
-        self, mock_bind: MagicMock, mock_find: MagicMock,
+        self,
+        mock_bind: MagicMock,
+        mock_find: MagicMock,
     ) -> None:
         """Port occupied, owner identified via psutil."""
         result = check_port_conflict(8000)
@@ -471,7 +470,9 @@ class TestCheckPortConflict:
     @patch("mlx_stack.core.process._find_pid_on_port", return_value=None)
     @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
     def test_port_in_use_unknown_owner(
-        self, mock_bind: MagicMock, mock_find: MagicMock,
+        self,
+        mock_bind: MagicMock,
+        mock_find: MagicMock,
     ) -> None:
         """Port occupied but owner can't be identified (e.g., macOS permission)."""
         result = check_port_conflict(8000)
@@ -481,7 +482,9 @@ class TestCheckPortConflict:
     @patch("mlx_stack.core.process._find_pid_on_port", return_value=(42, "<unknown>"))
     @patch("mlx_stack.core.process._socket_bind_check", return_value=True)
     def test_process_vanished(
-        self, mock_bind: MagicMock, mock_find: MagicMock,
+        self,
+        mock_bind: MagicMock,
+        mock_find: MagicMock,
     ) -> None:
         """Process vanished between detection and lookup."""
         result = check_port_conflict(8000)
@@ -704,8 +707,8 @@ class TestTerminateProcess:
         # Process stays alive through grace period, then dies after SIGKILL
         mock_alive.side_effect = [True, True, True, False]
         mock_monotonic.side_effect = [
-            0.0,   # deadline = 10.0
-            5.0,   # still within grace
+            0.0,  # deadline = 10.0
+            5.0,  # still within grace
             11.0,  # past grace → SIGKILL
         ]
 

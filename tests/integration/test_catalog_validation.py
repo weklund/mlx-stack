@@ -38,7 +38,7 @@ _CATALOG_IDS = [e.id for e in _CATALOG]
 
 
 @pytest.fixture(scope="module")
-def hf_client() -> Generator[httpx.Client, None, None]:
+def hf_client() -> Generator[httpx.Client]:
     """Shared HTTP client for HuggingFace API calls."""
     client = httpx.Client(
         timeout=30.0,
@@ -88,9 +88,7 @@ class TestCatalogStructure:
             assert "/" in source.hf_repo, (
                 f"{entry.id}/{quant}: hf_repo '{source.hf_repo}' must be org/repo format"
             )
-            assert source.disk_size_gb > 0, (
-                f"{entry.id}/{quant}: disk_size_gb must be > 0"
-            )
+            assert source.disk_size_gb > 0, f"{entry.id}/{quant}: disk_size_gb must be > 0"
 
     @pytest.mark.parametrize("entry", _CATALOG, ids=_CATALOG_IDS)
     def test_capability_consistency(self, entry: CatalogEntry) -> None:
@@ -129,9 +127,7 @@ class TestCatalogStructure:
             ("reasoning", q.reasoning),
             ("instruction_following", q.instruction_following),
         ]:
-            assert 0 <= score <= 100, (
-                f"{entry.id}: quality.{name}={score} is outside 0-100 range"
-            )
+            assert 0 <= score <= 100, f"{entry.id}: quality.{name}={score} is outside 0-100 range"
 
 
 # --------------------------------------------------------------------------- #
@@ -180,7 +176,9 @@ class TestHuggingFaceRepos:
         ids=[e.id for e in _CATALOG if not e.gated],
     )
     def test_non_gated_repos_have_safetensors(
-        self, entry: CatalogEntry, hf_client: httpx.Client,
+        self,
+        entry: CatalogEntry,
+        hf_client: httpx.Client,
     ) -> None:
         """Non-gated, non-convert_from repos contain safetensors weight files.
 
@@ -202,7 +200,7 @@ class TestHuggingFaceRepos:
 
             assert has_safetensors, (
                 f"{entry.id}/{quant}: repo '{source.hf_repo}' has no *.safetensors files. "
-                f"Files found: {[f for f in filenames[:10]]}... "
+                f"Files found: {list(filenames[:10])}... "
                 f"This repo may not contain MLX-format weights."
             )
 
@@ -224,6 +222,5 @@ class TestGatedModels:
         """Models flagged as gated should have at least one non-mlx-community source."""
         assert entry.gated, f"{entry.id}: expected gated=True"
         assert any(
-            not source.hf_repo.startswith("mlx-community/")
-            for source in entry.sources.values()
+            not source.hf_repo.startswith("mlx-community/") for source in entry.sources.values()
         ), f"{entry.id}: gated model should have at least one non-mlx-community source"

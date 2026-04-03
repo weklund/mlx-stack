@@ -34,17 +34,26 @@ MOCK_PROFILE = SimpleNamespace(
 MOCK_UP_RESULT = SimpleNamespace(
     tiers=[
         SimpleNamespace(
-            name="standard", model="Qwen3.5-9B",
-            port=8000, status="healthy", error=None,
+            name="standard",
+            model="Qwen3.5-9B",
+            port=8000,
+            status="healthy",
+            error=None,
         ),
         SimpleNamespace(
-            name="fast", model="SmallFast-4B",
-            port=8001, status="healthy", error=None,
+            name="fast",
+            model="SmallFast-4B",
+            port=8001,
+            status="healthy",
+            error=None,
         ),
     ],
     litellm=SimpleNamespace(
-        name="litellm", model="proxy",
-        port=4000, status="healthy", error=None,
+        name="litellm",
+        model="proxy",
+        port=4000,
+        status="healthy",
+        error=None,
     ),
     dry_run=False,
     warnings=[],
@@ -54,19 +63,29 @@ MOCK_UP_RESULT = SimpleNamespace(
 MOCK_BENCHMARK_DATA = {
     "models": {
         "mlx-community/Qwen3.5-9B-4bit": {
-            "params_b": 9.0, "thinking": True, "tool_calling": True,
-            "benchmarks": {"m4-pro-64": {
-                "generation_tps": 62.0, "prompt_tps": 337.0,
-                "peak_memory_gib": 5.2,
-            }},
+            "params_b": 9.0,
+            "thinking": True,
+            "tool_calling": True,
+            "benchmarks": {
+                "m4-pro-64": {
+                    "generation_tps": 62.0,
+                    "prompt_tps": 337.0,
+                    "peak_memory_gib": 5.2,
+                }
+            },
             "quality": {"overall_pass_rate": 0.98},
         },
         "mlx-community/SmallFast-4B-4bit": {
-            "params_b": 4.0, "thinking": False, "tool_calling": False,
-            "benchmarks": {"m4-pro-64": {
-                "generation_tps": 95.0, "prompt_tps": 500.0,
-                "peak_memory_gib": 2.4,
-            }},
+            "params_b": 4.0,
+            "thinking": False,
+            "tool_calling": False,
+            "benchmarks": {
+                "m4-pro-64": {
+                    "generation_tps": 95.0,
+                    "prompt_tps": 500.0,
+                    "peak_memory_gib": 2.4,
+                }
+            },
             "quality": {"overall_pass_rate": 0.91},
         },
     },
@@ -81,17 +100,18 @@ def _run_setup(args: list[str], mlx_stack_home: Path) -> Any:
         patch("mlx_stack.core.onboarding.detect_hardware", return_value=MOCK_PROFILE),
         patch("mlx_stack.core.onboarding.save_profile"),
         patch("mlx_stack.core.discovery.query_hf_models", return_value=[]),
-        patch("mlx_stack.core.discovery.load_benchmark_data",
-              return_value=MOCK_BENCHMARK_DATA),
-        patch("mlx_stack.cli.setup.generate_config",
-              return_value=(mlx_stack_home / "stacks" / "default.yaml",
-                            mlx_stack_home / "litellm.yaml")),
+        patch("mlx_stack.core.discovery.load_benchmark_data", return_value=MOCK_BENCHMARK_DATA),
+        patch(
+            "mlx_stack.cli.setup.generate_config",
+            return_value=(
+                mlx_stack_home / "stacks" / "default.yaml",
+                mlx_stack_home / "litellm.yaml",
+            ),
+        ),
         patch("mlx_stack.cli.setup.pull_setup_models", return_value=[]),
         patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
     ):
-        result = runner.invoke(setup, args)
-
-    return result
+        return runner.invoke(setup, args)
 
 
 # --------------------------------------------------------------------------- #
@@ -105,9 +125,7 @@ class TestSetupAcceptDefaults:
     def test_completes_successfully(self, mlx_stack_home: Path) -> None:
         """Setup with --accept-defaults exits 0."""
         result = _run_setup(["--accept-defaults"], mlx_stack_home)
-        assert result.exit_code == 0, (
-            f"Exit {result.exit_code}:\n{result.output}"
-        )
+        assert result.exit_code == 0, f"Exit {result.exit_code}:\n{result.output}"
 
     def test_shows_hardware_info(self, mlx_stack_home: Path) -> None:
         """Output includes detected hardware details."""
@@ -144,7 +162,8 @@ class TestSetupIntentFlag:
     def test_intent_flag_accepted(self, mlx_stack_home: Path) -> None:
         """Providing --intent with --accept-defaults works."""
         result = _run_setup(
-            ["--accept-defaults", "--intent", "agent-fleet"], mlx_stack_home,
+            ["--accept-defaults", "--intent", "agent-fleet"],
+            mlx_stack_home,
         )
         assert result.exit_code == 0
 
@@ -157,8 +176,7 @@ class TestSetupErrorHandling:
         runner = CliRunner()
 
         with (
-            patch("mlx_stack.core.onboarding.detect_hardware",
-                  side_effect=RuntimeError("no chip")),
+            patch("mlx_stack.core.onboarding.detect_hardware", side_effect=RuntimeError("no chip")),
             patch("mlx_stack.core.onboarding.save_profile"),
         ):
             result = runner.invoke(setup, ["--accept-defaults"])
@@ -171,13 +189,10 @@ class TestSetupErrorHandling:
         runner = CliRunner()
 
         with (
-            patch("mlx_stack.core.onboarding.detect_hardware",
-                  return_value=MOCK_PROFILE),
+            patch("mlx_stack.core.onboarding.detect_hardware", return_value=MOCK_PROFILE),
             patch("mlx_stack.core.onboarding.save_profile"),
-            patch("mlx_stack.core.discovery.query_hf_models",
-                  return_value=[]),
-            patch("mlx_stack.core.discovery.load_benchmark_data",
-                  return_value={"models": {}}),
+            patch("mlx_stack.core.discovery.query_hf_models", return_value=[]),
+            patch("mlx_stack.core.discovery.load_benchmark_data", return_value={"models": {}}),
         ):
             result = runner.invoke(setup, ["--accept-defaults"])
 

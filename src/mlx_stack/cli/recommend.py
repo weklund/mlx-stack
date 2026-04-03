@@ -67,9 +67,7 @@ def parse_budget(raw: str) -> float:
 
     value = float(match.group(1))
     if value <= 0:
-        msg = (
-            f"Invalid budget '{raw}'. Budget must be a positive value."
-        )
+        msg = f"Invalid budget '{raw}'. Budget must be a positive value."
         raise click.BadParameter(msg, param_hint="'--budget'")
 
     return value
@@ -96,8 +94,7 @@ def _resolve_profile() -> HardwareProfile:
     # Auto-detect (in-memory only — recommend is display-only, no file writes)
     console.print("[dim]No saved profile found — detecting hardware...[/dim]")
     try:
-        profile = detect_hardware()
-        return profile
+        return detect_hardware()
     except HardwareError as exc:
         console.print(f"[bold red]Error:[/bold red] {exc}")
         raise SystemExit(1) from None
@@ -206,12 +203,8 @@ def _display_tier_table(result: RecommendationResult) -> None:
     has_estimates = any(t.model.is_estimated for t in result.tiers)
     if has_estimates:
         out.print()
-        out.print(
-            "[yellow]⚠ Some performance values are estimated from bandwidth ratio.[/yellow]"
-        )
-        out.print(
-            "  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements."
-        )
+        out.print("[yellow]⚠ Some performance values are estimated from bandwidth ratio.[/yellow]")
+        out.print("  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements.")
 
     out.print()
     out.print("[dim]This is a recommendation only — no files were written.[/dim]")
@@ -268,20 +261,15 @@ def _display_all_models(result: RecommendationResult) -> None:
     if openrouter_key:
         out.print()
         out.print(
-            "[bold green]☁ Cloud Fallback[/bold green]  "
-            "Premium tier via OpenRouter also available."
+            "[bold green]☁ Cloud Fallback[/bold green]  Premium tier via OpenRouter also available."
         )
 
     # Estimated warning
     has_estimates = any(m.is_estimated for m in result.all_scored)
     if has_estimates:
         out.print()
-        out.print(
-            "[yellow]⚠ Some performance values are estimated from bandwidth ratio.[/yellow]"
-        )
-        out.print(
-            "  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements."
-        )
+        out.print("[yellow]⚠ Some performance values are estimated from bandwidth ratio.[/yellow]")
+        out.print("  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements.")
 
     out.print()
     out.print("[dim]This is a recommendation only — no files were written.[/dim]")
@@ -329,8 +317,7 @@ def recommend(budget: str | None, intent: str | None, show_all: bool) -> None:
     elif intent not in VALID_INTENTS:
         valid = ", ".join(sorted(VALID_INTENTS))
         console.print(
-            f"[bold red]Error:[/bold red] Invalid intent '{intent}'. "
-            f"Valid intents: {valid}"
+            f"[bold red]Error:[/bold red] Invalid intent '{intent}'. Valid intents: {valid}"
         )
         raise SystemExit(1)
 
