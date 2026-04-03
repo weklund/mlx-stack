@@ -3,6 +3,7 @@ name: DeepSeek R1 32B
 family: DeepSeek R1
 params_b: 32.0
 architecture: mamba2-hybrid
+gated: true
 min_mlx_lm_version: "0.22.0"
 sources:
   int4:
