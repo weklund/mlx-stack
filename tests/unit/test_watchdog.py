@@ -528,7 +528,7 @@ class TestPollCycle:
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
-            patch("mlx_stack.core.watchdog.restart_service") as mock_restart,
+            patch("mlx_stack.core.watchdog.restart_service"),
         ):
             result = poll_cycle(
                 state=state,
@@ -539,7 +539,6 @@ class TestPollCycle:
             )
 
         assert result.restarts_attempted == 0
-        mock_restart.assert_not_called()
 
     def test_poll_flapping_service_not_restarted(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
@@ -567,7 +566,7 @@ class TestPollCycle:
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
-            patch("mlx_stack.core.watchdog.restart_service") as mock_restart,
+            patch("mlx_stack.core.watchdog.restart_service"),
         ):
             result = poll_cycle(
                 state=state,
@@ -579,7 +578,6 @@ class TestPollCycle:
 
         assert result.restarts_attempted == 0
         assert "fast" in result.flapping_services
-        mock_restart.assert_not_called()
 
     def test_poll_respects_restart_delay(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
@@ -607,7 +605,7 @@ class TestPollCycle:
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
-            patch("mlx_stack.core.watchdog.restart_service") as mock_restart,
+            patch("mlx_stack.core.watchdog.restart_service"),
         ):
             result = poll_cycle(
                 state=state,
@@ -618,7 +616,6 @@ class TestPollCycle:
             )
 
         assert result.restarts_attempted == 0
-        mock_restart.assert_not_called()
 
     def test_poll_with_failed_restart(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]

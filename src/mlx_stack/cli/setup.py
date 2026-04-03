@@ -496,13 +496,7 @@ def setup(
         out.print("[yellow]  Stack may be partially started. Check 'mlx-stack status'.[/yellow]")
         raise SystemExit(1) from None
 
-    litellm_port = int(
-        next(
-            (t.port for t in (up_result.tiers + ([up_result.litellm] if up_result.litellm else []))
-             if t.name == "litellm"),
-            4000,
-        )
-    )
+    litellm_port = up_result.litellm.port if up_result.litellm else 4000
     _display_final_status(tiers, litellm_port)
 
     # ── Step 6: Always-on ────────────────────────────────────────────────

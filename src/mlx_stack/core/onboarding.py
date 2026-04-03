@@ -3,8 +3,9 @@
 Drives the ``mlx-stack setup`` flow: hardware detection, model scoring,
 tier assignment, config generation, model download, and stack startup.
 
-Pure business logic — no Rich, no Click, no display code. The CLI layer
-in ``cli/setup.py`` handles all user interaction and display.
+Business logic with minimal display dependency (Rich Console for download
+progress). The CLI layer in ``cli/setup.py`` handles all other user
+interaction and display.
 """
 
 from __future__ import annotations
