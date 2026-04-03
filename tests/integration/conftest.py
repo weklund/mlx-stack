@@ -340,7 +340,7 @@ class ServiceManager:
         # The first inference triggers MLX weight loading and JIT compilation,
         # which can take significantly longer. Send a throwaway request so
         # that callers' inference timeouts measure generation, not cold start.
-        try:
+        with contextlib.suppress(httpx.TimeoutException, httpx.HTTPError):
             httpx.post(
                 f"http://127.0.0.1:{port}/v1/chat/completions",
                 json={
@@ -350,8 +350,6 @@ class ServiceManager:
                 },
                 timeout=timeout,
             )
-        except (httpx.TimeoutException, httpx.HTTPError):
-            pass  # warmup is best-effort; the real test will catch failures
 
         return managed
 
