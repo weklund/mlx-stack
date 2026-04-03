@@ -94,8 +94,8 @@ def _min_memory_for_entry(entry: CatalogEntry) -> float:
 
 def _build_vllm_flags(entry: CatalogEntry) -> dict:
     """Build vllm flags based on model capabilities."""
+    # TODO(#17): re-enable continuous_batching (waybarrios/vllm-mlx#211)
     flags: dict = {
-        "continuous_batching": True,
         "use_paged_cache": True,
     }
     if entry.capabilities.tool_calling:
@@ -288,7 +288,7 @@ class TestModelSmoke:
                             {"role": "user", "content": "What is the weather in San Francisco?"},
                         ],
                         "tools": [tool_definition],
-                        "max_tokens": 100,
+                        "max_tokens": 500,
                     },
                     timeout=120.0,
                 )

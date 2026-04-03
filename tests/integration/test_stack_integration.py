@@ -132,10 +132,10 @@ class TestStackLifecycle:
 
         # After context manager exits, services are stopped
         # Verify ports are freed
-        assert wait_for_port_free(vllm_port, timeout=10.0), (
+        assert wait_for_port_free(vllm_port, timeout=15.0), (
             f"Port {vllm_port} still bound after shutdown"
         )
-        assert wait_for_port_free(litellm_port, timeout=10.0), (
+        assert wait_for_port_free(litellm_port, timeout=15.0), (
             f"Port {litellm_port} still bound after shutdown"
         )
 

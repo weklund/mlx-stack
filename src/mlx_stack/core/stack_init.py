@@ -142,8 +142,9 @@ def build_vllm_flags(entry: CatalogEntry) -> dict[str, Any]:
     Returns:
         A dict of vllm flags.
     """
+    # TODO(#17): re-enable continuous_batching once vllm-mlx ships a fix for
+    # the missing return in load_model_with_fallback (waybarrios/vllm-mlx#211).
     flags: dict[str, Any] = {
-        "continuous_batching": True,
         "use_paged_cache": True,
     }
 

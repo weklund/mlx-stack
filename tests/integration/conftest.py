@@ -23,6 +23,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import httpx
 import psutil
 import pytest
 import yaml
@@ -114,7 +115,12 @@ def wait_for_port_free(port: int, timeout: float = 10.0) -> bool:
 
 
 def kill_processes_on_port(port: int) -> None:
-    """Best-effort kill any process bound to the given port via lsof."""
+    """Best-effort kill any process bound to the given port via lsof.
+
+    Excludes the current process to avoid killing pytest itself when it
+    has client connections to the port being cleaned up.
+    """
+    my_pid = os.getpid()
     try:
         result = subprocess.run(
             ["lsof", "-ti", f":{port}"],
@@ -125,7 +131,7 @@ def kill_processes_on_port(port: int) -> None:
         if result.returncode == 0 and result.stdout.strip():
             for pid_str in result.stdout.strip().split("\n"):
                 pid_str = pid_str.strip()
-                if pid_str.isdigit():
+                if pid_str.isdigit() and int(pid_str) != my_pid:
                     try:
                         os.kill(int(pid_str), signal.SIGKILL)
                     except OSError:
@@ -327,6 +333,23 @@ class ServiceManager:
             total_timeout=timeout,
         )
 
+        # Warmup: the health check only proves the HTTP server is up.
+        # The first inference triggers MLX weight loading and JIT compilation,
+        # which can take significantly longer. Send a throwaway request so
+        # that callers' inference timeouts measure generation, not cold start.
+        try:
+            httpx.post(
+                f"http://127.0.0.1:{port}/v1/chat/completions",
+                json={
+                    "model": model_source,
+                    "messages": [{"role": "user", "content": "Hi"}],
+                    "max_tokens": 1,
+                },
+                timeout=timeout,
+            )
+        except (httpx.TimeoutException, httpx.HTTPError):
+            pass  # warmup is best-effort; the real test will catch failures
+
         return managed
 
     def start_litellm(
@@ -402,11 +425,16 @@ class ServiceManager:
                     os.kill(svc.pid, signal.SIGKILL)
                 except OSError:
                     pass
+
+        time.sleep(1)
+
+        # Kill any orphaned child processes still holding the port
+        for svc in self._services:
             kill_processes_on_port(svc.port)
 
         # Wait for ports to be freed
         for svc in self._services:
-            wait_for_port_free(svc.port, timeout=10.0)
+            wait_for_port_free(svc.port, timeout=15.0)
 
         # Clean up PID files
         pids_dir = self._mlx_home / "pids"
