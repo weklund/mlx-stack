@@ -1,4 +1,4 @@
-.PHONY: install lint typecheck test check
+.PHONY: install lint typecheck test check test-catalog test-smoke test-integration test-harness
 
 ## Install dev dependencies
 install:
@@ -18,3 +18,19 @@ test:
 
 ## Run all checks (same as CI)
 check: lint typecheck test
+
+## Run catalog validation (requires network, no models)
+test-catalog:
+	uv run pytest -m catalog_validation -v --tb=short
+
+## Run per-model smoke tests (requires macOS + vllm-mlx)
+test-smoke:
+	uv run pytest -m smoke -v --tb=long
+
+## Run full stack integration tests (requires macOS + vllm-mlx + litellm)
+test-integration:
+	uv run pytest -m integration -v --tb=long
+
+## Run harness compatibility tests (requires above + openai)
+test-harness:
+	uv run pytest -m harness -v --tb=long

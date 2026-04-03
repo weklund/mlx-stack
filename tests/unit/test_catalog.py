@@ -825,16 +825,20 @@ class TestGatedField:
         assert entry.gated is False
 
     def test_shipped_catalog_gated_models(self) -> None:
-        """Shipped catalog has exactly 4 gated models."""
+        """Shipped catalog gated models are correctly marked."""
         catalog = load_catalog()
         gated = [e for e in catalog if e.gated]
         gated_ids = {e.id for e in gated}
-        assert gated_ids == {"gemma3-4b", "gemma3-12b", "gemma3-27b", "llama3.3-8b"}
+        assert gated_ids == {
+            "deepseek-r1-32b", "gemma3-4b", "gemma3-12b", "gemma3-27b",
+            "llama3.3-8b", "nemotron-49b", "nemotron-8b",
+            "qwen3.5-3b", "qwen3.5-8b", "qwen3.5-14b", "qwen3.5-32b", "qwen3.5-72b",
+        }
 
     def test_shipped_catalog_non_gated_models(self) -> None:
         """Shipped catalog non-gated models all have gated=False."""
         catalog = load_catalog()
         non_gated = [e for e in catalog if not e.gated]
-        assert len(non_gated) == len(catalog) - 4
+        assert len(non_gated) == len(catalog) - 12
         for entry in non_gated:
             assert entry.gated is False

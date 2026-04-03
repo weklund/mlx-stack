@@ -34,3 +34,4 @@ htmlcov/
 
 # Ruff
 .ruff_cache/
+REQUIREMENTS.md

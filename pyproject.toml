@@ -53,9 +53,12 @@ packages = ["src/mlx_stack"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
-addopts = "-x -q --tb=short -m 'not integration'"
+addopts = "-x -q --tb=short -m 'not integration and not smoke and not catalog_validation and not harness'"
 markers = [
     "integration: real system integration tests (launchctl, etc.)",
+    "smoke: per-model smoke tests requiring model download and inference",
+    "catalog_validation: catalog data integrity checks (requires network, no models)",
+    "harness: external tool compatibility tests (OpenAI client, streaming)",
 ]
 
 [tool.ruff]

@@ -1,0 +1,58 @@
+name: Nightly Integration
+
+on:
+  schedule:
+    - cron: "0 6 * * *"  # 6 AM UTC daily
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Specific model ID to test (blank = all non-gated models that fit in memory)"
+        required: false
+
+concurrency:
+  group: nightly-integration
+  cancel-in-progress: true
+
+jobs:
+  smoke:
+    name: Model Smoke Tests
+    runs-on: macos-latest
+    timeout-minutes: 120
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v7
+        with:
+          enable-cache: true
+
+      - name: Install Python 3.13
+        run: uv python install 3.13
+
+      - name: Install project dependencies
+        run: make install
+
+      - name: Install vllm-mlx
+        run: uv tool install vllm-mlx==0.2.6
+
+      - name: Run smoke tests
+        run: |
+          MODEL_FILTER="${{ github.event.inputs.model }}"
+          if [ -n "$MODEL_FILTER" ]; then
+            uv run pytest -m smoke -k "$MODEL_FILTER" -v --tb=long
+          else
+            uv run pytest -m smoke -v --tb=long
+          fi
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
+      - name: Upload compatibility matrix
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: compatibility-matrix
+          path: ~/.mlx-stack-test-cache/reports/

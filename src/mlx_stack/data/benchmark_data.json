@@ -1,0 +1,1594 @@
+{
+  "generated_at": "2026-04-02T23:29:22.047034+00:00",
+  "source": "mlx_transformers_benchmark@0b35879",
+  "models": {
+    "mlx-community/DeepSeek-R1-Distill-Qwen-7B-4bit": {
+      "benchmark_name": "Deepseek-R1-Distill-7B",
+      "params_b": 7.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 56.1,
+          "prompt_tps": 457.7,
+          "peak_memory_gib": 5.72
+        },
+        "m4-pro-64": {
+          "generation_tps": 56.6,
+          "prompt_tps": 489.1,
+          "peak_memory_gib": 5.25
+        },
+        "m5-max-128": {
+          "generation_tps": 114.6,
+          "prompt_tps": 2443.1,
+          "peak_memory_gib": 5.25
+        }
+      }
+    },
+    "mlx-community/DeepSeek-R1-0528-Qwen3-8B-4bit": {
+      "benchmark_name": "Deepseek-R1-0528_Qwen3-8B",
+      "params_b": 13.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 51.8,
+          "prompt_tps": 393.4,
+          "peak_memory_gib": 6.48
+        },
+        "m4-pro-64": {
+          "generation_tps": 50.9,
+          "prompt_tps": 418.9,
+          "peak_memory_gib": 5.96
+        },
+        "m5-max-128": {
+          "generation_tps": 97.9,
+          "prompt_tps": 2146.6,
+          "peak_memory_gib": 5.96
+        }
+      }
+    },
+    "mlx-community/DeepSeek-R1-0528-Qwen3-8B-8bit": {
+      "benchmark_name": "Deepseek-R1-0528_Qwen3-8B",
+      "params_b": 13.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 29.5,
+          "prompt_tps": 386.2,
+          "peak_memory_gib": 10.46
+        },
+        "m4-pro-64": {
+          "generation_tps": 29.3,
+          "prompt_tps": 396.0,
+          "peak_memory_gib": 9.98
+        },
+        "m5-max-128": {
+          "generation_tps": 55.8,
+          "prompt_tps": 2037.6,
+          "peak_memory_gib": 9.98
+        }
+      }
+    },
+    "mlx-community/DeepSeek-R1-0528-Qwen3-8B-bf16": {
+      "benchmark_name": "Deepseek-R1-0528_Qwen3-8B",
+      "params_b": 13.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 15.5,
+          "prompt_tps": 402.3,
+          "peak_memory_gib": 17.61
+        },
+        "m5-max-128": {
+          "generation_tps": 32.5,
+          "prompt_tps": 2095.5,
+          "peak_memory_gib": 18.01
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-bf16": {
+      "benchmark_name": "gemma-3-1b-it",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 100.3,
+          "prompt_tps": 2534.9,
+          "peak_memory_gib": 4.47
+        },
+        "m4-pro-64": {
+          "generation_tps": 105.9,
+          "prompt_tps": 2826.4,
+          "peak_memory_gib": 3.5
+        },
+        "m5-max-128": {
+          "generation_tps": 206.2,
+          "prompt_tps": 10266.4,
+          "peak_memory_gib": 3.5
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-8bit": {
+      "benchmark_name": "gemma-3-1b-it",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 154.2,
+          "prompt_tps": 2662.7,
+          "peak_memory_gib": 3.34
+        },
+        "m4-pro-64": {
+          "generation_tps": 170.4,
+          "prompt_tps": 2790.3,
+          "peak_memory_gib": 2.32
+        },
+        "m5-max-128": {
+          "generation_tps": 278.5,
+          "prompt_tps": 10894.3,
+          "peak_memory_gib": 2.32
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-4bit": {
+      "benchmark_name": "gemma-3-1b-it",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 219.9,
+          "prompt_tps": 2690.4,
+          "peak_memory_gib": 2.76
+        },
+        "m4-pro-64": {
+          "generation_tps": 253.9,
+          "prompt_tps": 2880.9,
+          "peak_memory_gib": 1.67
+        },
+        "m5-max-128": {
+          "generation_tps": 373.7,
+          "prompt_tps": 11119.5,
+          "peak_memory_gib": 1.67
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-qat-bf16": {
+      "benchmark_name": "gemma-3-1b-it-qat",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 101.9,
+          "prompt_tps": 2570.0,
+          "peak_memory_gib": 4.47
+        },
+        "m4-pro-64": {
+          "generation_tps": 106.3,
+          "prompt_tps": 2836.5,
+          "peak_memory_gib": 3.5
+        },
+        "m5-max-128": {
+          "generation_tps": 205.0,
+          "prompt_tps": 10087.3,
+          "peak_memory_gib": 3.5
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-qat-8bit": {
+      "benchmark_name": "gemma-3-1b-it-qat",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 155.0,
+          "prompt_tps": 2665.9,
+          "peak_memory_gib": 3.34
+        },
+        "m4-pro-64": {
+          "generation_tps": 172.1,
+          "prompt_tps": 2877.7,
+          "peak_memory_gib": 2.32
+        },
+        "m5-max-128": {
+          "generation_tps": 278.3,
+          "prompt_tps": 10951.9,
+          "peak_memory_gib": 2.32
+        }
+      }
+    },
+    "mlx-community/gemma-3-1b-it-qat-4bit": {
+      "benchmark_name": "gemma-3-1b-it-qat",
+      "params_b": 1.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 219.4,
+          "prompt_tps": 2685.5,
+          "peak_memory_gib": 2.76
+        },
+        "m4-pro-64": {
+          "generation_tps": 253.9,
+          "prompt_tps": 2934.6,
+          "peak_memory_gib": 1.67
+        },
+        "m5-max-128": {
+          "generation_tps": 376.9,
+          "prompt_tps": 11176.5,
+          "peak_memory_gib": 1.67
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-bf16": {
+      "benchmark_name": "gemma-3-4b-it",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 29.2,
+          "prompt_tps": 733.7,
+          "peak_memory_gib": 11.11
+        },
+        "m4-pro-64": {
+          "generation_tps": 29.2,
+          "prompt_tps": 790.0,
+          "peak_memory_gib": 10.26
+        },
+        "m5-max-128": {
+          "generation_tps": 60.6,
+          "prompt_tps": 3647.1,
+          "peak_memory_gib": 10.42
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.93,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.85,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-8bit": {
+      "benchmark_name": "gemma-3-4b-it",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 50.8,
+          "prompt_tps": 699.0,
+          "peak_memory_gib": 6.87
+        },
+        "m4-pro-64": {
+          "generation_tps": 52.9,
+          "prompt_tps": 748.7,
+          "peak_memory_gib": 5.99
+        },
+        "m5-max-128": {
+          "generation_tps": 103.8,
+          "prompt_tps": 3771.8,
+          "peak_memory_gib": 5.99
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.93,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.85,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-4bit": {
+      "benchmark_name": "gemma-3-4b-it",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 84.0,
+          "prompt_tps": 706.9,
+          "peak_memory_gib": 4.6
+        },
+        "m4-pro-64": {
+          "generation_tps": 90.0,
+          "prompt_tps": 789.2,
+          "peak_memory_gib": 3.77
+        },
+        "m5-max-128": {
+          "generation_tps": 173.0,
+          "prompt_tps": 3984.8,
+          "peak_memory_gib": 3.77
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.93,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.85,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-qat-bf16": {
+      "benchmark_name": "gemma-3-4b-it-qat",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 29.4,
+          "prompt_tps": 737.6,
+          "peak_memory_gib": 11.11
+        },
+        "m4-pro-64": {
+          "generation_tps": 29.2,
+          "prompt_tps": 789.3,
+          "peak_memory_gib": 10.26
+        },
+        "m5-max-128": {
+          "generation_tps": 60.9,
+          "prompt_tps": 3598.6,
+          "peak_memory_gib": 10.42
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-qat-8bit": {
+      "benchmark_name": "gemma-3-4b-it-qat",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 51.5,
+          "prompt_tps": 754.9,
+          "peak_memory_gib": 6.87
+        },
+        "m4-pro-64": {
+          "generation_tps": 53.0,
+          "prompt_tps": 774.9,
+          "peak_memory_gib": 5.99
+        },
+        "m5-max-128": {
+          "generation_tps": 105.3,
+          "prompt_tps": 3710.4,
+          "peak_memory_gib": 5.99
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-4b-it-qat-4bit": {
+      "benchmark_name": "gemma-3-4b-it-qat",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 85.6,
+          "prompt_tps": 719.9,
+          "peak_memory_gib": 4.6
+        },
+        "m4-pro-64": {
+          "generation_tps": 89.3,
+          "prompt_tps": 749.2,
+          "peak_memory_gib": 3.77
+        },
+        "m5-max-128": {
+          "generation_tps": 173.5,
+          "prompt_tps": 3925.0,
+          "peak_memory_gib": 3.77
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-12b-it-qat-bf16": {
+      "benchmark_name": "gemma-3-12b-it-qat",
+      "params_b": 12.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 10.0,
+          "prompt_tps": 249.4,
+          "peak_memory_gib": 27.58
+        },
+        "m5-max-128": {
+          "generation_tps": 18.2,
+          "prompt_tps": 1087.7,
+          "peak_memory_gib": 27.73
+        }
+      }
+    },
+    "mlx-community/gemma-3-12b-it-qat-8bit": {
+      "benchmark_name": "gemma-3-12b-it-qat",
+      "params_b": 12.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 18.3,
+          "prompt_tps": 239.8,
+          "peak_memory_gib": 16.48
+        },
+        "m4-pro-64": {
+          "generation_tps": 18.5,
+          "prompt_tps": 244.8,
+          "peak_memory_gib": 15.72
+        },
+        "m5-max-128": {
+          "generation_tps": 31.5,
+          "prompt_tps": 971.6,
+          "peak_memory_gib": 15.72
+        }
+      }
+    },
+    "mlx-community/gemma-3-12b-it-qat-4bit": {
+      "benchmark_name": "gemma-3-12b-it-qat",
+      "params_b": 12.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 31.9,
+          "prompt_tps": 245.9,
+          "peak_memory_gib": 10.1
+        },
+        "m4-pro-64": {
+          "generation_tps": 32.7,
+          "prompt_tps": 253.1,
+          "peak_memory_gib": 9.35
+        },
+        "m5-max-128": {
+          "generation_tps": 51.7,
+          "prompt_tps": 1128.0,
+          "peak_memory_gib": 9.35
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-0.5B-Instruct-bf16": {
+      "benchmark_name": "qwen-2.5-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 201.9,
+          "prompt_tps": 4788.2,
+          "peak_memory_gib": 2.43
+        },
+        "m4-pro-64": {
+          "generation_tps": 200.2,
+          "prompt_tps": 5677.4,
+          "peak_memory_gib": 1.81
+        },
+        "m5-max-128": {
+          "generation_tps": 385.5,
+          "prompt_tps": 15039.8,
+          "peak_memory_gib": 1.81
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-0.5B-Instruct-8bit": {
+      "benchmark_name": "qwen-2.5-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 283.7,
+          "prompt_tps": 5009.1,
+          "peak_memory_gib": 1.94
+        },
+        "m4-pro-64": {
+          "generation_tps": 281.9,
+          "prompt_tps": 5577.4,
+          "peak_memory_gib": 1.38
+        },
+        "m5-max-128": {
+          "generation_tps": 430.7,
+          "prompt_tps": 16537.7,
+          "peak_memory_gib": 1.38
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-0.5B-Instruct-4bit": {
+      "benchmark_name": "qwen-2.5-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 367.8,
+          "prompt_tps": 4997.8,
+          "peak_memory_gib": 1.69
+        },
+        "m4-pro-64": {
+          "generation_tps": 389.5,
+          "prompt_tps": 5735.3,
+          "peak_memory_gib": 1.14
+        },
+        "m5-max-128": {
+          "generation_tps": 558.0,
+          "prompt_tps": 17363.2,
+          "peak_memory_gib": 1.14
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-3B-Instruct-bf16": {
+      "benchmark_name": "qwen-2.5-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 37.5,
+          "prompt_tps": 934.9,
+          "peak_memory_gib": 7.52
+        },
+        "m4-pro-64": {
+          "generation_tps": 37.5,
+          "prompt_tps": 975.8,
+          "peak_memory_gib": 6.99
+        },
+        "m5-max-128": {
+          "generation_tps": 77.6,
+          "prompt_tps": 4314.1,
+          "peak_memory_gib": 7.16
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.8,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.33,
+          "reasoning": 0.62,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-3B-Instruct-8bit": {
+      "benchmark_name": "qwen-2.5-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 67.1,
+          "prompt_tps": 959.2,
+          "peak_memory_gib": 4.63
+        },
+        "m4-pro-64": {
+          "generation_tps": 68.3,
+          "prompt_tps": 1000.6,
+          "peak_memory_gib": 4.18
+        },
+        "m5-max-128": {
+          "generation_tps": 134.9,
+          "prompt_tps": 4647.2,
+          "peak_memory_gib": 4.18
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.8,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.33,
+          "reasoning": 0.62,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-3B-Instruct-4bit": {
+      "benchmark_name": "qwen-2.5-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 111.0,
+          "prompt_tps": 973.4,
+          "peak_memory_gib": 3.31
+        },
+        "m4-pro-64": {
+          "generation_tps": 112.7,
+          "prompt_tps": 1024.0,
+          "peak_memory_gib": 2.79
+        },
+        "m5-max-128": {
+          "generation_tps": 212.8,
+          "prompt_tps": 4965.8,
+          "peak_memory_gib": 2.79
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.8,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.33,
+          "reasoning": 0.62,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-0.5B-Instruct-bf16": {
+      "benchmark_name": "qwen-2.5-coder-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 200.9,
+          "prompt_tps": 4809.6,
+          "peak_memory_gib": 2.43
+        },
+        "m4-pro-64": {
+          "generation_tps": 199.5,
+          "prompt_tps": 5753.3,
+          "peak_memory_gib": 1.81
+        },
+        "m5-max-128": {
+          "generation_tps": 386.7,
+          "prompt_tps": 15346.8,
+          "peak_memory_gib": 1.81
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-0.5B-Instruct-8bit": {
+      "benchmark_name": "qwen-2.5-coder-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 281.8,
+          "prompt_tps": 5008.3,
+          "peak_memory_gib": 1.94
+        },
+        "m4-pro-64": {
+          "generation_tps": 286.9,
+          "prompt_tps": 5609.7,
+          "peak_memory_gib": 1.38
+        },
+        "m5-max-128": {
+          "generation_tps": 436.3,
+          "prompt_tps": 17052.1,
+          "peak_memory_gib": 1.38
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-0.5B-Instruct-4bit": {
+      "benchmark_name": "qwen-2.5-coder-0.5b-it",
+      "params_b": 0.5,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 396.1,
+          "prompt_tps": 4942.7,
+          "peak_memory_gib": 1.69
+        },
+        "m4-pro-64": {
+          "generation_tps": 426.2,
+          "prompt_tps": 5726.8,
+          "peak_memory_gib": 1.14
+        },
+        "m5-max-128": {
+          "generation_tps": 624.9,
+          "prompt_tps": 18091.8,
+          "peak_memory_gib": 1.14
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-3B-Instruct-bf16": {
+      "benchmark_name": "qwen-2.5-coder-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 39.9,
+          "prompt_tps": 934.1,
+          "peak_memory_gib": 7.52
+        },
+        "m4-pro-64": {
+          "generation_tps": 40.3,
+          "prompt_tps": 975.4,
+          "peak_memory_gib": 6.99
+        },
+        "m5-max-128": {
+          "generation_tps": 81.2,
+          "prompt_tps": 4266.5,
+          "peak_memory_gib": 7.16
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-3B-Instruct-8bit": {
+      "benchmark_name": "qwen-2.5-coder-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 71.4,
+          "prompt_tps": 952.6,
+          "peak_memory_gib": 4.63
+        },
+        "m4-pro-64": {
+          "generation_tps": 72.3,
+          "prompt_tps": 968.8,
+          "peak_memory_gib": 4.18
+        },
+        "m5-max-128": {
+          "generation_tps": 144.7,
+          "prompt_tps": 4743.3,
+          "peak_memory_gib": 4.18
+        }
+      }
+    },
+    "mlx-community/Qwen2.5-Coder-3B-Instruct-4bit": {
+      "benchmark_name": "qwen-2.5-coder-3b-it",
+      "params_b": 3.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 114.8,
+          "prompt_tps": 972.5,
+          "peak_memory_gib": 3.31
+        },
+        "m4-pro-64": {
+          "generation_tps": 118.7,
+          "prompt_tps": 980.9,
+          "peak_memory_gib": 2.79
+        },
+        "m5-max-128": {
+          "generation_tps": 229.3,
+          "prompt_tps": 5030.6,
+          "peak_memory_gib": 2.79
+        }
+      }
+    },
+    "mlx-community/Qwen3-0.6B-4bit": {
+      "benchmark_name": "qwen-3-0.6b-it",
+      "params_b": 0.6,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 327.7,
+          "prompt_tps": 3780.2,
+          "peak_memory_gib": 2.25
+        },
+        "m4-pro-64": {
+          "generation_tps": 326.9,
+          "prompt_tps": 4261.2,
+          "peak_memory_gib": 1.71
+        },
+        "m5-max-128": {
+          "generation_tps": 530.4,
+          "prompt_tps": 13775.1,
+          "peak_memory_gib": 1.71
+        }
+      }
+    },
+    "mlx-community/Qwen3-0.6B-8bit": {
+      "benchmark_name": "qwen-3-0.6b-it",
+      "params_b": 0.6,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 237.8,
+          "prompt_tps": 3802.9,
+          "peak_memory_gib": 2.51
+        },
+        "m4-pro-64": {
+          "generation_tps": 243.4,
+          "prompt_tps": 4211.1,
+          "peak_memory_gib": 1.96
+        },
+        "m5-max-128": {
+          "generation_tps": 429.2,
+          "prompt_tps": 12935.9,
+          "peak_memory_gib": 1.96
+        }
+      }
+    },
+    "mlx-community/Qwen3-8B-4bit": {
+      "benchmark_name": "qwen-3-8B-it",
+      "params_b": 8.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 51.6,
+          "prompt_tps": 397.4,
+          "peak_memory_gib": 6.48
+        },
+        "m4-pro-64": {
+          "generation_tps": 51.1,
+          "prompt_tps": 410.3,
+          "peak_memory_gib": 5.96
+        },
+        "m5-max-128": {
+          "generation_tps": 104.1,
+          "prompt_tps": 2286.1,
+          "peak_memory_gib": 5.96
+        }
+      }
+    },
+    "mlx-community/Qwen3-8B-8bit": {
+      "benchmark_name": "qwen-3-8B-it",
+      "params_b": 8.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 29.5,
+          "prompt_tps": 391.5,
+          "peak_memory_gib": 10.46
+        },
+        "m4-pro-64": {
+          "generation_tps": 29.6,
+          "prompt_tps": 401.2,
+          "peak_memory_gib": 9.98
+        },
+        "m5-max-128": {
+          "generation_tps": 61.0,
+          "prompt_tps": 2113.4,
+          "peak_memory_gib": 9.98
+        }
+      }
+    },
+    "mlx-community/Qwen3-14B-4bit": {
+      "benchmark_name": "qwen-3-14B-it",
+      "params_b": 14.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-24": {
+          "generation_tps": 28.7,
+          "prompt_tps": 217.2,
+          "peak_memory_gib": 10.15
+        },
+        "m4-pro-64": {
+          "generation_tps": 28.5,
+          "prompt_tps": 221.9,
+          "peak_memory_gib": 9.7
+        },
+        "m5-max-128": {
+          "generation_tps": 55.1,
+          "prompt_tps": 1211.8,
+          "peak_memory_gib": 9.7
+        }
+      }
+    },
+    "mlx-community/Qwen3-14B-8bit": {
+      "benchmark_name": "qwen-3-14B-it",
+      "params_b": 14.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 15.8,
+          "prompt_tps": 209.7,
+          "peak_memory_gib": 17.08
+        },
+        "m5-max-128": {
+          "generation_tps": 29.9,
+          "prompt_tps": 1093.6,
+          "peak_memory_gib": 17.08
+        }
+      }
+    },
+    "mlx-community/Nemotron-3-Nano-4B-4bit": {
+      "benchmark_name": "nemotron-3-nano-4b",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 101.3,
+          "prompt_tps": 799.6,
+          "peak_memory_gib": 5.84
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.05,
+        "by_category": {
+          "coding": 0.0,
+          "instruction_following": 0.25,
+          "math": 0.0,
+          "reasoning": 0.0,
+          "writing": 0.0
+        }
+      }
+    },
+    "mlx-community/Nemotron-3-Nano-4B-8bit": {
+      "benchmark_name": "nemotron-3-nano-4b",
+      "params_b": 4.0,
+      "thinking": false,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 56.9,
+          "prompt_tps": 757.9,
+          "peak_memory_gib": 7.79
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.05,
+        "by_category": {
+          "coding": 0.0,
+          "instruction_following": 0.25,
+          "math": 0.0,
+          "reasoning": 0.0,
+          "writing": 0.0
+        }
+      }
+    },
+    "mlx-community/NVIDIA-Nemotron-Nano-9B-v2-4bits": {
+      "benchmark_name": "nemotron-nano-9b-v2",
+      "params_b": 9.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 46.6,
+          "prompt_tps": 345.0,
+          "peak_memory_gib": 10.33
+        },
+        "m5-max-128": {
+          "generation_tps": 72.5,
+          "prompt_tps": 1478.1,
+          "peak_memory_gib": 10.33
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/NVIDIA-Nemotron-Nano-9B-v2-6bit": {
+      "benchmark_name": "nemotron-nano-9b-v2",
+      "params_b": 9.0,
+      "thinking": true,
+      "benchmarks": {
+        "m5-max-128": {
+          "generation_tps": 52.3,
+          "prompt_tps": 1385.0,
+          "peak_memory_gib": 12.49
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Nemotron-Cascade-2-30B-A3B-4bit": {
+      "benchmark_name": "nemotron-cascade-2-30b-a3b",
+      "params_b": 30.0,
+      "thinking": true
+    },
+    "mlx-community/Nemotron-Cascade-2-30B-A3B-8bit": {
+      "benchmark_name": "nemotron-cascade-2-30b-a3b",
+      "params_b": 30.0,
+      "thinking": true
+    },
+    "mlx-community/Qwen3.5-0.8B-4bit": {
+      "benchmark_name": "qwen-3.5-0.8b",
+      "params_b": 0.8,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 273.3,
+          "prompt_tps": 2912.9,
+          "peak_memory_gib": 3.33
+        },
+        "m5-max-128": {
+          "generation_tps": 397.9,
+          "prompt_tps": 7596.3,
+          "peak_memory_gib": 3.33
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.71,
+        "by_category": {
+          "coding": 0.85,
+          "instruction_following": 0.88,
+          "math": 0.0,
+          "reasoning": 0.62,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-0.8B-8bit": {
+      "benchmark_name": "qwen-3.5-0.8b",
+      "params_b": 0.8,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 194.5,
+          "prompt_tps": 2810.7,
+          "peak_memory_gib": 3.7
+        },
+        "m5-max-128": {
+          "generation_tps": 298.6,
+          "prompt_tps": 7509.1,
+          "peak_memory_gib": 3.7
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.71,
+        "by_category": {
+          "coding": 0.85,
+          "instruction_following": 0.88,
+          "math": 0.0,
+          "reasoning": 0.62,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-2B-4bit": {
+      "benchmark_name": "qwen-3.5-2b",
+      "params_b": 2.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 141.9,
+          "prompt_tps": 1445.8,
+          "peak_memory_gib": 4.2
+        },
+        "m5-max-128": {
+          "generation_tps": 237.0,
+          "prompt_tps": 4856.4,
+          "peak_memory_gib": 4.2
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.69,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-2B-8bit": {
+      "benchmark_name": "qwen-3.5-2b",
+      "params_b": 2.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 92.9,
+          "prompt_tps": 1404.4,
+          "peak_memory_gib": 5.14
+        },
+        "m5-max-128": {
+          "generation_tps": 157.2,
+          "prompt_tps": 3822.8,
+          "peak_memory_gib": 5.14
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.69,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-2B-bf16": {
+      "benchmark_name": "qwen-3.5-2b",
+      "params_b": 2.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 60.9,
+          "prompt_tps": 1723.2,
+          "peak_memory_gib": 5.11
+        },
+        "m5-max-128": {
+          "generation_tps": 29.2,
+          "prompt_tps": 2400.3,
+          "peak_memory_gib": 7.14
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.69,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-4B-4bit": {
+      "benchmark_name": "qwen-3.5-4b",
+      "params_b": 4.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 66.8,
+          "prompt_tps": 583.6,
+          "peak_memory_gib": 6.38
+        },
+        "m5-max-128": {
+          "generation_tps": 131.1,
+          "prompt_tps": 2166.2,
+          "peak_memory_gib": 6.38
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 0.96,
+          "instruction_following": 0.77,
+          "math": 1.0,
+          "reasoning": 0.74,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-4B-8bit": {
+      "benchmark_name": "qwen-3.5-4b",
+      "params_b": 4.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 42.9,
+          "prompt_tps": 591.4,
+          "peak_memory_gib": 8.48
+        },
+        "m5-max-128": {
+          "generation_tps": 85.7,
+          "prompt_tps": 1908.9,
+          "peak_memory_gib": 8.48
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 0.96,
+          "instruction_following": 0.77,
+          "math": 1.0,
+          "reasoning": 0.74,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-4B-bf16": {
+      "benchmark_name": "qwen-3.5-4b",
+      "params_b": 4.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 27.4,
+          "prompt_tps": 709.7,
+          "peak_memory_gib": 10.24
+        },
+        "m5-max-128": {
+          "generation_tps": 12.6,
+          "prompt_tps": 1304.1,
+          "peak_memory_gib": 12.32
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.85,
+        "by_category": {
+          "coding": 0.96,
+          "instruction_following": 0.77,
+          "math": 1.0,
+          "reasoning": 0.74,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-9B-4bit": {
+      "benchmark_name": "qwen-3.5-9b",
+      "params_b": 9.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 38.2,
+          "prompt_tps": 337.4,
+          "peak_memory_gib": 8.99
+        },
+        "m5-max-128": {
+          "generation_tps": 78.9,
+          "prompt_tps": 1428.3,
+          "peak_memory_gib": 8.99
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-9B-8bit": {
+      "benchmark_name": "qwen-3.5-9b",
+      "params_b": 9.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 24.3,
+          "prompt_tps": 335.2,
+          "peak_memory_gib": 13.39
+        },
+        "m5-max-128": {
+          "generation_tps": 48.9,
+          "prompt_tps": 1215.4,
+          "peak_memory_gib": 13.39
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-9B-bf16": {
+      "benchmark_name": "qwen-3.5-9b",
+      "params_b": 9.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 15.0,
+          "prompt_tps": 397.6,
+          "peak_memory_gib": 19.74
+        },
+        "m5-max-128": {
+          "generation_tps": 6.1,
+          "prompt_tps": 842.4,
+          "peak_memory_gib": 23.8
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.98,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 1.0,
+          "reasoning": 0.92,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-27B-4bit": {
+      "benchmark_name": "qwen-3.5-27b",
+      "params_b": 27.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 11.8,
+          "prompt_tps": 101.8,
+          "peak_memory_gib": 22.08
+        },
+        "m5-max-128": {
+          "generation_tps": 23.9,
+          "prompt_tps": 367.5,
+          "peak_memory_gib": 22.08
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.94,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 0.89,
+          "math": 0.95,
+          "reasoning": 0.96,
+          "writing": 0.86
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-27B-8bit": {
+      "benchmark_name": "qwen-3.5-27b",
+      "params_b": 27.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 7.3,
+          "prompt_tps": 94.0,
+          "peak_memory_gib": 35.53
+        },
+        "m5-max-128": {
+          "generation_tps": 14.5,
+          "prompt_tps": 397.2,
+          "peak_memory_gib": 35.53
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.94,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 0.89,
+          "math": 0.95,
+          "reasoning": 0.96,
+          "writing": 0.86
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-27B-bf16": {
+      "benchmark_name": "qwen-3.5-27b",
+      "params_b": 27.0,
+      "thinking": true,
+      "benchmarks": {
+        "m5-max-128": {
+          "generation_tps": 2.0,
+          "prompt_tps": 242.0,
+          "peak_memory_gib": 61.66
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.94,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 0.89,
+          "math": 0.95,
+          "reasoning": 0.96,
+          "writing": 0.86
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-35B-A3B-4bit": {
+      "benchmark_name": "qwen-3.5-35b-a3b",
+      "params_b": 35.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 25.4,
+          "prompt_tps": 553.7,
+          "peak_memory_gib": 23.72
+        },
+        "m5-max-128": {
+          "generation_tps": 50.0,
+          "prompt_tps": 1681.6,
+          "peak_memory_gib": 23.72
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.86,
+        "by_category": {
+          "coding": 0.97,
+          "instruction_following": 0.76,
+          "math": 0.89,
+          "reasoning": 0.79,
+          "writing": 0.92
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-35B-A3B-8bit": {
+      "benchmark_name": "qwen-3.5-35b-a3b",
+      "params_b": 35.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 22.2,
+          "prompt_tps": 539.2,
+          "peak_memory_gib": 41.04
+        },
+        "m5-max-128": {
+          "generation_tps": 45.0,
+          "prompt_tps": 1472.9,
+          "peak_memory_gib": 41.04
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.86,
+        "by_category": {
+          "coding": 0.97,
+          "instruction_following": 0.76,
+          "math": 0.89,
+          "reasoning": 0.79,
+          "writing": 0.92
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-27B-Claude-Opus-Distilled-4bit": {
+      "benchmark_name": "qwen-3.5-27b-claude-opus-distilled",
+      "params_b": 27.0,
+      "thinking": true,
+      "benchmarks": {
+        "m4-pro-64": {
+          "generation_tps": 15.7,
+          "prompt_tps": 117.2,
+          "peak_memory_gib": 18.59
+        },
+        "m5-max-128": {
+          "generation_tps": 27.2,
+          "prompt_tps": 394.8,
+          "peak_memory_gib": 18.59
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.94,
+        "by_category": {
+          "coding": 0.93,
+          "instruction_following": 0.93,
+          "math": 1.0,
+          "reasoning": 0.95,
+          "writing": 0.88
+        }
+      }
+    },
+    "mlx-community/Qwen3.5-27B-Claude-Opus-Distilled-8bit": {
+      "benchmark_name": "qwen-3.5-27b-claude-opus-distilled",
+      "params_b": 27.0,
+      "thinking": true,
+      "benchmarks": {
+        "m5-max-128": {
+          "generation_tps": 17.3,
+          "prompt_tps": 358.5,
+          "peak_memory_gib": 32.04
+        }
+      },
+      "quality": {
+        "overall_pass_rate": 0.94,
+        "by_category": {
+          "coding": 0.93,
+          "instruction_following": 0.93,
+          "math": 1.0,
+          "reasoning": 0.95,
+          "writing": 0.88
+        }
+      }
+    },
+    "mlx-community/gemma-3-27b-it-4bit": {
+      "benchmark_name": "gemma-3-27b-it",
+      "params_b": 27.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.92,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.89,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-27b-it-8bit": {
+      "benchmark_name": "gemma-3-27b-it",
+      "params_b": 27.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.92,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.89,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/gemma-3-27b-it-bf16": {
+      "benchmark_name": "gemma-3-27b-it",
+      "params_b": 27.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.92,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.67,
+          "reasoning": 0.89,
+          "writing": 1.0
+        }
+      }
+    },
+    "mlx-community/Qwen3-32B-4bit": {
+      "benchmark_name": "qwen-3-32B-it",
+      "params_b": 32.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.31,
+        "by_category": {
+          "coding": 0.0,
+          "instruction_following": 0.56,
+          "math": 0.0,
+          "reasoning": 0.0,
+          "writing": 0.83
+        }
+      }
+    },
+    "mlx-community/Qwen3-32B-8bit": {
+      "benchmark_name": "qwen-3-32B-it",
+      "params_b": 32.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.31,
+        "by_category": {
+          "coding": 0.0,
+          "instruction_following": 0.56,
+          "math": 0.0,
+          "reasoning": 0.0,
+          "writing": 0.83
+        }
+      }
+    },
+    "mlx-community/Qwen3-32B-bf16": {
+      "benchmark_name": "qwen-3-32B-it",
+      "params_b": 32.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.31,
+        "by_category": {
+          "coding": 0.0,
+          "instruction_following": 0.56,
+          "math": 0.0,
+          "reasoning": 0.0,
+          "writing": 0.83
+        }
+      }
+    },
+    "mlx-community/Llama-3.3-70B-Instruct-4bit": {
+      "benchmark_name": "llama-3.3-70b-it",
+      "params_b": 70.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.91,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.83,
+          "reasoning": 1.0,
+          "writing": 0.75
+        }
+      }
+    },
+    "mlx-community/Llama-3.3-70B-Instruct-8bit": {
+      "benchmark_name": "llama-3.3-70b-it",
+      "params_b": 70.0,
+      "thinking": false,
+      "quality": {
+        "overall_pass_rate": 0.91,
+        "by_category": {
+          "coding": 1.0,
+          "instruction_following": 1.0,
+          "math": 0.83,
+          "reasoning": 1.0,
+          "writing": 0.75
+        }
+      }
+    }
+  }
+}

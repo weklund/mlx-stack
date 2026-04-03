@@ -3,6 +3,7 @@ name: Qwen 3.5 32B
 family: Qwen 3.5
 params_b: 32.0
 architecture: transformer
+gated: true
 min_mlx_lm_version: "0.22.0"
 sources:
   int4:

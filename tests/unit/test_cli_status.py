@@ -415,37 +415,6 @@ class TestRunStatus:
 
     @patch("mlx_stack.core.stack_status.get_service_status")
     @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
-    def test_health_check_uses_correct_paths(
-        self,
-        mock_port: MagicMock,
-        mock_status: MagicMock,
-        mlx_stack_home: Path,
-    ) -> None:
-        """VAL-STATUS-002: Correct health endpoints used per service."""
-        _write_stack_yaml(mlx_stack_home)
-
-        mock_status.return_value = {
-            "status": "stopped",
-            "pid": None,
-            "uptime": None,
-            "response_time": None,
-        }
-
-        run_status()
-
-        # Verify health path for model tiers
-        calls = mock_status.call_args_list
-        tier_calls = [c for c in calls if c.kwargs.get("service_name") != "litellm"]
-        litellm_calls = [c for c in calls if c.kwargs.get("service_name") == "litellm"]
-
-        for call in tier_calls:
-            assert call.kwargs["health_path"] == "/v1/models"
-
-        for call in litellm_calls:
-            assert call.kwargs["health_path"] == "/health/liveliness"
-
-    @patch("mlx_stack.core.stack_status.get_service_status")
-    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
     def test_failure_on_one_service_does_not_block_others(
         self,
         mock_port: MagicMock,

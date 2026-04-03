@@ -25,6 +25,7 @@ from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.profile import profile as profile_command
 from mlx_stack.cli.pull import pull as pull_command
 from mlx_stack.cli.recommend import recommend as recommend_command
+from mlx_stack.cli.setup import setup as setup_command
 from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
 from mlx_stack.cli.watch import watch as watch_command
@@ -73,6 +74,7 @@ class RichGroup(click.Group):
             }
 
             command_categories = {
+                "setup": "Setup & Configuration",
                 "profile": "Setup & Configuration",
                 "config": "Setup & Configuration",
                 "init": "Setup & Configuration",
@@ -165,6 +167,7 @@ def cli(ctx: click.Context) -> None:
 # These will be replaced by real implementations in subsequent features.
 
 
+cli.add_command(setup_command, "setup")
 cli.add_command(profile_command, "profile")
 cli.add_command(recommend_command, "recommend")
 cli.add_command(init_command, "init")
