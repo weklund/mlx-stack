@@ -218,8 +218,10 @@ class TestDiscoverModels:
 
         qwen9b = next(m for m in models if "9B" in m.display_name and "Qwen3.5" in m.display_name)
         assert qwen9b.has_benchmark is True
-        assert qwen9b.gen_tps is not None and qwen9b.gen_tps > 0
-        assert qwen9b.memory_gb is not None and qwen9b.memory_gb > 0
+        assert qwen9b.gen_tps is not None
+        assert qwen9b.gen_tps > 0
+        assert qwen9b.memory_gb is not None
+        assert qwen9b.memory_gb > 0
         assert qwen9b.quality_overall is not None
 
     @patch("mlx_stack.core.discovery.load_benchmark_data")

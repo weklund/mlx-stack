@@ -12,15 +12,17 @@ This is the infrastructure module used by up, down, and status commands.
 
 from __future__ import annotations
 
+import contextlib
 import fcntl
 import os
 import signal
 import subprocess
 import time
-from contextlib import contextmanager
+from collections.abc import Iterator
+from contextlib import contextmanager, suppress
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any, Iterator
+from typing import Any
 
 import httpx
 import psutil
@@ -187,10 +189,7 @@ def read_pid_file(service_name: str) -> int | None:
     try:
         return int(content)
     except ValueError:
-        msg = (
-            f"PID file for '{service_name}' contains non-numeric content: "
-            f"{content!r}"
-        )
+        msg = f"PID file for '{service_name}' contains non-numeric content: {content!r}"
         raise ProcessError(msg) from None
 
 
@@ -205,10 +204,8 @@ def remove_pid_file(service_name: str) -> bool:
     """
     pid_path = get_pids_dir() / f"{service_name}.pid"
     if pid_path.exists():
-        try:
+        with contextlib.suppress(OSError):
             pid_path.unlink()
-        except OSError:
-            pass  # Best-effort removal
         return True
     return False
 
@@ -325,10 +322,8 @@ def acquire_lock() -> Iterator[None]:
     try:
         yield
     finally:
-        try:
+        with suppress(OSError):
             fcntl.flock(fd, fcntl.LOCK_UN)
-        except OSError:
-            pass
         os.close(fd)
 
 
@@ -436,10 +431,7 @@ def wait_for_healthy(
     if last_result is None:
         last_result = HealthCheckResult(healthy=False, response_time=None, status_code=None)
 
-    msg = (
-        f"Health check timed out after {total_timeout}s waiting for "
-        f"http://{host}:{port}{path}"
-    )
+    msg = f"Health check timed out after {total_timeout}s waiting for http://{host}:{port}{path}"
     raise HealthCheckError(msg)
 
 
@@ -525,7 +517,6 @@ def check_port_conflict(port: int) -> tuple[int, str] | None:
 
     # Port is occupied but we can't identify the owner
     return (0, "<unknown>")
-
 
 
 def detect_port_conflict(port: int) -> None:
@@ -617,10 +608,8 @@ def start_service(
             proc.terminate()
             proc.wait(timeout=5)
         except Exception:
-            try:
+            with suppress(Exception):
                 proc.kill()
-            except Exception:
-                pass
         log_file.close()
         msg = (
             f"Could not write PID file for '{service_name}' after "

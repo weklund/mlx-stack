@@ -35,13 +35,14 @@ even on assertion failures.
 
 from __future__ import annotations
 
+import contextlib
 import os
 import signal
 import socket
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -136,10 +137,8 @@ def _kill_processes_on_port(port: int) -> None:
             for pid_str in pids:
                 pid_str = pid_str.strip()
                 if pid_str.isdigit():
-                    try:
+                    with contextlib.suppress(OSError):
                         os.kill(int(pid_str), signal.SIGKILL)
-                    except OSError:
-                        pass
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         pass
 
@@ -165,7 +164,7 @@ def _build_minimal_stack_yaml() -> dict[str, Any]:
         "name": "default",
         "hardware_profile": "test",
         "intent": "balanced",
-        "created": datetime.now(timezone.utc).isoformat(),
+        "created": datetime.now(UTC).isoformat(),
         "tiers": [
             {
                 "name": TIER_NAME,
@@ -286,17 +285,14 @@ class TestInferenceE2E:
                 model_id=MODEL_ID,
                 quant=MODEL_QUANT,
             )
-            assert pull_result.local_path.exists(), (
-                f"Model not found at {pull_result.local_path}"
-            )
+            assert pull_result.local_path.exists(), f"Model not found at {pull_result.local_path}"
 
             # ---- Step 3: Up — start real services ----
             up_result = run_up()
 
             # Verify at least one tier is healthy
             healthy_tiers = [
-                t for t in up_result.tiers
-                if t.status in ("healthy", "already-running")
+                t for t in up_result.tiers if t.status in ("healthy", "already-running")
             ]
             assert len(healthy_tiers) > 0, (
                 f"No healthy tiers after up. "
@@ -306,8 +302,7 @@ class TestInferenceE2E:
             # Verify LiteLLM is healthy
             assert up_result.litellm is not None, "LiteLLM result missing"
             assert up_result.litellm.status in ("healthy", "already-running"), (
-                f"LiteLLM not healthy: {up_result.litellm.status} "
-                f"({up_result.litellm.error})"
+                f"LiteLLM not healthy: {up_result.litellm.status} ({up_result.litellm.error})"
             )
 
             # ---- Step 4: Inference via LiteLLM proxy ----
@@ -381,10 +376,8 @@ class TestInferenceE2E:
         finally:
             # ---- Cleanup: belt-and-suspenders ----
             # Always attempt run_down() to clean up services
-            try:
+            with contextlib.suppress(Exception):
                 run_down()
-            except Exception:  # noqa: BLE001 — cleanup must not raise
-                pass
 
             # Kill any remaining processes on ports 8000 and 4000
             _kill_processes_on_port(8000)

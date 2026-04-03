@@ -6,6 +6,7 @@ trigger on-demand rotation, and view archived logs.
 
 from __future__ import annotations
 
+import contextlib
 import sys
 
 import click
@@ -78,7 +79,7 @@ def _display_rotation_results(results: list) -> None:
             out.print(f"[green]✓[/green] {result.service}: rotated")
             any_rotated = True
         else:
-            out.print(f"[dim]–[/dim] {result.service}: no rotation needed")
+            out.print(f"[dim]-[/dim] {result.service}: no rotation needed")
 
     if not results:
         out.print(Text("No log files found to rotate.", style="yellow"))
@@ -213,11 +214,8 @@ def logs(
     # Handle --follow mode
     if follow:
         num = tail_lines if tail_lines is not None else DEFAULT_TAIL_LINES
-        try:
+        with contextlib.suppress(KeyboardInterrupt):
             follow_log(log_path, num_lines=num, output_callback=click.echo)
-        except KeyboardInterrupt:
-            # Belt-and-suspenders: ensure clean exit
-            pass
         return
 
     # Default: show tail of log

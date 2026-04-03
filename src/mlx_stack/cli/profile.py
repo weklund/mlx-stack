@@ -52,12 +52,8 @@ def profile() -> None:
 
     if hw.is_estimate:
         out.print()
-        out.print(
-            "[yellow]⚠ Bandwidth is estimated for unknown chip.[/yellow]"
-        )
-        out.print(
-            "  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements."
-        )
+        out.print("[yellow]⚠ Bandwidth is estimated for unknown chip.[/yellow]")
+        out.print("  Run [bold]mlx-stack bench --save[/bold] to calibrate with real measurements.")
 
     out.print()
     from mlx_stack.core.paths import get_profile_path

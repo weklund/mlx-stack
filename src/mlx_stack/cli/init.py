@@ -64,13 +64,10 @@ def _display_summary(result: dict) -> None:
     budget_gb = result["memory_budget_gb"]
     total_memory_gb = result.get("total_memory_gb", 0.0)
     out.print(
-        f"[dim]Hardware: {profile.chip} ({profile.memory_gb} GB) · "
-        f"Budget: {budget_gb:.1f} GB[/dim]"
+        f"[dim]Hardware: {profile.chip} ({profile.memory_gb} GB) · Budget: {budget_gb:.1f} GB[/dim]"
     )
     if total_memory_gb > 0:
-        out.print(
-            f"[dim]Total estimated memory: {total_memory_gb:.1f} GB[/dim]"
-        )
+        out.print(f"[dim]Total estimated memory: {total_memory_gb:.1f} GB[/dim]")
 
     # Warnings (e.g., memory budget exceeded with --add)
     init_warnings = result.get("warnings", [])
@@ -83,8 +80,7 @@ def _display_summary(result: dict) -> None:
     if stack.get("cloud_fallback"):
         out.print()
         out.print(
-            "[bold green]☁ Cloud Fallback[/bold green]  "
-            "Premium tier via OpenRouter configured"
+            "[bold green]☁ Cloud Fallback[/bold green]  Premium tier via OpenRouter configured"
         )
 
     # Missing models warning

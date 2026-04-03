@@ -56,16 +56,49 @@ def _model(
 
 
 # A realistic set of models for testing scoring and selection
-SMALL_FAST = _model("SmallFast-2B", "mlx-community/SmallFast-2B-4bit", params_b=2.0,
-                     gen_tps=120.0, memory_gb=1.5, quality_overall=0.60, tool_calling=True)
-MEDIUM_QUALITY = _model("MedQuality-9B", "mlx-community/MedQuality-9B-4bit", params_b=9.0,
-                        gen_tps=50.0, memory_gb=5.5, quality_overall=0.95, tool_calling=True)
-LARGE_SLOW = _model("LargeSlow-27B", "mlx-community/LargeSlow-27B-4bit", params_b=27.0,
-                     gen_tps=20.0, memory_gb=16.0, quality_overall=0.98)
-TINY_MODEL = _model("Tiny-0.5B", "mlx-community/Tiny-0.5B-4bit", params_b=0.5,
-                     gen_tps=180.0, memory_gb=0.5, quality_overall=0.40)
-NO_BENCHMARK = _model("Unknown-7B", "mlx-community/Unknown-7B-4bit", params_b=7.0,
-                       gen_tps=None, memory_gb=4.2, quality_overall=None, has_benchmark=False)
+SMALL_FAST = _model(
+    "SmallFast-2B",
+    "mlx-community/SmallFast-2B-4bit",
+    params_b=2.0,
+    gen_tps=120.0,
+    memory_gb=1.5,
+    quality_overall=0.60,
+    tool_calling=True,
+)
+MEDIUM_QUALITY = _model(
+    "MedQuality-9B",
+    "mlx-community/MedQuality-9B-4bit",
+    params_b=9.0,
+    gen_tps=50.0,
+    memory_gb=5.5,
+    quality_overall=0.95,
+    tool_calling=True,
+)
+LARGE_SLOW = _model(
+    "LargeSlow-27B",
+    "mlx-community/LargeSlow-27B-4bit",
+    params_b=27.0,
+    gen_tps=20.0,
+    memory_gb=16.0,
+    quality_overall=0.98,
+)
+TINY_MODEL = _model(
+    "Tiny-0.5B",
+    "mlx-community/Tiny-0.5B-4bit",
+    params_b=0.5,
+    gen_tps=180.0,
+    memory_gb=0.5,
+    quality_overall=0.40,
+)
+NO_BENCHMARK = _model(
+    "Unknown-7B",
+    "mlx-community/Unknown-7B-4bit",
+    params_b=7.0,
+    gen_tps=None,
+    memory_gb=4.2,
+    quality_overall=None,
+    has_benchmark=False,
+)
 
 ALL_MODELS = [SMALL_FAST, MEDIUM_QUALITY, LARGE_SLOW, TINY_MODEL, NO_BENCHMARK]
 
@@ -106,7 +139,9 @@ class TestScoreAndFilter:
     def test_high_quality_model_ranks_higher_in_balanced(self) -> None:
         """In balanced intent, a high-quality model outranks a fast-but-low-quality one."""
         scored = score_and_filter(
-            [SMALL_FAST, MEDIUM_QUALITY], "balanced", budget_gb=20.0,
+            [SMALL_FAST, MEDIUM_QUALITY],
+            "balanced",
+            budget_gb=20.0,
         )
 
         # MEDIUM_QUALITY has 0.95 quality vs SMALL_FAST's 0.60
@@ -115,12 +150,22 @@ class TestScoreAndFilter:
 
     def test_tool_calling_model_ranks_higher_in_agent_fleet(self) -> None:
         """In agent-fleet intent, tool calling capability boosts ranking."""
-        no_tools = _model("NoTools-8B", "mlx-community/NoTools-8B-4bit",
-                          gen_tps=50.0, memory_gb=5.0, quality_overall=0.90,
-                          tool_calling=False)
-        with_tools = _model("WithTools-8B", "mlx-community/WithTools-8B-4bit",
-                            gen_tps=50.0, memory_gb=5.0, quality_overall=0.90,
-                            tool_calling=True)
+        no_tools = _model(
+            "NoTools-8B",
+            "mlx-community/NoTools-8B-4bit",
+            gen_tps=50.0,
+            memory_gb=5.0,
+            quality_overall=0.90,
+            tool_calling=False,
+        )
+        with_tools = _model(
+            "WithTools-8B",
+            "mlx-community/WithTools-8B-4bit",
+            gen_tps=50.0,
+            memory_gb=5.0,
+            quality_overall=0.90,
+            tool_calling=True,
+        )
 
         scored = score_and_filter([no_tools, with_tools], "agent-fleet", budget_gb=20.0)
 
@@ -149,7 +194,9 @@ class TestSelectDefaults:
     def test_selects_up_to_two_models_within_budget(self) -> None:
         """Standard + fast are selected if both fit."""
         scored = score_and_filter(
-            [SMALL_FAST, MEDIUM_QUALITY, TINY_MODEL], "balanced", budget_gb=10.0,
+            [SMALL_FAST, MEDIUM_QUALITY, TINY_MODEL],
+            "balanced",
+            budget_gb=10.0,
         )
 
         result = select_defaults(scored, budget_gb=10.0)
@@ -170,7 +217,9 @@ class TestSelectDefaults:
     def test_single_model_when_budget_tight(self) -> None:
         """Only one model selected if budget only fits one."""
         scored = score_and_filter(
-            [MEDIUM_QUALITY, SMALL_FAST], "balanced", budget_gb=6.0,
+            [MEDIUM_QUALITY, SMALL_FAST],
+            "balanced",
+            budget_gb=6.0,
         )
 
         result = select_defaults(scored, budget_gb=6.0)
@@ -182,7 +231,9 @@ class TestSelectDefaults:
     def test_highest_quality_is_recommended(self) -> None:
         """The top composite_score model is always recommended."""
         scored = score_and_filter(
-            [SMALL_FAST, MEDIUM_QUALITY], "balanced", budget_gb=20.0,
+            [SMALL_FAST, MEDIUM_QUALITY],
+            "balanced",
+            budget_gb=20.0,
         )
 
         result = select_defaults(scored, budget_gb=20.0)
@@ -193,7 +244,9 @@ class TestSelectDefaults:
     def test_fastest_model_also_recommended_when_different(self) -> None:
         """If highest quality != fastest, both are recommended."""
         scored = score_and_filter(
-            [SMALL_FAST, MEDIUM_QUALITY], "balanced", budget_gb=20.0,
+            [SMALL_FAST, MEDIUM_QUALITY],
+            "balanced",
+            budget_gb=20.0,
         )
 
         result = select_defaults(scored, budget_gb=20.0)
@@ -237,10 +290,12 @@ class TestAssignTiers:
 
     def test_two_models_get_standard_and_fast(self) -> None:
         """Two models → 'standard' (highest composite) and 'fast' (highest speed)."""
-        tiers = assign_tiers([
-            self._scored(MEDIUM_QUALITY, score=0.9),
-            self._scored(SMALL_FAST, score=0.7),
-        ])
+        tiers = assign_tiers(
+            [
+                self._scored(MEDIUM_QUALITY, score=0.9),
+                self._scored(SMALL_FAST, score=0.7),
+            ]
+        )
 
         assert len(tiers) == 2
         tier_names = {t.tier_name for t in tiers}
@@ -251,11 +306,13 @@ class TestAssignTiers:
 
     def test_three_models_third_gets_added_tier(self) -> None:
         """Third model gets 'added-N' tier name."""
-        tiers = assign_tiers([
-            self._scored(MEDIUM_QUALITY, score=0.9),
-            self._scored(SMALL_FAST, score=0.7),
-            self._scored(TINY_MODEL, score=0.5),
-        ])
+        tiers = assign_tiers(
+            [
+                self._scored(MEDIUM_QUALITY, score=0.9),
+                self._scored(SMALL_FAST, score=0.7),
+                self._scored(TINY_MODEL, score=0.5),
+            ]
+        )
 
         assert len(tiers) == 3
         tier_names = [t.tier_name for t in tiers]
@@ -275,7 +332,7 @@ class TestAssignTiers:
 class TestGenerateConfig:
     """generate_config writes valid stack and LiteLLM YAML files."""
 
-    @pytest.fixture()
+    @pytest.fixture
     def _mock_home(self, mlx_stack_home: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         """Use isolated mlx_stack_home and mock config reads."""
         monkeypatch.setattr(
@@ -302,8 +359,11 @@ class TestGenerateConfig:
             TierMapping(tier_name="fast", model=SMALL_FAST),
         ]
 
-        stack_path, litellm_path = generate_config(
-            self._profile(), "balanced", tiers, budget_gb=25.0,
+        stack_path, _litellm_path = generate_config(
+            self._profile(),
+            "balanced",
+            tiers,
+            budget_gb=25.0,
         )
 
         assert stack_path.exists()
@@ -325,7 +385,10 @@ class TestGenerateConfig:
         ]
 
         _, litellm_path = generate_config(
-            self._profile(), "balanced", tiers, budget_gb=25.0,
+            self._profile(),
+            "balanced",
+            tiers,
+            budget_gb=25.0,
         )
 
         assert litellm_path.exists()
@@ -340,7 +403,10 @@ class TestGenerateConfig:
         tiers = [TierMapping(tier_name="standard", model=SMALL_FAST)]  # has tool_calling=True
 
         stack_path, _ = generate_config(
-            self._profile(), "balanced", tiers, budget_gb=25.0,
+            self._profile(),
+            "balanced",
+            tiers,
+            budget_gb=25.0,
         )
 
         stack = yaml.safe_load(stack_path.read_text())
@@ -353,7 +419,10 @@ class TestGenerateConfig:
         tiers = [TierMapping(tier_name="standard", model=no_tools)]
 
         stack_path, _ = generate_config(
-            self._profile(), "balanced", tiers, budget_gb=25.0,
+            self._profile(),
+            "balanced",
+            tiers,
+            budget_gb=25.0,
         )
 
         stack = yaml.safe_load(stack_path.read_text())
@@ -366,7 +435,10 @@ class TestGenerateConfig:
         tiers = [TierMapping(tier_name=f"tier-{i}", model=TINY_MODEL) for i in range(5)]
 
         stack_path, _ = generate_config(
-            self._profile(), "balanced", tiers, budget_gb=25.0,
+            self._profile(),
+            "balanced",
+            tiers,
+            budget_gb=25.0,
         )
 
         stack = yaml.safe_load(stack_path.read_text())

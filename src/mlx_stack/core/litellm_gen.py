@@ -149,9 +149,7 @@ def generate_litellm_config(
     # Cloud fallback
     has_cloud = bool(openrouter_key)
     if has_cloud:
-        model_list.append(
-            _build_cloud_entry("premium", "openrouter/openai/gpt-4o")
-        )
+        model_list.append(_build_cloud_entry("premium", "openrouter/openai/gpt-4o"))
         model_list.append(
             _build_cloud_entry("premium", "openrouter/anthropic/claude-sonnet-4-20250514")
         )

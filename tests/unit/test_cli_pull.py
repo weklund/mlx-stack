@@ -758,9 +758,7 @@ class TestRunDownloadUsesSnapshotDownload:
         console = Console(file=StringIO())
         _run_download("test/repo", local_dir, console)
 
-        mock_snapshot.assert_called_once_with(
-            repo_id="test/repo", local_dir=str(local_dir)
-        )
+        mock_snapshot.assert_called_once_with(repo_id="test/repo", local_dir=str(local_dir))
 
     @patch("mlx_stack.core.pull.snapshot_download", side_effect=Exception("Repo not found"))
     def test_wraps_exception_in_download_error(
@@ -1341,9 +1339,7 @@ class TestGatedModelHandling:
         mock_response.status_code = 403
         mock_response.headers = {}
         mock_response.url = "https://huggingface.co/test/repo"
-        mock_snapshot.side_effect = HfGatedRepoError(
-            "gated repo", response=mock_response
-        )
+        mock_snapshot.side_effect = HfGatedRepoError("gated repo", response=mock_response)
 
         local_dir = tmp_path / "model"
         local_dir.mkdir()

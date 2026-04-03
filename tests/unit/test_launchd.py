@@ -46,7 +46,7 @@ from mlx_stack.core.launchd import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     """Create a minimal stack definition (prerequisite for install)."""
     stacks_dir = mlx_stack_home / "stacks"
@@ -75,7 +75,7 @@ def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     return stack
 
 
-@pytest.fixture()
+@pytest.fixture
 def plist_dir(tmp_path: Path) -> Path:
     """Provide a temporary LaunchAgents directory."""
     d = tmp_path / "Library" / "LaunchAgents"
@@ -83,7 +83,7 @@ def plist_dir(tmp_path: Path) -> Path:
     return d
 
 
-@pytest.fixture()
+@pytest.fixture
 def plist_path(plist_dir: Path) -> Path:
     """Provide a plist file path."""
     return plist_dir / PLIST_FILENAME
@@ -237,10 +237,8 @@ class TestResolveMlxStackBinary:
             # Chain: Path(sys.executable).parent
             mock_path_instance = MagicMock()
             mock_path_instance.parent = mock_parent
-            mock_path_cls.side_effect = (
-                lambda x: mock_path_instance
-                if x == "/opt/venv/bin/python"
-                else MagicMock()
+            mock_path_cls.side_effect = lambda x: (
+                mock_path_instance if x == "/opt/venv/bin/python" else MagicMock()
             )
 
             result = _resolve_mlx_stack_binary()
@@ -296,16 +294,12 @@ class TestBuildEnvironmentVariables:
         count = components.count("/usr/local/bin")
         assert count == 1
 
-    def test_mlx_stack_home_not_set_by_default(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_mlx_stack_home_not_set_by_default(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.delenv("MLX_STACK_HOME", raising=False)
         env = _build_environment_variables("/usr/bin/mlx-stack")
         assert "MLX_STACK_HOME" not in env
 
-    def test_mlx_stack_home_included_when_set(
-        self, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_mlx_stack_home_included_when_set(self, monkeypatch: pytest.MonkeyPatch) -> None:
         monkeypatch.setenv("MLX_STACK_HOME", "/custom/home")
         env = _build_environment_variables("/usr/bin/mlx-stack")
         assert env["MLX_STACK_HOME"] == "/custom/home"
@@ -487,16 +481,12 @@ class TestUnloadAgent:
     def test_already_unloaded_is_nonfatal(self, plist_path: Path) -> None:
         """bootout returning 'No such process' should not raise."""
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=3, stderr="3: No such process"
-            )
+            mock_run.return_value = MagicMock(returncode=3, stderr="3: No such process")
             unload_agent(plist_path)  # Should not raise
 
     def test_other_failure_raises(self, plist_path: Path) -> None:
         with patch("subprocess.run") as mock_run:
-            mock_run.return_value = MagicMock(
-                returncode=1, stderr="Permission denied"
-            )
+            mock_run.return_value = MagicMock(returncode=1, stderr="Permission denied")
             with pytest.raises(LaunchdError, match="launchctl bootout failed"):
                 unload_agent(plist_path)
 
@@ -612,9 +602,7 @@ class TestGetAgentStatus:
 class TestInstallAgent:
     """Tests for install_agent."""
 
-    def test_fresh_install(
-        self, mlx_stack_home: Path, stack_definition: dict[str, Any]
-    ) -> None:
+    def test_fresh_install(self, mlx_stack_home: Path, stack_definition: dict[str, Any]) -> None:
         with (
             patch("mlx_stack.core.launchd.check_platform"),
             patch("mlx_stack.core.launchd.get_plist_path") as mock_get_path,
@@ -637,9 +625,7 @@ class TestInstallAgent:
         assert plist_data["ProgramArguments"][0] == "/usr/bin/mlx-stack"
         assert "watch" in plist_data["ProgramArguments"]
 
-    def test_reinstall(
-        self, mlx_stack_home: Path, stack_definition: dict[str, Any]
-    ) -> None:
+    def test_reinstall(self, mlx_stack_home: Path, stack_definition: dict[str, Any]) -> None:
         with (
             patch("mlx_stack.core.launchd.check_platform"),
             patch("mlx_stack.core.launchd.get_plist_path") as mock_get_path,
@@ -652,13 +638,11 @@ class TestInstallAgent:
             mock_get_path.return_value = mock_plist_path
             mock_write.return_value = mock_plist_path
 
-            path, was_reinstall = install_agent("/usr/bin/mlx-stack")
+            _path, was_reinstall = install_agent("/usr/bin/mlx-stack")
 
         assert was_reinstall is True
 
-    def test_creates_logs_dir(
-        self, mlx_stack_home: Path, stack_definition: dict[str, Any]
-    ) -> None:
+    def test_creates_logs_dir(self, mlx_stack_home: Path, stack_definition: dict[str, Any]) -> None:
         with (
             patch("mlx_stack.core.launchd.check_platform"),
             patch("mlx_stack.core.launchd.get_plist_path") as mock_get_path,
@@ -705,7 +689,7 @@ class TestInstallAgent:
             mock_write.return_value = mock_plist_path
 
             # Should not raise despite unload failure
-            path, was_reinstall = install_agent("/usr/bin/mlx-stack")
+            _path, was_reinstall = install_agent("/usr/bin/mlx-stack")
 
         assert was_reinstall is True
 

@@ -11,6 +11,7 @@ Provides reusable infrastructure for all integration test tiers:
 
 from __future__ import annotations
 
+import contextlib
 import os
 import shutil
 import signal
@@ -19,7 +20,7 @@ import subprocess
 import sys
 import time
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -65,7 +66,7 @@ def skip_insufficient_memory(min_gb: float) -> pytest.MarkDecorator:
             available < min_gb,
             reason=f"Requires {min_gb:.1f}GB free memory, have {available:.1f}GB",
         )
-    except Exception:  # noqa: BLE001
+    except Exception:
         return pytest.mark.skip(reason="Could not determine available memory")
 
 
@@ -75,7 +76,7 @@ def check_memory_or_skip(min_gb: float) -> None:
         available = psutil.virtual_memory().available / (1024**3)
         if available < min_gb:
             pytest.skip(f"Requires {min_gb:.1f}GB free memory, have {available:.1f}GB")
-    except Exception:  # noqa: BLE001
+    except Exception:
         pytest.skip("Could not determine available memory")
 
 
@@ -126,10 +127,8 @@ def kill_processes_on_port(port: int) -> None:
             for pid_str in result.stdout.strip().split("\n"):
                 pid_str = pid_str.strip()
                 if pid_str.isdigit():
-                    try:
+                    with contextlib.suppress(OSError):
                         os.kill(int(pid_str), signal.SIGKILL)
-                    except OSError:
-                        pass
     except (subprocess.TimeoutExpired, FileNotFoundError, OSError):
         pass
 
@@ -198,7 +197,7 @@ def catalog() -> list[CatalogEntry]:
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def integration_home(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -281,9 +280,13 @@ class ServiceManager:
         """
         flags = vllm_flags or {}
         cmd: list[str] = [
-            "vllm-mlx", "serve", model_source,
-            "--port", str(port),
-            "--host", "127.0.0.1",
+            "vllm-mlx",
+            "serve",
+            model_source,
+            "--port",
+            str(port),
+            "--host",
+            "127.0.0.1",
         ]
         if flags.get("continuous_batching"):
             cmd.append("--continuous-batching")
@@ -347,9 +350,12 @@ class ServiceManager:
         """
         cmd: list[str] = [
             "litellm",
-            "--config", str(config_path),
-            "--port", str(port),
-            "--host", "127.0.0.1",
+            "--config",
+            str(config_path),
+            "--port",
+            str(port),
+            "--host",
+            "127.0.0.1",
         ]
 
         logs_dir = self._mlx_home / "logs"
@@ -387,10 +393,8 @@ class ServiceManager:
         """Stop all managed services. Always safe to call multiple times."""
         for svc in reversed(self._services):
             if svc.pid is not None:
-                try:
+                with contextlib.suppress(OSError):
                     os.kill(svc.pid, signal.SIGTERM)
-                except OSError:
-                    pass
 
         # Give services time to shut down gracefully
         time.sleep(2)
@@ -398,10 +402,8 @@ class ServiceManager:
         # Force-kill anything still alive
         for svc in self._services:
             if svc.pid is not None:
-                try:
+                with contextlib.suppress(OSError):
                     os.kill(svc.pid, signal.SIGKILL)
-                except OSError:
-                    pass
             kill_processes_on_port(svc.port)
 
         # Wait for ports to be freed
@@ -449,7 +451,7 @@ def build_test_stack_yaml(
         "name": "default",
         "hardware_profile": hardware_profile,
         "intent": intent,
-        "created": datetime.now(timezone.utc).isoformat(),
+        "created": datetime.now(UTC).isoformat(),
         "tiers": tiers,
     }
 
@@ -467,16 +469,17 @@ def build_test_litellm_yaml(
     Returns:
         LiteLLM config dict ready for yaml.dump().
     """
-    model_list = []
-    for tier in tiers:
-        model_list.append({
+    model_list = [
+        {
             "model_name": tier["name"],
             "litellm_params": {
                 "model": f"openai/{tier['model']}",
                 "api_base": f"http://localhost:{tier['port']}/v1",
                 "api_key": "dummy",
             },
-        })
+        }
+        for tier in tiers
+    ]
 
     return {
         "model_list": model_list,

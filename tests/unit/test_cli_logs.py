@@ -27,9 +27,7 @@ def _create_log(logs_dir: Path, service: str, content: str = "") -> Path:
     return log_path
 
 
-def _create_archive(
-    logs_dir: Path, service: str, number: int, content: str
-) -> Path:
+def _create_archive(logs_dir: Path, service: str, number: int, content: str) -> Path:
     """Create a gzip archive for a service."""
     logs_dir.mkdir(parents=True, exist_ok=True)
     archive_path = logs_dir / f"{service}.log.{number}.gz"
@@ -377,9 +375,7 @@ class TestHelp:
 class TestEdgeCases:
     """Edge case tests."""
 
-    def test_service_argument_takes_precedence_over_flag(
-        self, mlx_stack_home: Path
-    ) -> None:
+    def test_service_argument_takes_precedence_over_flag(self, mlx_stack_home: Path) -> None:
         """Positional argument takes precedence over --service flag."""
         logs_dir = mlx_stack_home / "logs"
         _create_log(logs_dir, "fast", "fast content\n")

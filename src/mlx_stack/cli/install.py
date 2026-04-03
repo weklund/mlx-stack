@@ -42,9 +42,7 @@ def _display_status(status: AgentStatus) -> None:
     if not status.installed:
         out.print(Text("Status: not installed", style="dim"))
     elif status.running and status.pid is not None:
-        out.print(
-            Text(f"Status: installed and running (PID {status.pid})", style="green")
-        )
+        out.print(Text(f"Status: installed and running (PID {status.pid})", style="green"))
     else:
         out.print(Text("Status: installed but not running", style="yellow"))
 

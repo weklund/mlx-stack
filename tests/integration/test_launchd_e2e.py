@@ -25,6 +25,7 @@ A try/finally block guarantees cleanup even on assertion failures.
 
 from __future__ import annotations
 
+import contextlib
 import plistlib
 import shutil
 import subprocess
@@ -110,16 +111,14 @@ def _force_cleanup() -> None:
     plist_path = get_plist_path()
 
     # Try to unload via launchctl bootout
-    try:
+    with contextlib.suppress(Exception):
         unload_agent(plist_path)
-    except Exception:  # noqa: BLE001 — cleanup must not raise
-        pass
 
     # Remove plist file if it exists
     try:
         if plist_path.exists():
             plist_path.unlink()
-    except Exception:  # noqa: BLE001
+    except Exception:
         pass
 
 
@@ -144,9 +143,7 @@ class TestLaunchdE2ELifecycle:
         pytest -m integration tests/integration/test_launchd_e2e.py -v
     """
 
-    def test_full_lifecycle(
-        self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-    ) -> None:
+    def test_full_lifecycle(self, tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
         """Test install → status → uninstall lifecycle with real launchctl.
 
         Steps:
@@ -185,14 +182,12 @@ class TestLaunchdE2ELifecycle:
 
         try:
             # ---- Step 1: Install the agent ----
-            plist_path, was_reinstall = install_agent(binary_path)
+            _plist_path, was_reinstall = install_agent(binary_path)
             assert not was_reinstall, "Expected fresh install, not reinstall"
 
             # ---- Step 2: Verify plist file exists ----
             canonical_path = get_plist_path()
-            assert canonical_path.exists(), (
-                f"Plist file not found at {canonical_path}"
-            )
+            assert canonical_path.exists(), f"Plist file not found at {canonical_path}"
 
             # ---- Step 3: Verify plist content ----
             with open(canonical_path, "rb") as f:
@@ -201,32 +196,21 @@ class TestLaunchdE2ELifecycle:
             assert plist_data["Label"] == LAUNCHD_LABEL, (
                 f"Expected Label={LAUNCHD_LABEL!r}, got {plist_data.get('Label')!r}"
             )
-            assert plist_data["RunAtLoad"] is True, (
-                "Expected RunAtLoad=True"
-            )
-            assert plist_data["KeepAlive"] is True, (
-                "Expected KeepAlive=True"
-            )
+            assert plist_data["RunAtLoad"] is True, "Expected RunAtLoad=True"
+            assert plist_data["KeepAlive"] is True, "Expected KeepAlive=True"
 
             prog_args = plist_data["ProgramArguments"]
-            assert isinstance(prog_args, list), (
-                "ProgramArguments should be a list"
-            )
-            assert len(prog_args) >= 2, (
-                "ProgramArguments should have at least 2 elements"
-            )
+            assert isinstance(prog_args, list), "ProgramArguments should be a list"
+            assert len(prog_args) >= 2, "ProgramArguments should have at least 2 elements"
             assert prog_args[0] == binary_path, (
                 f"Expected binary path {binary_path!r}, got {prog_args[0]!r}"
             )
-            assert prog_args[1] == "watch", (
-                f"Expected 'watch' subcommand, got {prog_args[1]!r}"
-            )
+            assert prog_args[1] == "watch", f"Expected 'watch' subcommand, got {prog_args[1]!r}"
 
             # ---- Step 4: Verify file permissions ----
             mode = canonical_path.stat().st_mode & 0o777
             assert mode == PLIST_PERMISSIONS, (
-                f"Expected permissions {oct(PLIST_PERMISSIONS)}, "
-                f"got {oct(mode)}"
+                f"Expected permissions {oct(PLIST_PERMISSIONS)}, got {oct(mode)}"
             )
 
             # ---- Step 5: Verify agent status reports installed ----

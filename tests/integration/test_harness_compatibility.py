@@ -99,7 +99,10 @@ class TestOpenAIClientCompatibility:
         self._svc.__enter__()
 
         self._svc.start_vllm(
-            "fast", MODEL_SOURCE, self.vllm_port, timeout=120.0,
+            "fast",
+            MODEL_SOURCE,
+            self.vllm_port,
+            timeout=120.0,
         )
         self._svc.start_litellm(
             self.litellm_port,
@@ -125,9 +128,7 @@ class TestOpenAIClientCompatibility:
             messages=[{"role": "user", "content": "Say hello"}],
             max_tokens=10,
         )
-        assert response.choices[0].message.content, (
-            "OpenAI client got empty response content"
-        )
+        assert response.choices[0].message.content, "OpenAI client got empty response content"
         assert len(response.choices[0].message.content.strip()) > 0
 
     def test_streaming(self) -> None:
@@ -139,14 +140,11 @@ class TestOpenAIClientCompatibility:
             stream=True,
         )
         chunks = list(stream)
-        assert len(chunks) > 1, (
-            f"Expected multiple SSE chunks, got {len(chunks)}"
-        )
+        assert len(chunks) > 1, f"Expected multiple SSE chunks, got {len(chunks)}"
 
         # At least one chunk should have content
         has_content = any(
-            c.choices and c.choices[0].delta and c.choices[0].delta.content
-            for c in chunks
+            c.choices and c.choices[0].delta and c.choices[0].delta.content for c in chunks
         )
         assert has_content, "No chunk contained content"
 
@@ -154,9 +152,7 @@ class TestOpenAIClientCompatibility:
         """GET /v1/models returns expected tier names via OpenAI client."""
         models = self.client.models.list()
         model_ids = [m.id for m in models.data]
-        assert "fast" in model_ids, (
-            f"Tier 'fast' not found in model list: {model_ids}"
-        )
+        assert "fast" in model_ids, f"Tier 'fast' not found in model list: {model_ids}"
 
     def test_tool_calling_via_client(self) -> None:
         """Function calling via OpenAI client returns structured tool_calls."""

@@ -95,7 +95,7 @@ class Capabilities:
 
 @dataclass(frozen=True)
 class QualityScores:
-    """Model quality scores (0–100 scale)."""
+    """Model quality scores (0-100 scale)."""
 
     overall: int
     coding: int
@@ -192,20 +192,14 @@ def _validate_entry(data: dict[str, Any], filename: str) -> None:
     caps = data["capabilities"]
     for cap_field in _REQUIRED_CAPABILITIES:
         if cap_field not in caps:
-            msg = (
-                f"Catalog file '{filename}': capabilities missing "
-                f"required field '{cap_field}'"
-            )
+            msg = f"Catalog file '{filename}': capabilities missing required field '{cap_field}'"
             raise CatalogError(msg)
 
     # Validate quality scores
     quality = data["quality"]
     for q_field in _REQUIRED_QUALITY_FIELDS:
         if q_field not in quality:
-            msg = (
-                f"Catalog file '{filename}': quality missing "
-                f"required field '{q_field}'"
-            )
+            msg = f"Catalog file '{filename}': quality missing required field '{q_field}'"
             raise CatalogError(msg)
         q_value = quality[q_field]
         if not isinstance(q_value, (int, float)):
@@ -219,10 +213,7 @@ def _validate_entry(data: dict[str, Any], filename: str) -> None:
     benchmarks = data["benchmarks"]
     for hw_key, bench_data in benchmarks.items():
         if not isinstance(bench_data, dict):
-            msg = (
-                f"Catalog file '{filename}': benchmark entry '{hw_key}' "
-                f"must be a mapping"
-            )
+            msg = f"Catalog file '{filename}': benchmark entry '{hw_key}' must be a mapping"
             raise CatalogError(msg)
         for req_field in ("prompt_tps", "gen_tps", "memory_gb"):
             if req_field not in bench_data:
@@ -275,9 +266,7 @@ def _parse_entry(data: dict[str, Any]) -> CatalogEntry:
                 convert_from=bool(source_data.get("convert_from", False)),
             )
         except (ValueError, TypeError) as exc:
-            msg = (
-                f"Catalog entry '{model_id}': invalid value in source '{quant}': {exc}"
-            )
+            msg = f"Catalog entry '{model_id}': invalid value in source '{quant}': {exc}"
             raise CatalogError(msg) from None
 
     # Parse capabilities
@@ -317,10 +306,7 @@ def _parse_entry(data: dict[str, Any]) -> CatalogEntry:
                 memory_gb=float(bench_data["memory_gb"]),
             )
         except (ValueError, TypeError) as exc:
-            msg = (
-                f"Catalog entry '{model_id}': invalid value in "
-                f"benchmark '{hw_key}': {exc}"
-            )
+            msg = f"Catalog entry '{model_id}': invalid value in benchmark '{hw_key}': {exc}"
             raise CatalogError(msg) from None
 
     try:
@@ -371,9 +357,11 @@ def load_catalog() -> list[CatalogEntry]:
 
     yaml_files: list[Any] = []
     try:
-        for item in catalog_pkg.iterdir():
-            if hasattr(item, "name") and item.name.endswith(".yaml"):
-                yaml_files.append(item)
+        yaml_files.extend(
+            item
+            for item in catalog_pkg.iterdir()
+            if hasattr(item, "name") and item.name.endswith(".yaml")
+        )
     except (OSError, TypeError) as exc:
         msg = f"Could not read catalog directory: {exc}"
         raise CatalogError(msg) from None
@@ -398,10 +386,7 @@ def load_catalog() -> list[CatalogEntry]:
 
         if not isinstance(data, dict):
             actual_type = type(data).__name__
-            msg = (
-                f"Catalog file '{filename}' must contain a YAML mapping, "
-                f"got {actual_type}"
-            )
+            msg = f"Catalog file '{filename}' must contain a YAML mapping, got {actual_type}"
             raise CatalogError(msg) from None
 
         _validate_entry(data, filename)
@@ -459,10 +444,7 @@ def load_catalog_from_directory(directory: str) -> list[CatalogEntry]:
 
         if not isinstance(data, dict):
             actual_type = type(data).__name__
-            msg = (
-                f"Catalog file '{filename}' must contain a YAML mapping, "
-                f"got {actual_type}"
-            )
+            msg = f"Catalog file '{filename}' must contain a YAML mapping, got {actual_type}"
             raise CatalogError(msg) from None
 
         _validate_entry(data, filename)
@@ -543,10 +525,7 @@ def query_by_capability(
     valid_caps = {"tool_calling", "thinking", "vision"}
     for cap_name in capabilities:
         if cap_name not in valid_caps:
-            msg = (
-                f"Invalid capability filter '{cap_name}' "
-                f"(valid: {', '.join(sorted(valid_caps))})"
-            )
+            msg = f"Invalid capability filter '{cap_name}' (valid: {', '.join(sorted(valid_caps))})"
             raise ValueError(msg)
 
     results: list[CatalogEntry] = []

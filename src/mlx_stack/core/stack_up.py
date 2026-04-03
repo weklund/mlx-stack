@@ -192,7 +192,7 @@ def estimate_memory_usage(
 
         # Look for memory_gb in any benchmark entry
         memory_gb = 0.0
-        for _hw_key, bench in entry.benchmarks.items():
+        for bench in entry.benchmarks.values():
             memory_gb = bench.memory_gb
             break  # Take the first available benchmark's memory
 
@@ -274,10 +274,7 @@ def check_local_model_exists(tier: dict[str, Any]) -> str | None:
         return None
 
     # Model not found — generate diagnostic message
-    return (
-        f"Model '{model_id}' not found locally. "
-        f"Run 'mlx-stack pull {model_id}' to download it."
-    )
+    return f"Model '{model_id}' not found locally. Run 'mlx-stack pull {model_id}' to download it."
 
 
 # --------------------------------------------------------------------------- #
@@ -303,9 +300,12 @@ def build_vllm_command(
 
     cmd = [
         vllm_binary,
-        "serve", model_source,
-        "--port", str(port),
-        "--host", "127.0.0.1",
+        "serve",
+        model_source,
+        "--port",
+        str(port),
+        "--host",
+        "127.0.0.1",
     ]
 
     # Add vllm_flags
@@ -338,9 +338,12 @@ def build_litellm_command(
     """
     return [
         litellm_binary,
-        "--config", str(litellm_config_path),
-        "--port", str(litellm_port),
-        "--host", "127.0.0.1",
+        "--config",
+        str(litellm_config_path),
+        "--port",
+        str(litellm_port),
+        "--host",
+        "127.0.0.1",
     ]
 
 
@@ -367,9 +370,7 @@ def format_dry_run_command(
     parts: list[str] = []
 
     if env_vars:
-        for key in sorted(env_vars.keys()):
-            # Mask all env var values in dry-run
-            parts.append(f"{key}=***")
+        parts.extend(f"{key}=***" for key in sorted(env_vars.keys()))
 
     parts.extend(cmd)
     return " ".join(parts)
@@ -466,10 +467,7 @@ def run_up(
     if tier_filter is not None:
         if tier_filter not in valid_tier_names:
             valid_list = ", ".join(sorted(valid_tier_names))
-            msg = (
-                f"Unknown tier '{tier_filter}'. "
-                f"Valid tiers: {valid_list}"
-            )
+            msg = f"Unknown tier '{tier_filter}'. Valid tiers: {valid_list}"
             raise UpError(msg)
         tiers = [t for t in tiers if t["name"] == tier_filter]
 
@@ -539,18 +537,22 @@ def _run_dry_run(
         cmd = build_vllm_command(tier, vllm_binary)
         cmd_str = format_dry_run_command(cmd)
 
-        result.dry_run_commands.append({
-            "service": tier["name"],
-            "command": cmd_str,
-            "type": "vllm-mlx",
-        })
+        result.dry_run_commands.append(
+            {
+                "service": tier["name"],
+                "command": cmd_str,
+                "type": "vllm-mlx",
+            }
+        )
 
-        result.tiers.append(TierStatus(
-            name=tier["name"],
-            model=tier.get("model", ""),
-            port=tier["port"],
-            status="dry-run",
-        ))
+        result.tiers.append(
+            TierStatus(
+                name=tier["name"],
+                model=tier.get("model", ""),
+                port=tier["port"],
+                status="dry-run",
+            )
+        )
 
     # LiteLLM command
     litellm_cmd = build_litellm_command(litellm_binary, litellm_port, litellm_config_path)
@@ -561,11 +563,13 @@ def _run_dry_run(
 
     litellm_cmd_str = format_dry_run_command(litellm_cmd, env_display)
 
-    result.dry_run_commands.append({
-        "service": LITELLM_SERVICE_NAME,
-        "command": litellm_cmd_str,
-        "type": "litellm",
-    })
+    result.dry_run_commands.append(
+        {
+            "service": LITELLM_SERVICE_NAME,
+            "command": litellm_cmd_str,
+            "type": "litellm",
+        }
+    )
 
     result.litellm = TierStatus(
         name=LITELLM_SERVICE_NAME,
@@ -638,17 +642,18 @@ def _run_startup(
         if pid is not None:
             if is_process_alive(pid):
                 # Already running
-                result.tiers.append(TierStatus(
-                    name=tier_name,
-                    model=tier.get("model", ""),
-                    port=tier["port"],
-                    status="already-running",
-                ))
+                result.tiers.append(
+                    TierStatus(
+                        name=tier_name,
+                        model=tier.get("model", ""),
+                        port=tier["port"],
+                        status="already-running",
+                    )
+                )
                 continue
-            else:
-                # Stale PID — clean up
-                cleanup_stale_pid(tier_name)
-                any_stale = True
+            # Stale PID — clean up
+            cleanup_stale_pid(tier_name)
+            any_stale = True
         else:
             pass  # Tier needs to be started
 
@@ -670,9 +675,7 @@ def _run_startup(
             any_stale = True
 
     # If all tiers + LiteLLM are already running, report and return
-    tiers_already_running = [
-        t for t in result.tiers if t.status == "already-running"
-    ]
+    tiers_already_running = [t for t in result.tiers if t.status == "already-running"]
     if len(tiers_already_running) == len(tiers) and litellm_already_running:
         result.already_running = True
         result.litellm = TierStatus(
@@ -695,10 +698,7 @@ def _run_startup(
 
     # --- Start vllm-mlx instances sequentially ---
     healthy_count = 0
-    tiers_needing_start = [
-        t for t in tiers
-        if t["name"] not in {ts.name for ts in result.tiers}
-    ]
+    tiers_needing_start = [t for t in tiers if t["name"] not in {ts.name for ts in result.tiers}]
 
     for tier in tiers_needing_start:
         tier_name = tier["name"]
@@ -707,29 +707,30 @@ def _run_startup(
         # Preflight: check local model exists on disk
         missing_msg = check_local_model_exists(tier)
         if missing_msg is not None:
-            result.tiers.append(TierStatus(
-                name=tier_name,
-                model=tier.get("model", ""),
-                port=port,
-                status="skipped",
-                error=missing_msg,
-            ))
+            result.tiers.append(
+                TierStatus(
+                    name=tier_name,
+                    model=tier.get("model", ""),
+                    port=port,
+                    status="skipped",
+                    error=missing_msg,
+                )
+            )
             continue
 
         # Check port conflict
         conflict = check_port_conflict(port)
         if conflict is not None:
             conflict_pid, conflict_name = conflict
-            result.tiers.append(TierStatus(
-                name=tier_name,
-                model=tier.get("model", ""),
-                port=port,
-                status="skipped",
-                error=(
-                    f"Port {port} already in use by "
-                    f"PID {conflict_pid} ({conflict_name})"
-                ),
-            ))
+            result.tiers.append(
+                TierStatus(
+                    name=tier_name,
+                    model=tier.get("model", ""),
+                    port=port,
+                    status="skipped",
+                    error=(f"Port {port} already in use by PID {conflict_pid} ({conflict_name})"),
+                )
+            )
             continue
 
         # Start the vllm-mlx subprocess
@@ -742,38 +743,42 @@ def _run_startup(
                 port=port,
             )
         except Exception as exc:
-            result.tiers.append(TierStatus(
-                name=tier_name,
-                model=tier.get("model", ""),
-                port=port,
-                status="failed",
-                error=str(exc),
-            ))
+            result.tiers.append(
+                TierStatus(
+                    name=tier_name,
+                    model=tier.get("model", ""),
+                    port=port,
+                    status="failed",
+                    error=str(exc),
+                )
+            )
             continue
 
         # Health check with exponential backoff
         try:
             wait_for_healthy(port=port, path=VLLM_HEALTH_PATH)
-            result.tiers.append(TierStatus(
-                name=tier_name,
-                model=tier.get("model", ""),
-                port=port,
-                status="healthy",
-            ))
+            result.tiers.append(
+                TierStatus(
+                    name=tier_name,
+                    model=tier.get("model", ""),
+                    port=port,
+                    status="healthy",
+                )
+            )
             healthy_count += 1
         except HealthCheckError as exc:
-            result.tiers.append(TierStatus(
-                name=tier_name,
-                model=tier.get("model", ""),
-                port=port,
-                status="failed",
-                error=str(exc),
-            ))
+            result.tiers.append(
+                TierStatus(
+                    name=tier_name,
+                    model=tier.get("model", ""),
+                    port=port,
+                    status="failed",
+                    error=str(exc),
+                )
+            )
 
     # --- Count total healthy (including already-running) ---
-    total_healthy = sum(
-        1 for t in result.tiers if t.status in ("healthy", "already-running")
-    )
+    total_healthy = sum(1 for t in result.tiers if t.status in ("healthy", "already-running"))
 
     # --- Start LiteLLM if any healthy tiers and not already running ---
     if litellm_already_running:
@@ -802,13 +807,14 @@ def _run_startup(
                 port=litellm_port,
                 status="skipped",
                 error=(
-                    f"Port {litellm_port} already in use by "
-                    f"PID {conflict_pid} ({conflict_name})"
+                    f"Port {litellm_port} already in use by PID {conflict_pid} ({conflict_name})"
                 ),
             )
         else:
             litellm_cmd = build_litellm_command(
-                litellm_binary, litellm_port, litellm_config_path,
+                litellm_binary,
+                litellm_port,
+                litellm_config_path,
             )
 
             # Build env with OpenRouter key if configured

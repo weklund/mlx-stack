@@ -7,7 +7,7 @@ crashed services, detects flapping, and triggers log rotation.
 from __future__ import annotations
 
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 import click
 from rich.console import Console
@@ -53,7 +53,7 @@ def _format_status_table(result: PollResult, state: WatchdogState) -> None:
         state: Current watchdog state.
     """
     out = Console()
-    now = datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+    now = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
 
     out.print()
     out.print(Text(f"[Cycle {state.cycle_count}] {now}", style="bold cyan"))
@@ -97,9 +97,7 @@ def _format_status_table(result: PollResult, state: WatchdogState) -> None:
             Text(
                 f"  Restarts: {result.restarts_succeeded}/{result.restarts_attempted} succeeded",
                 style=(
-                    "yellow"
-                    if result.restarts_succeeded < result.restarts_attempted
-                    else "green"
+                    "yellow" if result.restarts_succeeded < result.restarts_attempted else "green"
                 ),
             )
         )
@@ -112,9 +110,7 @@ def _format_restart_event(record: RestartRecord) -> None:
         record: The restart record.
     """
     out = Console()
-    ts = datetime.fromtimestamp(record.timestamp, tz=timezone.utc).strftime(
-        "%Y-%m-%d %H:%M:%S UTC"
-    )
+    ts = datetime.fromtimestamp(record.timestamp, tz=UTC).strftime("%Y-%m-%d %H:%M:%S UTC")
     status = "✓" if record.success else "✗"
     style = "green" if record.success else "red"
 
@@ -151,9 +147,7 @@ def _validate_positive_int(
         click.BadParameter: If value is not positive.
     """
     if value < 1:
-        raise click.BadParameter(
-            f"Must be a positive integer (got {value})."
-        )
+        raise click.BadParameter(f"Must be a positive integer (got {value}).")
     return value
 
 
@@ -224,9 +218,7 @@ def watch(
     """
     try:
         if daemon:
-            console.print(
-                Text("Starting watchdog in daemon mode...", style="bold cyan")
-            )
+            console.print(Text("Starting watchdog in daemon mode...", style="bold cyan"))
 
         run_watchdog(
             interval=interval,

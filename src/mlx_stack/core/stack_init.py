@@ -8,7 +8,7 @@ cloud fallback, missing model detection, and overwrite protection.
 from __future__ import annotations
 
 import socket
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -108,7 +108,7 @@ def allocate_ports(
                 msg = (
                     f"Could not allocate {num_tiers} free ports starting "
                     f"from {base_port}. All ports in range "
-                    f"{base_port}–{max_port} are in use or reserved."
+                    f"{base_port}-{max_port} are in use or reserved."
                 )
                 raise InitError(msg)
         ports.append(port)
@@ -223,7 +223,7 @@ def generate_stack_definition(
         raise InitError(msg)
 
     tiers: list[dict[str, Any]] = []
-    for assignment, port in zip(recommendation.tiers, ports):
+    for assignment, port in zip(recommendation.tiers, ports, strict=False):
         tiers.append(_build_tier_entry(assignment, port, catalog))
 
     stack: dict[str, Any] = {
@@ -231,7 +231,7 @@ def generate_stack_definition(
         "name": stack_name,
         "hardware_profile": recommendation.hardware_profile.profile_id,
         "intent": recommendation.intent,
-        "created": datetime.now(timezone.utc).isoformat(),
+        "created": datetime.now(UTC).isoformat(),
         "tiers": tiers,
     }
 
@@ -356,10 +356,7 @@ def run_init(
     litellm_path = get_data_home() / "litellm.yaml"
 
     if stack_path.exists() and not force:
-        msg = (
-            f"Stack '{stack_name}' already exists at {stack_path}. "
-            f"Use --force to overwrite."
-        )
+        msg = f"Stack '{stack_name}' already exists at {stack_path}. Use --force to overwrite."
         raise InitError(msg)
 
     # --- Load catalog ---
@@ -427,7 +424,10 @@ def run_init(
             weights = INTENT_WEIGHTS.get(intent, INTENT_WEIGHTS["balanced"])
             try:
                 scored = score_model(
-                    entry, profile, weights, recommendation.memory_budget_gb,
+                    entry,
+                    profile,
+                    weights,
+                    recommendation.memory_budget_gb,
                 )
             except ScoringError as exc:
                 msg = f"Cannot add model '{model_id}': {exc}"
@@ -450,11 +450,13 @@ def run_init(
                 )
 
             tier_name = f"added-{model_id}"
-            tiers.append(TierAssignment(
-                tier=tier_name,
-                model=scored,
-                quant="int4",
-            ))
+            tiers.append(
+                TierAssignment(
+                    tier=tier_name,
+                    model=scored,
+                    quant="int4",
+                )
+            )
 
     if not tiers:
         msg = "No tiers remaining after customization. Cannot generate stack."
@@ -481,8 +483,7 @@ def run_init(
 
     # --- Generate LiteLLM config ---
     tier_entries = [
-        {"name": t["name"], "model": t["model"], "port": t["port"]}
-        for t in stack["tiers"]
+        {"name": t["name"], "model": t["model"], "port": t["port"]} for t in stack["tiers"]
     ]
     litellm_config = generate_litellm_config(
         tiers=tier_entries,

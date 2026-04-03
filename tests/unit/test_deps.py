@@ -40,21 +40,21 @@ from mlx_stack.core.deps import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_which():
     """Patch shutil.which in the deps module."""
     with patch("mlx_stack.core.deps.shutil.which") as m:
         yield m
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_subprocess_run():
     """Patch subprocess.run in the deps module."""
     with patch("mlx_stack.core.deps.subprocess.run") as m:
         yield m
 
 
-@pytest.fixture()
+@pytest.fixture
 def mock_console():
     """Patch the Rich console in the deps module."""
     with patch("mlx_stack.core.deps._console") as m:
@@ -209,12 +209,7 @@ class TestGetInstalledVersion:
         # Real uv tool list output includes indented binary entries below each tool
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout=(
-                "vllm-mlx v0.2.6\n"
-                "- vllm-mlx\n"
-                "litellm v1.83.0\n"
-                "- litellm\n"
-            ),
+            stdout=("vllm-mlx v0.2.6\n- vllm-mlx\nlitellm v1.83.0\n- litellm\n"),
         )
         assert _get_installed_version("vllm-mlx") == "0.2.6"
         assert _get_installed_version("litellm") == "1.83.0"
@@ -430,9 +425,7 @@ class TestCheckDependency:
         with pytest.raises(ValueError, match="Unknown dependency"):
             check_dependency("nonexistent-tool")
 
-    def test_check_litellm(
-        self, mock_which: MagicMock, mock_subprocess_run: MagicMock
-    ) -> None:
+    def test_check_litellm(self, mock_which: MagicMock, mock_subprocess_run: MagicMock) -> None:
         mock_which.side_effect = ["/usr/local/bin/litellm", "/usr/local/bin/uv"]
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
@@ -483,11 +476,11 @@ class TestEnsureDependency:
         # 4. check_dependency (re-check) -> _find_binary: found
         # 5. check_dependency (re-check) -> _get_installed_version -> uv found
         mock_which.side_effect = [
-            None,                    # _find_binary: tool not found
-            "/usr/local/bin/uv",     # _install_tool: uv found
+            None,  # _find_binary: tool not found
+            "/usr/local/bin/uv",  # _install_tool: uv found
             "/usr/local/bin/vllm-mlx",  # _verify_post_install: tool found
             "/usr/local/bin/vllm-mlx",  # re-check _find_binary
-            "/usr/local/bin/uv",        # re-check _get_installed_version
+            "/usr/local/bin/uv",  # re-check _get_installed_version
         ]
         # First run = install, second run = uv tool list for version check
         mock_subprocess_run.side_effect = [
@@ -507,7 +500,7 @@ class TestEnsureDependency:
     ) -> None:
         """When install fails, DependencyInstallError is raised."""
         mock_which.side_effect = [
-            None,               # _find_binary: not found
+            None,  # _find_binary: not found
             "/usr/local/bin/uv",  # _install_tool: uv found
         ]
         mock_subprocess_run.return_value = MagicMock(
@@ -525,13 +518,11 @@ class TestEnsureDependency:
     ) -> None:
         """When tool not found after install, error with PATH instructions."""
         mock_which.side_effect = [
-            None,               # _find_binary: not found
+            None,  # _find_binary: not found
             "/usr/local/bin/uv",  # _install_tool: uv found
-            None,                # _verify_post_install: still not found
+            None,  # _verify_post_install: still not found
         ]
-        mock_subprocess_run.return_value = MagicMock(
-            returncode=0, stdout="", stderr=""
-        )
+        mock_subprocess_run.return_value = MagicMock(returncode=0, stdout="", stderr="")
         with pytest.raises(DependencyInstallError, match="not found on PATH"):
             ensure_dependency("vllm-mlx")
 
@@ -672,8 +663,8 @@ class TestErrorMessages:
     ) -> None:
         """Error messages should not contain Python tracebacks."""
         mock_which.side_effect = [
-            None,                  # _find_binary
-            "/usr/local/bin/uv",   # _install_tool
+            None,  # _find_binary
+            "/usr/local/bin/uv",  # _install_tool
         ]
         mock_subprocess_run.return_value = MagicMock(
             returncode=1,
@@ -745,12 +736,7 @@ class TestEdgeCases:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout=(
-                "ruff v0.8.0\n"
-                "vllm-mlx v0.2.6\n"
-                "litellm v1.83.0\n"
-                "mypy v1.13.0\n"
-            ),
+            stdout=("ruff v0.8.0\nvllm-mlx v0.2.6\nlitellm v1.83.0\nmypy v1.13.0\n"),
         )
         assert _get_installed_version("vllm-mlx") == "0.2.6"
 
@@ -761,12 +747,7 @@ class TestEdgeCases:
         mock_which.return_value = "/usr/local/bin/uv"
         mock_subprocess_run.return_value = MagicMock(
             returncode=0,
-            stdout=(
-                "ruff v0.8.0\n"
-                "vllm-mlx v0.2.6\n"
-                "litellm v1.83.0\n"
-                "mypy v1.13.0\n"
-            ),
+            stdout=("ruff v0.8.0\nvllm-mlx v0.2.6\nlitellm v1.83.0\nmypy v1.13.0\n"),
         )
         assert _get_installed_version("litellm") == "1.83.0"
 

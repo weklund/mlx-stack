@@ -55,9 +55,7 @@ def _display_summary(result: UpResult) -> None:
     out.print()
 
     if result.already_running:
-        out.print(
-            Text("All services are already running.", style="bold yellow")
-        )
+        out.print(Text("All services are already running.", style="bold yellow"))
         out.print()
 
     # Warnings
@@ -115,14 +113,10 @@ def _display_summary(result: UpResult) -> None:
     out.print()
 
     # Next steps for healthy stacks
-    any_healthy = any(
-        t.status in ("healthy", "already-running") for t in result.tiers
-    )
+    any_healthy = any(t.status in ("healthy", "already-running") for t in result.tiers)
     if any_healthy:
         litellm_port = result.litellm.port if result.litellm else 4000
-        out.print(
-            f"[dim]Endpoint: http://localhost:{litellm_port}/v1[/dim]"
-        )
+        out.print(f"[dim]Endpoint: http://localhost:{litellm_port}/v1[/dim]")
         out.print()
 
 
@@ -156,8 +150,6 @@ def up(dry_run: bool, tier_filter: str | None) -> None:
         _display_summary(result)
 
     # Exit with non-zero if all tiers failed
-    any_success = any(
-        t.status in ("healthy", "already-running", "dry-run") for t in result.tiers
-    )
+    any_success = any(t.status in ("healthy", "already-running", "dry-run") for t in result.tiers)
     if not any_success and not result.dry_run:
         raise SystemExit(1)

@@ -33,13 +33,13 @@ from mlx_stack.core.catalog import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def catalog() -> list[CatalogEntry]:
     """Load the full shipped catalog."""
     return load_catalog()
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_yaml_dir(tmp_path: Path) -> Path:
     """Create a temporary directory with valid catalog YAML files for testing."""
     catalog_dir = tmp_path / "catalog"
@@ -241,7 +241,12 @@ class TestLoadCatalog:
         """Catalog YAML files use 6 distinct family values."""
         families = {e.family for e in catalog}
         expected_families = {
-            "Qwen 3.5", "Nemotron", "Gemma 3", "DeepSeek R1", "Qwen 3", "Llama 3.3",
+            "Qwen 3.5",
+            "Nemotron",
+            "Gemma 3",
+            "DeepSeek R1",
+            "Qwen 3",
+            "Llama 3.3",
         }
         assert families == expected_families
 
@@ -306,7 +311,7 @@ class TestLoadCatalog:
         """Every entry has at least one benchmark entry."""
         for entry in catalog:
             assert len(entry.benchmarks) > 0, f"{entry.id}: no benchmarks"
-            for hw_key, bench in entry.benchmarks.items():
+            for bench in entry.benchmarks.values():
                 assert bench.prompt_tps > 0
                 assert bench.gen_tps > 0
                 assert bench.memory_gb > 0
@@ -439,9 +444,7 @@ class TestCatalogErrors:
         """Missing required field raises CatalogError."""
         catalog_dir = tmp_path / "catalog"
         catalog_dir.mkdir()
-        (catalog_dir / "incomplete.yaml").write_text(
-            yaml.dump({"id": "test", "name": "Test"})
-        )
+        (catalog_dir / "incomplete.yaml").write_text(yaml.dump({"id": "test", "name": "Test"}))
         with pytest.raises(CatalogError, match="missing required field"):
             load_catalog_from_directory(str(catalog_dir))
 
@@ -512,7 +515,7 @@ class TestCatalogErrors:
         data = _make_valid_entry()
         data["benchmarks"]["m4-pro-48"] = {"prompt_tps": 100.0}  # missing gen_tps, memory_gb
         (catalog_dir / "no_gen_tps.yaml").write_text(yaml.dump(data))
-        with pytest.raises(CatalogError, match="benchmark.*missing required field"):
+        with pytest.raises(CatalogError, match=r"benchmark.*missing required field"):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_non_string_tag(self, tmp_path: Path) -> None:
@@ -530,7 +533,7 @@ class TestCatalogErrors:
         catalog_dir = tmp_path / "catalog"
         catalog_dir.mkdir()
         (catalog_dir / "specific-file.yaml").write_text(yaml.dump({"id": "x"}))
-        with pytest.raises(CatalogError, match="specific-file.yaml"):
+        with pytest.raises(CatalogError, match=r"specific-file\.yaml"):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_non_numeric_disk_size_gb(self, tmp_path: Path) -> None:
@@ -540,7 +543,7 @@ class TestCatalogErrors:
         data = _make_valid_entry()
         data["sources"]["int4"]["disk_size_gb"] = "abc"
         (catalog_dir / "bad_disk_size.yaml").write_text(yaml.dump(data))
-        with pytest.raises(CatalogError, match="disk_size_gb.*must be numeric"):
+        with pytest.raises(CatalogError, match=r"disk_size_gb.*must be numeric"):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_non_numeric_quality_score(self, tmp_path: Path) -> None:
@@ -550,7 +553,7 @@ class TestCatalogErrors:
         data = _make_valid_entry()
         data["quality"]["overall"] = "high"
         (catalog_dir / "bad_quality.yaml").write_text(yaml.dump(data))
-        with pytest.raises(CatalogError, match="quality.*overall.*must be numeric"):
+        with pytest.raises(CatalogError, match=r"quality.*overall.*must be numeric"):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_non_numeric_benchmark_value(self, tmp_path: Path) -> None:
@@ -560,7 +563,7 @@ class TestCatalogErrors:
         data = _make_valid_entry()
         data["benchmarks"]["m4-pro-48"]["gen_tps"] = "fast"
         (catalog_dir / "bad_bench.yaml").write_text(yaml.dump(data))
-        with pytest.raises(CatalogError, match="benchmark.*gen_tps.*must be numeric"):
+        with pytest.raises(CatalogError, match=r"benchmark.*gen_tps.*must be numeric"):
             load_catalog_from_directory(str(catalog_dir))
 
     def test_corrupted_disk_size_no_raw_valueerror(self, tmp_path: Path) -> None:
@@ -830,9 +833,18 @@ class TestGatedField:
         gated = [e for e in catalog if e.gated]
         gated_ids = {e.id for e in gated}
         assert gated_ids == {
-            "deepseek-r1-32b", "gemma3-4b", "gemma3-12b", "gemma3-27b",
-            "llama3.3-8b", "nemotron-49b", "nemotron-8b",
-            "qwen3.5-3b", "qwen3.5-8b", "qwen3.5-14b", "qwen3.5-32b", "qwen3.5-72b",
+            "deepseek-r1-32b",
+            "gemma3-4b",
+            "gemma3-12b",
+            "gemma3-27b",
+            "llama3.3-8b",
+            "nemotron-49b",
+            "nemotron-8b",
+            "qwen3.5-3b",
+            "qwen3.5-8b",
+            "qwen3.5-14b",
+            "qwen3.5-32b",
+            "qwen3.5-72b",
         }
 
     def test_shipped_catalog_non_gated_models(self) -> None:

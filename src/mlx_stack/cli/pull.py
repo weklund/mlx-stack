@@ -115,20 +115,13 @@ def _run_post_download_bench(model_id: str, quant: str, out: Console) -> None:
         from mlx_stack.core.benchmark import BenchmarkError, run_benchmark
 
         result = run_benchmark(target=model_id, save=True)
-        out.print(
-            f"  Prompt TPS: {result.prompt_tps_mean:.1f} ± {result.prompt_tps_std:.1f} tok/s"
-        )
-        out.print(
-            f"  Gen TPS:    {result.gen_tps_mean:.1f} ± {result.gen_tps_std:.1f} tok/s"
-        )
+        out.print(f"  Prompt TPS: {result.prompt_tps_mean:.1f} ± {result.prompt_tps_std:.1f} tok/s")
+        out.print(f"  Gen TPS:    {result.gen_tps_mean:.1f} ± {result.gen_tps_std:.1f} tok/s")
         out.print()
-        out.print(
-            "[dim]Results saved for use by 'recommend' and 'init' scoring.[/dim]"
-        )
+        out.print("[dim]Results saved for use by 'recommend' and 'init' scoring.[/dim]")
     except BenchmarkError as exc:
         out.print(
-            f"[yellow]Benchmark failed: {exc}[/yellow]\n"
-            f"Run 'mlx-stack bench {model_id}' to retry."
+            f"[yellow]Benchmark failed: {exc}[/yellow]\nRun 'mlx-stack bench {model_id}' to retry."
         )
     except Exception as exc:
         out.print(

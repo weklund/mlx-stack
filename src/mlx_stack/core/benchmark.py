@@ -11,6 +11,7 @@ temporary vllm-mlx instances with full cleanup (including Ctrl+C).
 
 from __future__ import annotations
 
+import contextlib
 import json
 import math
 import os
@@ -207,9 +208,7 @@ def _generate_prompt(token_count: int) -> str:
     )
     words_needed = int(token_count / 1.3) + 10
     words = base_phrase.split()
-    repeated = []
-    for i in range(words_needed):
-        repeated.append(words[i % len(words)])
+    repeated = [words[i % len(words)] for i in range(words_needed)]
     return " ".join(repeated)
 
 
@@ -385,10 +384,7 @@ def _run_single_iteration(
         with httpx.stream("POST", url, json=payload, timeout=300.0) as response:
             if response.status_code != 200:
                 body = response.read().decode("utf-8", errors="replace")[:200]
-                msg = (
-                    f"API request failed with status {response.status_code}: "
-                    f"{body}"
-                )
+                msg = f"API request failed with status {response.status_code}: {body}"
                 raise BenchmarkRunError(msg)
 
             for line in response.iter_lines():
@@ -595,12 +591,8 @@ def _compare_against_catalog(
     bench = entry.benchmarks[profile_id]
     classifications: list[MetricClassification] = []
 
-    classifications.append(
-        _classify_metric("prompt_tps", prompt_tps_mean, bench.prompt_tps)
-    )
-    classifications.append(
-        _classify_metric("gen_tps", gen_tps_mean, bench.gen_tps)
-    )
+    classifications.append(_classify_metric("prompt_tps", prompt_tps_mean, bench.prompt_tps))
+    classifications.append(_classify_metric("gen_tps", gen_tps_mean, bench.gen_tps))
 
     return classifications
 
@@ -807,17 +799,17 @@ def _start_temp_instance(
 
     vllm_binary = shutil.which("vllm-mlx")
     if vllm_binary is None:
-        msg = (
-            "vllm-mlx binary not found on PATH after installation. "
-            "Try: uv tool install vllm-mlx"
-        )
+        msg = "vllm-mlx binary not found on PATH after installation. Try: uv tool install vllm-mlx"
         raise BenchmarkError(msg)
 
     cmd = [
         vllm_binary,
-        "serve", model_source,
-        "--port", str(port),
-        "--host", "127.0.0.1",
+        "serve",
+        model_source,
+        "--port",
+        str(port),
+        "--host",
+        "127.0.0.1",
     ]
 
     # Add tool-calling flags if the model supports it
@@ -869,10 +861,8 @@ def _cleanup_temp_instance(service_name: str) -> None:
     Args:
         service_name: The service name from PID management.
     """
-    try:
+    with contextlib.suppress(Exception):
         stop_service(service_name, grace_period=5.0)
-    except Exception:
-        pass
 
     # Double-check: try reading PID and kill directly if still alive
     try:
@@ -1097,8 +1087,7 @@ def run_benchmark(
     temp_service = resolved.temp_service_name
 
     try:
-        result = _execute_benchmark(resolved, save)
-        return result
+        return _execute_benchmark(resolved, save)
     except Exception:
         # Ensure cleanup on any failure
         if temp_service:

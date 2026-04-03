@@ -11,7 +11,7 @@ from pathlib import Path
 import pytest
 
 
-@pytest.fixture()
+@pytest.fixture
 def mlx_stack_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Provide an isolated MLX_STACK_HOME directory for testing.
 
@@ -27,7 +27,7 @@ def mlx_stack_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     return home
 
 
-@pytest.fixture()
+@pytest.fixture
 def clean_mlx_stack_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     """Provide a clean (non-existent) MLX_STACK_HOME for testing auto-creation.
 

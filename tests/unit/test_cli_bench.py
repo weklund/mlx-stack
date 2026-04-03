@@ -34,13 +34,13 @@ from mlx_stack.core.benchmark import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner() -> CliRunner:
     """Create a Click test runner."""
     return CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_result() -> BenchmarkResult_:
     """A sample successful benchmark result."""
     return BenchmarkResult_(
@@ -48,16 +48,25 @@ def sample_result() -> BenchmarkResult_:
         quant="int4",
         iterations=[
             IterationResult(
-                prompt_tps=150.0, gen_tps=80.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                prompt_tps=150.0,
+                gen_tps=80.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=10.0,
             ),
             IterationResult(
-                prompt_tps=160.0, gen_tps=85.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=9.5,
+                prompt_tps=160.0,
+                gen_tps=85.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=9.5,
             ),
             IterationResult(
-                prompt_tps=155.0, gen_tps=82.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=9.8,
+                prompt_tps=155.0,
+                gen_tps=82.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=9.8,
             ),
         ],
         prompt_tps_mean=155.0,
@@ -86,7 +95,7 @@ def sample_result() -> BenchmarkResult_:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_result_no_catalog() -> BenchmarkResult_:
     """A sample result with no catalog data for comparison."""
     return BenchmarkResult_(
@@ -94,8 +103,11 @@ def sample_result_no_catalog() -> BenchmarkResult_:
         quant="int4",
         iterations=[
             IterationResult(
-                prompt_tps=150.0, gen_tps=80.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                prompt_tps=150.0,
+                gen_tps=80.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=10.0,
             ),
         ],
         prompt_tps_mean=150.0,
@@ -402,8 +414,11 @@ class TestClassificationDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=80.0, gen_tps=60.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=80.0,
+                    gen_tps=60.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=80.0,
@@ -438,8 +453,11 @@ class TestClassificationDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=50.0, gen_tps=30.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=50.0,
+                    gen_tps=30.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=50.0,
@@ -490,8 +508,11 @@ class TestDeltaSignDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=80.0, gen_tps=60.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=80.0,
+                    gen_tps=60.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=80.0,
@@ -527,8 +548,11 @@ class TestDeltaSignDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=100.0, gen_tps=90.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=100.0,
+                    gen_tps=90.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=100.0,
@@ -564,8 +588,11 @@ class TestDeltaSignDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=155.0, gen_tps=85.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=155.0,
+                    gen_tps=85.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=155.0,
@@ -609,8 +636,11 @@ class TestToolCallingDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=100.0, gen_tps=50.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=100.0,
+                    gen_tps=50.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=100.0,
@@ -641,8 +671,11 @@ class TestToolCallingDisplay:
             quant="int4",
             iterations=[
                 IterationResult(
-                    prompt_tps=100.0, gen_tps=50.0,
-                    prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                    prompt_tps=100.0,
+                    gen_tps=50.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=10.0,
                 ),
             ],
             prompt_tps_mean=100.0,

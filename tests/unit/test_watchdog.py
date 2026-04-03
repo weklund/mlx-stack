@@ -43,7 +43,7 @@ from mlx_stack.core.watchdog import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     """Create a test stack definition and return it."""
     stacks_dir = mlx_stack_home / "stacks"
@@ -87,7 +87,7 @@ def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     return stack
 
 
-@pytest.fixture()
+@pytest.fixture
 def pids_dir(mlx_stack_home: Path) -> Path:
     """Create and return the pids directory."""
     d = mlx_stack_home / "pids"
@@ -95,7 +95,7 @@ def pids_dir(mlx_stack_home: Path) -> Path:
     return d
 
 
-@pytest.fixture()
+@pytest.fixture
 def logs_dir(mlx_stack_home: Path) -> Path:
     """Create and return the logs directory."""
     d = mlx_stack_home / "logs"
@@ -382,9 +382,7 @@ class TestRotateServiceLogs:
             count = rotate_service_logs()
         assert count == 0
 
-    def test_rotates_eligible_files(
-        self, mlx_stack_home: Path, logs_dir: Path
-    ) -> None:
+    def test_rotates_eligible_files(self, mlx_stack_home: Path, logs_dir: Path) -> None:
         # Create a log file exceeding threshold
         log_file = logs_dir / "fast.log"
         log_file.write_bytes(b"x" * (1 * 1024 * 1024))  # 1 MB
@@ -402,9 +400,7 @@ class TestRotateServiceLogs:
         # Since max_size_mb=0 means threshold=0 bytes, any non-empty file rotates
         assert count >= 0  # The actual rotation depends on implementation
 
-    def test_skips_non_log_files(
-        self, mlx_stack_home: Path, logs_dir: Path
-    ) -> None:
+    def test_skips_non_log_files(self, mlx_stack_home: Path, logs_dir: Path) -> None:
         # Create a non-.log file
         other_file = logs_dir / "fast.log.1.gz"
         other_file.write_bytes(b"compressed data")
@@ -438,14 +434,24 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.HEALTHY, uptime=100.0, uptime_display="1m 40s",
-                    response_time=0.1, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=100.0,
+                    uptime_display="1m 40s",
+                    response_time=0.1,
+                    pid=1234,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
             ]
         )
@@ -476,14 +482,24 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
-                    response_time=None, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.CRASHED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=1234,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.HEALTHY, uptime=200.0, uptime_display="3m 20s",
-                    response_time=0.05, pid=5678,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=200.0,
+                    uptime_display="3m 20s",
+                    response_time=0.05,
+                    pid=5678,
                 ),
             ]
         )
@@ -518,9 +534,14 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
             ]
         )
@@ -556,9 +577,14 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
-                    response_time=None, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.CRASHED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=1234,
                 ),
             ]
         )
@@ -595,9 +621,14 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
-                    response_time=None, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.CRASHED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=1234,
                 ),
             ]
         )
@@ -628,9 +659,14 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
-                    response_time=None, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.CRASHED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=1234,
                 ),
             ]
         )
@@ -716,9 +752,14 @@ class TestPollCycle:
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.HEALTHY, uptime=100.0, uptime_display="1m 40s",
-                    response_time=0.1, pid=1234,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=100.0,
+                    uptime_display="1m 40s",
+                    response_time=0.1,
+                    pid=1234,
                 ),
             ]
         )
@@ -865,9 +906,7 @@ class TestDaemonize:
 class TestRemoveWatchdogPid:
     """Tests for remove_watchdog_pid."""
 
-    def test_removes_existing_pid_file(
-        self, mlx_stack_home: Path, pids_dir: Path
-    ) -> None:
+    def test_removes_existing_pid_file(self, mlx_stack_home: Path, pids_dir: Path) -> None:
         pid_path = pids_dir / "watchdog.pid"
         pid_path.write_text("12345")
 

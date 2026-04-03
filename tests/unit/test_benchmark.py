@@ -57,7 +57,7 @@ from mlx_stack.core.hardware import HardwareProfile
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_entry() -> CatalogEntry:
     """A sample catalog entry for testing."""
     return CatalogEntry(
@@ -80,18 +80,14 @@ def sample_entry() -> CatalogEntry:
         ),
         quality=QualityScores(overall=68, coding=65, reasoning=62, instruction_following=72),
         benchmarks={
-            "m5-max-128": CatalogBenchmarkResult(
-                prompt_tps=155.0, gen_tps=85.0, memory_gb=5.5
-            ),
-            "m4-pro-48": CatalogBenchmarkResult(
-                prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5
-            ),
+            "m5-max-128": CatalogBenchmarkResult(prompt_tps=155.0, gen_tps=85.0, memory_gb=5.5),
+            "m4-pro-48": CatalogBenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
         },
         tags=["balanced", "agent-ready"],
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_entry_no_tool_calling() -> CatalogEntry:
     """A sample catalog entry without tool-calling."""
     return CatalogEntry(
@@ -113,15 +109,13 @@ def sample_entry_no_tool_calling() -> CatalogEntry:
         ),
         quality=QualityScores(overall=65, coding=60, reasoning=70, instruction_following=60),
         benchmarks={
-            "m5-max-128": CatalogBenchmarkResult(
-                prompt_tps=150.0, gen_tps=80.0, memory_gb=5.0
-            ),
+            "m5-max-128": CatalogBenchmarkResult(prompt_tps=150.0, gen_tps=80.0, memory_gb=5.0),
         },
         tags=["reasoning"],
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_profile() -> HardwareProfile:
     """A sample hardware profile for testing."""
     return HardwareProfile(
@@ -287,9 +281,7 @@ class TestCatalogComparison:
         for cls in classifications:
             assert cls.classification == CLASSIFICATION_FAIL
 
-    def test_no_matching_profile_returns_empty(
-        self, sample_entry: CatalogEntry
-    ) -> None:
+    def test_no_matching_profile_returns_empty(self, sample_entry: CatalogEntry) -> None:
         unknown_profile = HardwareProfile(
             chip="Apple M99",
             gpu_cores=100,
@@ -580,8 +572,7 @@ class TestSingleIteration:
     def test_no_content_returns_zero_tps(self, mock_stream: MagicMock) -> None:
         """When no content chunks arrive, TPS should be zero."""
         sse_lines = [
-            'data: {"choices":[{"delta":{}}],'
-            '"usage":{"prompt_tokens":0,"completion_tokens":0}}',
+            'data: {"choices":[{"delta":{}}],"usage":{"prompt_tokens":0,"completion_tokens":0}}',
             "data: [DONE]",
         ]
         mock_response = MagicMock()
@@ -787,9 +778,7 @@ class TestToolCallBenchmark:
 
         mock_response = MagicMock()
         mock_response.status_code = 200
-        mock_response.json.return_value = {
-            "choices": [{"message": {"content": "It's sunny"}}]
-        }
+        mock_response.json.return_value = {"choices": [{"message": {"content": "It's sunny"}}]}
         mock_post.return_value = mock_response
 
         result = _run_tool_call_benchmark(port=8000, model_name="test")
@@ -991,9 +980,7 @@ class TestTempInstanceCommand:
             architecture="transformer",
             min_mlx_lm_version="0.22.0",
             sources={
-                "int4": QuantSource(
-                    hf_repo="mlx-community/test-4bit", disk_size_gb=4.5
-                ),
+                "int4": QuantSource(hf_repo="mlx-community/test-4bit", disk_size_gb=4.5),
             },
             capabilities=Capabilities(
                 tool_calling=False,
@@ -1002,9 +989,7 @@ class TestTempInstanceCommand:
                 reasoning_parser=None,
                 vision=False,
             ),
-            quality=QualityScores(
-                overall=50, coding=50, reasoning=50, instruction_following=50
-            ),
+            quality=QualityScores(overall=50, coding=50, reasoning=50, instruction_following=50),
             benchmarks={},
             tags=[],
         )
@@ -1037,9 +1022,7 @@ class TestTempInstanceCommand:
             architecture="transformer",
             min_mlx_lm_version="0.22.0",
             sources={
-                "int4": QuantSource(
-                    hf_repo="mlx-community/test-4bit", disk_size_gb=4.5
-                ),
+                "int4": QuantSource(hf_repo="mlx-community/test-4bit", disk_size_gb=4.5),
             },
             capabilities=Capabilities(
                 tool_calling=False,
@@ -1048,9 +1031,7 @@ class TestTempInstanceCommand:
                 reasoning_parser=None,  # thinking=True but no parser
                 vision=False,
             ),
-            quality=QualityScores(
-                overall=50, coding=50, reasoning=50, instruction_following=50
-            ),
+            quality=QualityScores(overall=50, coding=50, reasoning=50, instruction_following=50),
             benchmarks={},
             tags=[],
         )
@@ -1195,16 +1176,25 @@ class TestRunBenchmark:
         )
         mock_iterations.return_value = [
             IterationResult(
-                prompt_tps=150.0, gen_tps=80.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                prompt_tps=150.0,
+                gen_tps=80.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=10.0,
             ),
             IterationResult(
-                prompt_tps=160.0, gen_tps=85.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=9.5,
+                prompt_tps=160.0,
+                gen_tps=85.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=9.5,
             ),
             IterationResult(
-                prompt_tps=155.0, gen_tps=82.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=9.8,
+                prompt_tps=155.0,
+                gen_tps=82.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=9.8,
             ),
         ]
         mock_profile.return_value = sample_profile
@@ -1244,8 +1234,11 @@ class TestRunBenchmark:
             min_mlx_lm_version="0.22.0",
             sources={"int4": QuantSource(hf_repo="test/test", disk_size_gb=4.0)},
             capabilities=Capabilities(
-                tool_calling=False, tool_call_parser=None,
-                thinking=False, reasoning_parser=None, vision=False,
+                tool_calling=False,
+                tool_call_parser=None,
+                thinking=False,
+                reasoning_parser=None,
+                vision=False,
             ),
             quality=QualityScores(overall=50, coding=50, reasoning=50, instruction_following=50),
             benchmarks={},
@@ -1261,8 +1254,11 @@ class TestRunBenchmark:
         )
         mock_iterations.return_value = [
             IterationResult(
-                prompt_tps=100.0, gen_tps=50.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                prompt_tps=100.0,
+                gen_tps=50.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=10.0,
             ),
         ]
         mock_detect.return_value = sample_profile
@@ -1329,8 +1325,11 @@ class TestRunBenchmark:
             min_mlx_lm_version="0.22.0",
             sources={"int4": QuantSource(hf_repo="test/test", disk_size_gb=4.0)},
             capabilities=Capabilities(
-                tool_calling=False, tool_call_parser=None,
-                thinking=False, reasoning_parser=None, vision=False,
+                tool_calling=False,
+                tool_call_parser=None,
+                thinking=False,
+                reasoning_parser=None,
+                vision=False,
             ),
             quality=QualityScores(overall=50, coding=50, reasoning=50, instruction_following=50),
             benchmarks={},
@@ -1346,8 +1345,11 @@ class TestRunBenchmark:
         )
         mock_iterations.return_value = [
             IterationResult(
-                prompt_tps=100.0, gen_tps=50.0,
-                prompt_tokens=1000, completion_tokens=100, total_time=10.0,
+                prompt_tps=100.0,
+                gen_tps=50.0,
+                prompt_tokens=1000,
+                completion_tokens=100,
+                total_time=10.0,
             ),
         ]
         mock_profile.return_value = sample_profile

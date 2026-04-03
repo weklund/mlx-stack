@@ -27,13 +27,13 @@ from mlx_stack.core.launchd import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def runner() -> CliRunner:
     """Create a Click CliRunner."""
     return CliRunner()
 
 
-@pytest.fixture()
+@pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict:
     """Create a test stack definition."""
     stacks_dir = mlx_stack_home / "stacks"
@@ -115,9 +115,7 @@ class TestInstallHelp:
 class TestInstallStatus:
     """Tests for install --status flag."""
 
-    def test_status_not_installed(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_status_not_installed(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         status = AgentStatus(installed=False, running=False, pid=None)
         with patch("mlx_stack.cli.install.get_agent_status", return_value=status):
             result = runner.invoke(cli, ["install", "--status"])
@@ -125,9 +123,7 @@ class TestInstallStatus:
         assert result.exit_code == 0
         assert "not installed" in result.output
 
-    def test_status_installed_and_running(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_status_installed_and_running(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         status = AgentStatus(installed=True, running=True, pid=12345)
         with patch("mlx_stack.cli.install.get_agent_status", return_value=status):
             result = runner.invoke(cli, ["install", "--status"])
@@ -146,9 +142,7 @@ class TestInstallStatus:
         assert result.exit_code == 0
         assert "installed but not running" in result.output
 
-    def test_status_platform_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_status_platform_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.check_platform",
             side_effect=PlatformError("only available on macOS"),
@@ -225,9 +219,7 @@ class TestInstallCommand:
 class TestInstallErrors:
     """Tests for install command error handling."""
 
-    def test_platform_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_platform_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.install_agent",
             side_effect=PlatformError("only available on macOS"),
@@ -238,9 +230,7 @@ class TestInstallErrors:
         assert "Error" in result.output
         assert "macOS" in result.output
 
-    def test_prerequisite_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_prerequisite_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.install_agent",
             side_effect=PrerequisiteError(
@@ -253,9 +243,7 @@ class TestInstallErrors:
         assert "Error" in result.output
         assert "init" in result.output.lower()
 
-    def test_launchd_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_launchd_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.install_agent",
             side_effect=LaunchdError("launchctl bootstrap failed"),
@@ -296,27 +284,21 @@ class TestInstallErrors:
 class TestUninstallCommand:
     """Tests for the uninstall command."""
 
-    def test_successful_uninstall(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_successful_uninstall(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch("mlx_stack.cli.install.uninstall_agent", return_value=True):
             result = runner.invoke(cli, ["uninstall"])
 
         assert result.exit_code == 0
         assert "uninstalled" in result.output.lower()
 
-    def test_not_installed_message(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_not_installed_message(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch("mlx_stack.cli.install.uninstall_agent", return_value=False):
             result = runner.invoke(cli, ["uninstall"])
 
         assert result.exit_code == 0
         assert "not installed" in result.output.lower()
 
-    def test_services_unaffected_message(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_services_unaffected_message(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch("mlx_stack.cli.install.uninstall_agent", return_value=True):
             result = runner.invoke(cli, ["uninstall"])
 
@@ -332,9 +314,7 @@ class TestUninstallCommand:
 class TestUninstallErrors:
     """Tests for uninstall command error handling."""
 
-    def test_platform_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_platform_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.uninstall_agent",
             side_effect=PlatformError("only available on macOS"),
@@ -344,9 +324,7 @@ class TestUninstallErrors:
         assert result.exit_code != 0
         assert "Error" in result.output
 
-    def test_launchd_error(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_launchd_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.uninstall_agent",
             side_effect=LaunchdError("bootout failed"),
@@ -356,9 +334,7 @@ class TestUninstallErrors:
         assert result.exit_code != 0
         assert "Error" in result.output
 
-    def test_no_python_traceback(
-        self, runner: CliRunner, mlx_stack_home: Path
-    ) -> None:
+    def test_no_python_traceback(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(
             "mlx_stack.cli.install.uninstall_agent",
             side_effect=LaunchdError("bootout failed"),

@@ -17,6 +17,7 @@ Validates cross-feature interactions across the ops milestone:
 
 from __future__ import annotations
 
+import contextlib
 import gzip
 import os
 import plistlib
@@ -44,7 +45,7 @@ from mlx_stack.core.watchdog import (
 # --------------------------------------------------------------------------- #
 
 
-@pytest.fixture()
+@pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     """Create a test stack definition and return it."""
     stacks_dir = mlx_stack_home / "stacks"
@@ -88,7 +89,7 @@ def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     return stack
 
 
-@pytest.fixture()
+@pytest.fixture
 def pids_dir(mlx_stack_home: Path) -> Path:
     """Create and return the pids directory."""
     d = mlx_stack_home / "pids"
@@ -96,7 +97,7 @@ def pids_dir(mlx_stack_home: Path) -> Path:
     return d
 
 
-@pytest.fixture()
+@pytest.fixture
 def logs_dir(mlx_stack_home: Path) -> Path:
     """Create and return the logs directory."""
     d = mlx_stack_home / "logs"
@@ -104,7 +105,7 @@ def logs_dir(mlx_stack_home: Path) -> Path:
     return d
 
 
-@pytest.fixture()
+@pytest.fixture
 def config_file(mlx_stack_home: Path) -> Path:
     """Create a config file with rotation settings."""
     config_path = mlx_stack_home / "config.yaml"
@@ -347,14 +348,12 @@ class TestFollowSurvivesRotation:
         captured: list[str] = []
 
         def follow_thread() -> None:
-            try:
+            with contextlib.suppress(Exception):
                 follow_log(
                     log,
                     num_lines=0,
                     output_callback=lambda text: captured.append(text),
                 )
-            except Exception:
-                pass
 
         thread = threading.Thread(target=follow_thread, daemon=True)
         thread.start()
@@ -388,14 +387,13 @@ class TestFollowSurvivesRotation:
         # Stop the follow thread by sending KeyboardInterrupt
         # (follow_log catches KeyboardInterrupt for clean exit)
         import ctypes
+
         assert thread.ident is not None
-        try:
+        with contextlib.suppress(Exception):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
                 ctypes.py_object(KeyboardInterrupt),
             )
-        except Exception:
-            pass
         thread.join(timeout=3)
 
         # The follow output should contain the pre-rotation and
@@ -414,14 +412,12 @@ class TestFollowSurvivesRotation:
         captured: list[str] = []
 
         def follow_thread() -> None:
-            try:
+            with contextlib.suppress(Exception):
                 follow_log(
                     log,
                     num_lines=0,
                     output_callback=lambda text: captured.append(text),
                 )
-            except Exception:
-                pass
 
         thread = threading.Thread(target=follow_thread, daemon=True)
         thread.start()
@@ -439,14 +435,13 @@ class TestFollowSurvivesRotation:
         time.sleep(1.0)
 
         import ctypes
+
         assert thread.ident is not None
-        try:
+        with contextlib.suppress(Exception):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
                 ctypes.py_object(KeyboardInterrupt),
             )
-        except Exception:
-            pass
         thread.join(timeout=3)
 
         combined = "\n".join(captured)
@@ -468,14 +463,12 @@ class TestFollowSurvivesRotation:
         captured: list[str] = []
 
         def follow_thread() -> None:
-            try:
+            with contextlib.suppress(Exception):
                 follow_log(
                     log,
                     num_lines=0,
                     output_callback=lambda text: captured.append(text),
                 )
-            except Exception:
-                pass
 
         def wait_for_content(marker: str, timeout: float = 5.0) -> bool:
             """Wait until marker appears in captured output."""
@@ -516,14 +509,13 @@ class TestFollowSurvivesRotation:
         assert wait_for_content("round-3-content")
 
         import ctypes
+
         assert thread.ident is not None
-        try:
+        with contextlib.suppress(Exception):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(thread.ident),
                 ctypes.py_object(KeyboardInterrupt),
             )
-        except Exception:
-            pass
         thread.join(timeout=3)
 
         combined = "\n".join(captured)
@@ -1009,14 +1001,24 @@ class TestDownUpWatchdogInteraction:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
             ]
             mock_status.return_value = mock_result
@@ -1027,8 +1029,11 @@ class TestDownUpWatchdogInteraction:
             }.get(key, "")
 
             result = poll_cycle(
-                state=state, stack=stack_definition,
-                interval=30, max_restarts=5, restart_delay=10,
+                state=state,
+                stack=stack_definition,
+                interval=30,
+                max_restarts=5,
+                restart_delay=10,
             )
 
         assert result.restarts_attempted == 0
@@ -1043,14 +1048,24 @@ class TestDownUpWatchdogInteraction:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.HEALTHY, uptime=10.0, uptime_display="10s",
-                    response_time=0.05, pid=20001,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=10.0,
+                    uptime_display="10s",
+                    response_time=0.05,
+                    pid=20001,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.HEALTHY, uptime=8.0, uptime_display="8s",
-                    response_time=0.08, pid=20002,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=8.0,
+                    uptime_display="8s",
+                    response_time=0.08,
+                    pid=20002,
                 ),
             ]
             mock_status.return_value = mock_result
@@ -1061,8 +1076,11 @@ class TestDownUpWatchdogInteraction:
             }.get(key, "")
 
             result = poll_cycle(
-                state=state, stack=stack_definition,
-                interval=30, max_restarts=5, restart_delay=10,
+                state=state,
+                stack=stack_definition,
+                interval=30,
+                max_restarts=5,
+                restart_delay=10,
             )
 
         assert result.restarts_attempted == 0
@@ -1091,9 +1109,14 @@ class TestDownUpWatchdogInteraction:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.HEALTHY, uptime=60.0, uptime_display="1m",
-                    response_time=0.05, pid=10001,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=60.0,
+                    uptime_display="1m",
+                    response_time=0.05,
+                    pid=10001,
                 ),
             ]
             mock_status.return_value = mock_result
@@ -1104,8 +1127,11 @@ class TestDownUpWatchdogInteraction:
             }.get(key, "")
 
             poll_cycle(
-                state=state, stack=stack_definition,
-                interval=30, max_restarts=5, restart_delay=10,
+                state=state,
+                stack=stack_definition,
+                interval=30,
+                max_restarts=5,
+                restart_delay=10,
             )
 
         # acquire_lock should NOT have been called during a healthy poll
@@ -1189,14 +1215,24 @@ class TestFullOpsLifecycle:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.HEALTHY, uptime=300.0, uptime_display="5m",
-                    response_time=0.05, pid=30001,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=300.0,
+                    uptime_display="5m",
+                    response_time=0.05,
+                    pid=30001,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.HEALTHY, uptime=300.0, uptime_display="5m",
-                    response_time=0.08, pid=30002,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=300.0,
+                    uptime_display="5m",
+                    response_time=0.08,
+                    pid=30002,
                 ),
             ]
             mock_status.return_value = mock_result
@@ -1225,14 +1261,12 @@ class TestFullOpsLifecycle:
         follow_captured: list[str] = []
 
         def follow_thread_fn() -> None:
-            try:
+            with contextlib.suppress(Exception):
                 follow_log(
                     fast_log,
                     num_lines=0,
                     output_callback=lambda text: follow_captured.append(text),
                 )
-            except Exception:
-                pass
 
         follow_thread = threading.Thread(target=follow_thread_fn, daemon=True)
         follow_thread.start()
@@ -1253,14 +1287,13 @@ class TestFullOpsLifecycle:
 
         # Stop the follow thread
         import ctypes
+
         assert follow_thread.ident is not None
-        try:
+        with contextlib.suppress(Exception):
             ctypes.pythonapi.PyThreadState_SetAsyncExc(
                 ctypes.c_ulong(follow_thread.ident),
                 ctypes.py_object(KeyboardInterrupt),
             )
-        except Exception:
-            pass
         follow_thread.join(timeout=3)
 
         # Verify follow detected the new line
@@ -1283,14 +1316,24 @@ class TestFullOpsLifecycle:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.CRASHED, uptime=None, uptime_display="-",
-                    response_time=None, pid=30001,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.CRASHED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=30001,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.HEALTHY, uptime=600.0, uptime_display="10m",
-                    response_time=0.08, pid=30002,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.HEALTHY,
+                    uptime=600.0,
+                    uptime_display="10m",
+                    response_time=0.08,
+                    pid=30002,
                 ),
             ]
             mock_status.return_value = mock_result
@@ -1333,14 +1376,24 @@ class TestFullOpsLifecycle:
             mock_result.no_stack = False
             mock_result.services = [
                 ServiceStatus(
-                    tier="fast", model="qwen3.5-3b", port=8000,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="fast",
+                    model="qwen3.5-3b",
+                    port=8000,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
                 ServiceStatus(
-                    tier="standard", model="qwen3.5-8b", port=8001,
-                    status=ServiceHealth.STOPPED, uptime=None, uptime_display="-",
-                    response_time=None, pid=None,
+                    tier="standard",
+                    model="qwen3.5-8b",
+                    port=8001,
+                    status=ServiceHealth.STOPPED,
+                    uptime=None,
+                    uptime_display="-",
+                    response_time=None,
+                    pid=None,
                 ),
             ]
             mock_status.return_value = mock_result

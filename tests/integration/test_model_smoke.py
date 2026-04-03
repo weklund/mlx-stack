@@ -156,9 +156,7 @@ class TestModelSmoke:
         try:
             # Pull model (cached across runs)
             pull_result = pull_model(model_id=entry.id, quant=SMOKE_QUANT)
-            assert pull_result.local_path.exists(), (
-                f"Model not found at {pull_result.local_path}"
-            )
+            assert pull_result.local_path.exists(), f"Model not found at {pull_result.local_path}"
 
             # Start vllm-mlx
             start_time = time.monotonic()
@@ -205,8 +203,7 @@ class TestModelSmoke:
                 result.inference_time_s = time.monotonic() - inference_start
 
                 assert response.status_code == 200, (
-                    f"{entry.id}: inference returned {response.status_code}: "
-                    f"{response.text[:300]}"
+                    f"{entry.id}: inference returned {response.status_code}: {response.text[:300]}"
                 )
 
                 data = response.json()

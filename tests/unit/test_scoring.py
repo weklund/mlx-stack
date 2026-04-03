@@ -125,13 +125,13 @@ def _make_profile(
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def m4_max_128_profile() -> HardwareProfile:
     """M4 Max 128 GB profile — matches catalog benchmark key 'm4-max-128'."""
     return _make_profile()
 
 
-@pytest.fixture()
+@pytest.fixture
 def m4_pro_48_profile() -> HardwareProfile:
     """M4 Pro 48 GB profile — matches catalog benchmark key 'm4-pro-48'."""
     return _make_profile(
@@ -142,7 +142,7 @@ def m4_pro_48_profile() -> HardwareProfile:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def unknown_profile() -> HardwareProfile:
     """Unknown hardware profile — no catalog benchmark match."""
     return _make_profile(
@@ -154,7 +154,7 @@ def unknown_profile() -> HardwareProfile:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def small_memory_profile() -> HardwareProfile:
     """Small memory profile (32 GB) for tier count tests."""
     return _make_profile(
@@ -165,13 +165,13 @@ def small_memory_profile() -> HardwareProfile:
     )
 
 
-@pytest.fixture()
+@pytest.fixture
 def basic_entry() -> CatalogEntry:
     """A basic catalog entry with standard benchmarks."""
     return _make_entry()
 
 
-@pytest.fixture()
+@pytest.fixture
 def sample_catalog() -> list[CatalogEntry]:
     """A representative catalog for testing scoring and tier assignment."""
     return [
@@ -433,14 +433,14 @@ class TestIntentWeights:
         assert balanced.tool_calling != fleet.tool_calling
 
     def test_valid_intents(self) -> None:
-        assert VALID_INTENTS == {"balanced", "agent-fleet"}
+        assert {"balanced", "agent-fleet"} == VALID_INTENTS
 
     def test_all_valid_intents_have_weights(self) -> None:
         for intent in VALID_INTENTS:
             assert intent in INTENT_WEIGHTS
 
     def test_weights_must_sum_to_one(self) -> None:
-        with pytest.raises(ValueError, match="must sum to 1.0"):
+        with pytest.raises(ValueError, match=r"must sum to 1\.0"):
             IntentWeights(speed=0.5, quality=0.5, tool_calling=0.5, memory_efficiency=0.5)
 
 
@@ -455,9 +455,7 @@ class TestBenchmarkResolution:
     def test_direct_match(
         self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
     ) -> None:
-        gen_tps, memory_gb, is_estimated = _resolve_benchmark(
-            basic_entry, m4_max_128_profile
-        )
+        gen_tps, memory_gb, is_estimated = _resolve_benchmark(basic_entry, m4_max_128_profile)
         assert gen_tps == 77.0
         assert memory_gb == 5.5
         assert is_estimated is False
@@ -465,9 +463,7 @@ class TestBenchmarkResolution:
     def test_direct_match_different_profile(
         self, basic_entry: CatalogEntry, m4_pro_48_profile: HardwareProfile
     ) -> None:
-        gen_tps, memory_gb, is_estimated = _resolve_benchmark(
-            basic_entry, m4_pro_48_profile
-        )
+        gen_tps, memory_gb, is_estimated = _resolve_benchmark(basic_entry, m4_pro_48_profile)
         assert gen_tps == 52.0
         assert memory_gb == 5.5
         assert is_estimated is False
@@ -488,9 +484,7 @@ class TestBenchmarkResolution:
     def test_bandwidth_ratio_estimation(
         self, basic_entry: CatalogEntry, unknown_profile: HardwareProfile
     ) -> None:
-        gen_tps, memory_gb, is_estimated = _resolve_benchmark(
-            basic_entry, unknown_profile
-        )
+        gen_tps, memory_gb, is_estimated = _resolve_benchmark(basic_entry, unknown_profile)
         # Unknown M6 with 1000 GB/s, reference m4-pro-48 has 273 GB/s, gen_tps=52.0
         # Expected: 52.0 * (1000 / 273) ≈ 190.5
         assert is_estimated is True
@@ -612,9 +606,7 @@ class TestScoreModel:
         entry = _make_entry(
             model_id="fast-model",
             benchmarks={
-                "m4-max-128": BenchmarkResult(
-                    prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8
-                ),
+                "m4-max-128": BenchmarkResult(prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8),
             },
         )
         # Very high bandwidth hardware — 4x the reference m4-max-128 (546 GB/s)
@@ -669,9 +661,7 @@ class TestScoreAndFilter:
     ) -> None:
         """Models exceeding budget should be excluded."""
         budget_gb = 25.0  # Should exclude premium-72b (42GB) and huge-100b (60GB)
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", budget_gb
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", budget_gb)
         model_ids = {m.entry.id for m in scored}
         assert "premium-72b" not in model_ids
         assert "huge-100b" not in model_ids
@@ -685,9 +675,7 @@ class TestScoreAndFilter:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         for i in range(len(scored) - 1):
             assert scored[i].composite_score >= scored[i + 1].composite_score
 
@@ -708,9 +696,7 @@ class TestScoreAndFilter:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 0.1
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 0.1)
         assert scored == []
 
     def test_different_intents_produce_different_scores(
@@ -718,12 +704,8 @@ class TestScoreAndFilter:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        balanced = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
-        fleet = score_and_filter(
-            sample_catalog, m4_max_128_profile, "agent-fleet", 51.2
-        )
+        balanced = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
+        fleet = score_and_filter(sample_catalog, m4_max_128_profile, "agent-fleet", 51.2)
 
         # Get scores for the same model under different intents
         balanced_scores = {m.entry.id: m.composite_score for m in balanced}
@@ -731,10 +713,7 @@ class TestScoreAndFilter:
 
         # At least one model should have a different score
         common_ids = set(balanced_scores) & set(fleet_scores)
-        assert any(
-            not math.isclose(balanced_scores[mid], fleet_scores[mid])
-            for mid in common_ids
-        )
+        assert any(not math.isclose(balanced_scores[mid], fleet_scores[mid]) for mid in common_ids)
 
     def test_deterministic_scoring(
         self,
@@ -742,14 +721,10 @@ class TestScoreAndFilter:
         m4_max_128_profile: HardwareProfile,
     ) -> None:
         """Same inputs must always produce same outputs."""
-        result1 = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
-        result2 = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        result1 = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
+        result2 = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         assert len(result1) == len(result2)
-        for m1, m2 in zip(result1, result2):
+        for m1, m2 in zip(result1, result2, strict=False):
             assert m1.entry.id == m2.entry.id
             assert m1.composite_score == m2.composite_score
 
@@ -760,7 +735,10 @@ class TestScoreAndFilter:
         entry = _make_entry()
         saved = {"test-model": {"gen_tps": 200.0, "memory_gb": 5.5}}
         scored = score_and_filter(
-            [entry], m4_max_128_profile, "balanced", 51.2,
+            [entry],
+            m4_max_128_profile,
+            "balanced",
+            51.2,
             saved_benchmarks=saved,
         )
         assert len(scored) == 1
@@ -786,9 +764,7 @@ class TestAssignTiers:
         The composite score is intent-weighted, so standard tier reflects
         the intent-specific best model rather than the raw quality leader.
         """
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         standard = next(t for t in tiers if t.tier == TIER_STANDARD)
         # Standard tier should be the model with the highest composite score
@@ -800,9 +776,7 @@ class TestAssignTiers:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         fast = next(t for t in tiers if t.tier == TIER_FAST)
         # fast-0.8b should be the fast tier (185 gen_tps on m4-max-128)
@@ -813,9 +787,7 @@ class TestAssignTiers:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         longctx_tiers = [t for t in tiers if t.tier == TIER_LONGCTX]
         assert len(longctx_tiers) == 1
@@ -826,16 +798,12 @@ class TestAssignTiers:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         model_ids = [t.model.entry.id for t in tiers]
         assert len(model_ids) == len(set(model_ids))
 
-    def test_small_memory_fewer_tiers(
-        self, small_memory_profile: HardwareProfile
-    ) -> None:
+    def test_small_memory_fewer_tiers(self, small_memory_profile: HardwareProfile) -> None:
         """Small memory systems (budget < 16 GB) should get 1-2 tiers."""
         # 32 GB * 40% = 12.8 GB budget — below 16 GB threshold
         catalog = [
@@ -867,9 +835,7 @@ class TestAssignTiers:
             ),
         ]
         budget_gb = compute_memory_budget(32)  # 12.8 GB
-        scored = score_and_filter(
-            catalog, small_memory_profile, "balanced", budget_gb
-        )
+        scored = score_and_filter(catalog, small_memory_profile, "balanced", budget_gb)
         tiers = assign_tiers(scored, budget_gb)
         # Should have at most 2 tiers (no longctx for budget < 16)
         tier_names = [t.tier for t in tiers]
@@ -883,9 +849,7 @@ class TestAssignTiers:
     ) -> None:
         """Large memory systems should get up to 3 tiers."""
         budget_gb = compute_memory_budget(128)  # 51.2 GB
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", budget_gb
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", budget_gb)
         tiers = assign_tiers(scored, budget_gb)
         assert len(tiers) == 3
         tier_names = [t.tier for t in tiers]
@@ -917,15 +881,11 @@ class TestAssignTiers:
                 model_id="fast-model",
                 quality_overall=42,
                 benchmarks={
-                    "m4-max-128": BenchmarkResult(
-                        prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8
-                    ),
+                    "m4-max-128": BenchmarkResult(prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8),
                 },
             ),
         ]
-        scored = score_and_filter(
-            catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         tier_names = [t.tier for t in tiers]
         assert TIER_LONGCTX not in tier_names
@@ -937,9 +897,7 @@ class TestAssignTiers:
         m4_max_128_profile: HardwareProfile,
     ) -> None:
         """Tiers should be ordered: standard, fast, longctx."""
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         tier_names = [t.tier for t in tiers]
         assert tier_names[0] == TIER_STANDARD
@@ -953,9 +911,7 @@ class TestAssignTiers:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        scored = score_and_filter(
-            sample_catalog, m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter(sample_catalog, m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         for tier in tiers:
             assert tier.quant == "int4"
@@ -995,9 +951,7 @@ class TestRecommend:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        result = recommend(
-            sample_catalog, m4_max_128_profile, budget_gb_override=30.0
-        )
+        result = recommend(sample_catalog, m4_max_128_profile, budget_gb_override=30.0)
         assert result.memory_budget_gb == 30.0
         for scored in result.all_scored:
             assert scored.memory_gb <= 30.0
@@ -1007,9 +961,7 @@ class TestRecommend:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        result = recommend(
-            sample_catalog, m4_max_128_profile, budget_pct=60
-        )
+        result = recommend(sample_catalog, m4_max_128_profile, budget_pct=60)
         assert result.memory_budget_gb == pytest.approx(76.8)
 
     def test_agent_fleet_intent(
@@ -1017,9 +969,7 @@ class TestRecommend:
         sample_catalog: list[CatalogEntry],
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        result = recommend(
-            sample_catalog, m4_max_128_profile, intent="agent-fleet"
-        )
+        result = recommend(sample_catalog, m4_max_128_profile, intent="agent-fleet")
         assert result.intent == "agent-fleet"
 
     def test_different_intents_produce_different_results(
@@ -1036,10 +986,7 @@ class TestRecommend:
 
         # At least one model should have different scores
         common_ids = set(balanced_scores) & set(fleet_scores)
-        assert any(
-            not math.isclose(balanced_scores[mid], fleet_scores[mid])
-            for mid in common_ids
-        )
+        assert any(not math.isclose(balanced_scores[mid], fleet_scores[mid]) for mid in common_ids)
 
     def test_invalid_intent_raises(
         self,
@@ -1073,9 +1020,7 @@ class TestRecommend:
     ) -> None:
         entry = _make_entry()
         saved = {"test-model": {"gen_tps": 200.0, "memory_gb": 5.5}}
-        result = recommend(
-            [entry], m4_max_128_profile, saved_benchmarks=saved
-        )
+        result = recommend([entry], m4_max_128_profile, saved_benchmarks=saved)
         assert len(result.all_scored) == 1
         assert result.all_scored[0].gen_tps == 200.0
         assert result.all_scored[0].is_estimated is False
@@ -1090,37 +1035,31 @@ class TestRecommend:
         r2 = recommend(sample_catalog, m4_max_128_profile)
 
         assert len(r1.tiers) == len(r2.tiers)
-        for t1, t2 in zip(r1.tiers, r2.tiers):
+        for t1, t2 in zip(r1.tiers, r2.tiers, strict=False):
             assert t1.tier == t2.tier
             assert t1.model.entry.id == t2.model.entry.id
             assert t1.model.composite_score == t2.model.composite_score
 
         assert len(r1.all_scored) == len(r2.all_scored)
-        for m1, m2 in zip(r1.all_scored, r2.all_scored):
+        for m1, m2 in zip(r1.all_scored, r2.all_scored, strict=False):
             assert m1.entry.id == m2.entry.id
             assert m1.composite_score == m2.composite_score
 
-    def test_small_budget_gives_fewer_tiers(
-        self, small_memory_profile: HardwareProfile
-    ) -> None:
+    def test_small_budget_gives_fewer_tiers(self, small_memory_profile: HardwareProfile) -> None:
         """On small memory, recommendation produces fewer tiers."""
         catalog = [
             _make_entry(
                 model_id="small-model",
                 quality_overall=65,
                 benchmarks={
-                    "m4-pro-48": BenchmarkResult(
-                        prompt_tps=180.0, gen_tps=88.0, memory_gb=2.5
-                    ),
+                    "m4-pro-48": BenchmarkResult(prompt_tps=180.0, gen_tps=88.0, memory_gb=2.5),
                 },
             ),
             _make_entry(
                 model_id="mid-model",
                 quality_overall=70,
                 benchmarks={
-                    "m4-pro-48": BenchmarkResult(
-                        prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5
-                    ),
+                    "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
                 },
             ),
         ]
@@ -1141,9 +1080,7 @@ class TestRecommend:
         m4_max_128_profile: HardwareProfile,
     ) -> None:
         """When no models fit the budget, result has empty tiers."""
-        result = recommend(
-            sample_catalog, m4_max_128_profile, budget_gb_override=0.1
-        )
+        result = recommend(sample_catalog, m4_max_128_profile, budget_gb_override=0.1)
         assert result.tiers == []
         assert result.all_scored == []
 
@@ -1189,9 +1126,7 @@ class TestWithRealCatalog:
 
         common = set(balanced_scores) & set(fleet_scores)
         differences = [
-            mid
-            for mid in common
-            if not math.isclose(balanced_scores[mid], fleet_scores[mid])
+            mid for mid in common if not math.isclose(balanced_scores[mid], fleet_scores[mid])
         ]
         assert len(differences) > 0, "Balanced and agent-fleet should differ"
 
@@ -1246,7 +1181,7 @@ class TestWithRealCatalog:
         r2 = recommend(catalog, profile)
 
         assert len(r1.tiers) == len(r2.tiers)
-        for t1, t2 in zip(r1.tiers, r2.tiers):
+        for t1, t2 in zip(r1.tiers, r2.tiers, strict=False):
             assert t1.tier == t2.tier
             assert t1.model.entry.id == t2.model.entry.id
 
@@ -1273,8 +1208,7 @@ class TestWithRealCatalog:
         # The two intents must produce at least one different tier assignment
         common_tiers = set(balanced_tier_models) & set(fleet_tier_models)
         has_difference = any(
-            balanced_tier_models[tier] != fleet_tier_models[tier]
-            for tier in common_tiers
+            balanced_tier_models[tier] != fleet_tier_models[tier] for tier in common_tiers
         )
         assert has_difference, (
             f"balanced and agent-fleet should differ in at least one tier, "
@@ -1323,9 +1257,7 @@ class TestIntentDifferentiation:
             tool_calling=False,
             tool_call_parser=None,
             benchmarks={
-                "m4-max-128": BenchmarkResult(
-                    prompt_tps=40.0, gen_tps=25.0, memory_gb=20.0
-                ),
+                "m4-max-128": BenchmarkResult(prompt_tps=40.0, gen_tps=25.0, memory_gb=20.0),
             },
         )
         model_b = _make_entry(
@@ -1337,20 +1269,14 @@ class TestIntentDifferentiation:
             quality_instruction=52,
             tool_calling=True,
             benchmarks={
-                "m4-max-128": BenchmarkResult(
-                    prompt_tps=42.0, gen_tps=26.0, memory_gb=20.0
-                ),
+                "m4-max-128": BenchmarkResult(prompt_tps=42.0, gen_tps=26.0, memory_gb=20.0),
             },
         )
         catalog = [model_a, model_b]
         budget_gb = 51.2
 
-        balanced_scored = score_and_filter(
-            catalog, m4_max_128_profile, "balanced", budget_gb
-        )
-        fleet_scored = score_and_filter(
-            catalog, m4_max_128_profile, "agent-fleet", budget_gb
-        )
+        balanced_scored = score_and_filter(catalog, m4_max_128_profile, "balanced", budget_gb)
+        fleet_scored = score_and_filter(catalog, m4_max_128_profile, "agent-fleet", budget_gb)
 
         balanced_tiers = assign_tiers(balanced_scored, budget_gb)
         fleet_tiers = assign_tiers(fleet_scored, budget_gb)
@@ -1378,9 +1304,7 @@ class TestIntentDifferentiation:
             model_id="slow-quality",
             quality_overall=95,
             benchmarks={
-                "m4-max-128": BenchmarkResult(
-                    prompt_tps=5.0, gen_tps=3.0, memory_gb=48.0
-                ),
+                "m4-max-128": BenchmarkResult(prompt_tps=5.0, gen_tps=3.0, memory_gb=48.0),
             },
         )
         # Model with moderate quality but good speed and efficiency
@@ -1388,15 +1312,11 @@ class TestIntentDifferentiation:
             model_id="balanced-model",
             quality_overall=70,
             benchmarks={
-                "m4-max-128": BenchmarkResult(
-                    prompt_tps=120.0, gen_tps=70.0, memory_gb=5.0
-                ),
+                "m4-max-128": BenchmarkResult(prompt_tps=120.0, gen_tps=70.0, memory_gb=5.0),
             },
         )
 
-        scored = score_and_filter(
-            [high_q, balanced_model], m4_max_128_profile, "balanced", 51.2
-        )
+        scored = score_and_filter([high_q, balanced_model], m4_max_128_profile, "balanced", 51.2)
         tiers = assign_tiers(scored, 51.2)
         standard = next(t for t in tiers if t.tier == TIER_STANDARD)
 
@@ -1419,7 +1339,10 @@ class TestExcludeGated:
         gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
 
         scored = score_and_filter(
-            [open_model, gated_model], m4_max_128_profile, "balanced", 51.2,
+            [open_model, gated_model],
+            m4_max_128_profile,
+            "balanced",
+            51.2,
             exclude_gated=True,
         )
         scored_ids = {m.entry.id for m in scored}
@@ -1432,7 +1355,10 @@ class TestExcludeGated:
         gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
 
         scored = score_and_filter(
-            [open_model, gated_model], m4_max_128_profile, "balanced", 51.2,
+            [open_model, gated_model],
+            m4_max_128_profile,
+            "balanced",
+            51.2,
             exclude_gated=False,
         )
         scored_ids = {m.entry.id for m in scored}
@@ -1443,12 +1369,15 @@ class TestExcludeGated:
         """Gated models excluded from tier assignments via recommend()."""
         open_model = _make_entry(model_id="open-model", name="Open Model")
         gated_model = _make_entry(
-            model_id="gated-model", name="Gated Model",
-            quality_overall=99, gated=True,
+            model_id="gated-model",
+            name="Gated Model",
+            quality_overall=99,
+            gated=True,
         )
 
         result = recommend(
-            [open_model, gated_model], m4_max_128_profile,
+            [open_model, gated_model],
+            m4_max_128_profile,
             exclude_gated=True,
         )
         tier_ids = {t.model.entry.id for t in result.tiers}

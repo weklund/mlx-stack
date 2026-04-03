@@ -443,12 +443,8 @@ class TestIntentDifference:
         balanced_lines = result_balanced.output.split("\n")
         agent_lines = result_agent.output.split("\n")
 
-        balanced_standard = [
-            line for line in balanced_lines if "standard" in line.lower()
-        ]
-        agent_standard = [
-            line for line in agent_lines if "standard" in line.lower()
-        ]
+        balanced_standard = [line for line in balanced_lines if "standard" in line.lower()]
+        agent_standard = [line for line in agent_lines if "standard" in line.lower()]
 
         # Both should have a standard tier
         assert len(balanced_standard) > 0
@@ -506,7 +502,8 @@ class TestTierAssignment:
         assert result.exit_code == 0
         output_lines = result.output.split("\n")
         fast_line = [
-            line for line in output_lines
+            line
+            for line in output_lines
             if "fast" in line.lower() and "standard" not in line.lower()
         ]
         assert len(fast_line) > 0
@@ -578,9 +575,7 @@ class TestTierCount:
                 name="Tiny 1B",
                 quality_overall=30,
                 benchmarks={
-                    "m4-max-128": BenchmarkResult(
-                        prompt_tps=200.0, gen_tps=150.0, memory_gb=1.0
-                    ),
+                    "m4-max-128": BenchmarkResult(prompt_tps=200.0, gen_tps=150.0, memory_gb=1.0),
                 },
             ),
         ]
@@ -1048,9 +1043,7 @@ class TestSavedBenchmarks:
                 "memory_gb": 5.5,
             }
         }
-        (benchmarks_dir / f"{profile.profile_id}.json").write_text(
-            json.dumps(saved_data)
-        )
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
 
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
@@ -1221,9 +1214,7 @@ class TestMalformedSavedBenchmarks:
                 "memory_gb": 5.5,
             }
         }
-        (benchmarks_dir / f"{profile.profile_id}.json").write_text(
-            json.dumps(saved_data)
-        )
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
 
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
