@@ -258,10 +258,9 @@ class TestVLLMFlags:
     """Tests for vllm_flags generation."""
 
     def test_base_flags_always_present(self) -> None:
-        """continuous_batching and use_paged_cache always present."""
+        """use_paged_cache always present."""
         entry = _make_entry(tool_calling=False, thinking=False)
         flags = build_vllm_flags(entry)
-        assert flags["continuous_batching"] is True
         assert flags["use_paged_cache"] is True
 
     def test_tool_calling_flags(self) -> None:
@@ -303,7 +302,6 @@ class TestVLLMFlags:
             reasoning_parser="nemotron",
         )
         flags = build_vllm_flags(entry)
-        assert flags["continuous_batching"] is True
         assert flags["use_paged_cache"] is True
         assert flags["enable_auto_tool_choice"] is True
         assert flags["tool_call_parser"] == "hermes"
@@ -1132,7 +1130,6 @@ class TestCLIInit:
 
         for tier in result["stack"]["tiers"]:
             flags = tier["vllm_flags"]
-            assert flags["continuous_batching"] is True
             assert flags["use_paged_cache"] is True
 
 

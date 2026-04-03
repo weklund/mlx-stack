@@ -329,8 +329,8 @@ def generate_config(
         if port == litellm_port:
             port += 1
 
+        # TODO(#17): re-enable continuous_batching (waybarrios/vllm-mlx#211).
         vllm_flags: dict[str, Any] = {
-            "continuous_batching": True,
             "use_paged_cache": True,
         }
         if mapping.model.tool_calling:
