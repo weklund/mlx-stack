@@ -3,6 +3,7 @@ name: Nemotron 49B
 family: Nemotron
 params_b: 49.0
 architecture: transformer
+gated: true
 min_mlx_lm_version: "0.22.0"
 sources:
   int4:

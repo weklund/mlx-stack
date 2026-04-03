@@ -3,6 +3,7 @@ name: Nemotron 8B
 family: Nemotron
 params_b: 8.0
 architecture: transformer
+gated: true
 min_mlx_lm_version: "0.22.0"
 sources:
   int4:
