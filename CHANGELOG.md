@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 
 * branded welcome screen for bare CLI invocation ([#37](https://github.com/weklund/mlx-stack/issues/37)) ([b4becc9](https://github.com/weklund/mlx-stack/commit/b4becc9a2a4407eb98708c9116b5193286bb23f0))
 
+
+### Security
+
+* bump pygments from 2.19.2 to 2.20.0 — fixes catastrophic backtracking in archetype, devicetree, and Lua lexers ([#36](https://github.com/weklund/mlx-stack/issues/36)) ([15859f1](https://github.com/weklund/mlx-stack/commit/15859f1))
+
 ## [0.3.6](https://github.com/weklund/mlx-stack/compare/v0.3.5...v0.3.6) (2026-04-04)
 
 
