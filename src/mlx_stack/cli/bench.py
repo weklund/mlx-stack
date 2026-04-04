@@ -35,10 +35,17 @@ console = Console(stderr=True)
 def bench(target: str, save: bool) -> None:
     """Benchmark a tier or model.
 
-    TARGET is a running tier name (e.g., 'fast', 'standard') or a
-    catalog model ID (e.g., 'qwen3.5-8b'). For running tiers, targets
-    the existing vllm-mlx instance. For local models, starts a temporary
-    instance with full cleanup.
+    TARGET is a running tier name (e.g., 'fast', 'standard'), a catalog
+    model ID (e.g., 'qwen3.5-8b'), or a HuggingFace repo string
+    (e.g., 'mlx-community/Model-4bit').
+
+    \b
+    Running tiers benchmark the existing vllm-mlx instance:
+      mlx-stack bench fast
+    \b
+    Catalog IDs and HF repos start a temporary instance:
+      mlx-stack bench qwen3.5-8b
+      mlx-stack bench mlx-community/Model-4bit
 
     Runs 3 iterations of 1024-token prompt + 100-token generation and
     reports mean ± std dev for prompt_tps and gen_tps.
@@ -207,6 +214,6 @@ def _display_results(result: BenchmarkResult_, out: Console, save: bool = False)
     if save:
         out.print(
             "[green]✓ Results saved.[/green] "
-            "These will be used by 'recommend' and 'init' for scoring."
+            "These will be used by 'models --recommend' and 'setup' for scoring."
         )
         out.print()

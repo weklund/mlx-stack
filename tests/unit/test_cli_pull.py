@@ -1825,21 +1825,48 @@ class TestPullHfRepo:
         mock_download: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-PULL-019: Benchmark invoked after HF repo pull."""
-        with patch("mlx_stack.core.benchmark.run_benchmark") as mock_bench:
-            mock_bench.return_value = MagicMock(
-                prompt_tps_mean=150.0,
-                prompt_tps_std=5.0,
-                gen_tps_mean=80.0,
-                gen_tps_std=2.5,
-            )
+        """VAL-PULL-019: Benchmark invoked after HF repo pull.
+
+        Exercises real resolve_target() logic for the HF repo path rather
+        than mocking run_benchmark at the top level. Verifies that the
+        HF repo string flows through resolve_target's '/' detection and
+        starts a temp instance.
+        """
+        from mlx_stack.core.benchmark import BenchmarkResult_
+
+        mock_result = BenchmarkResult_(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            quant="int4",
+            prompt_tps_mean=150.0,
+            prompt_tps_std=5.0,
+            gen_tps_mean=80.0,
+            gen_tps_std=2.5,
+        )
+
+        with (
+            patch("mlx_stack.core.benchmark.ensure_dependency"),
+            patch("mlx_stack.core.benchmark._find_running_tier", return_value=None),
+            patch(
+                "mlx_stack.core.benchmark._resolve_hf_repo_model_source",
+                return_value="mlx-community/Phi-5-Mini-4bit",
+            ) as mock_hf_source,
+            patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000}),
+            patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100),
+            patch(
+                "mlx_stack.core.benchmark._start_temp_instance",
+                return_value="bench-temp-hf",
+            ),
+            patch("mlx_stack.core.benchmark._cleanup_temp_instance"),
+            patch("mlx_stack.core.benchmark._execute_benchmark", return_value=mock_result),
+        ):
             runner = CliRunner()
             result = runner.invoke(
                 cli, ["pull", "mlx-community/Phi-5-Mini-4bit", "--bench"]
             )
 
             assert result.exit_code == 0
-            mock_bench.assert_called_once()
+            # Verify resolve_target's HF repo path was exercised
+            mock_hf_source.assert_called_once_with("mlx-community/Phi-5-Mini-4bit")
             assert "Prompt TPS" in result.output
 
     @patch("mlx_stack.core.pull.download_model")

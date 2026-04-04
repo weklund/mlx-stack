@@ -145,6 +145,13 @@ class TestBenchHelp:
         result = runner.invoke(cli, ["bench"])
         assert result.exit_code != 0
 
+    def test_bench_help_documents_hf_repo(self, runner: CliRunner) -> None:
+        """Bench help text mentions HuggingFace repo string format."""
+        result = runner.invoke(cli, ["bench", "--help"])
+        assert result.exit_code == 0
+        assert "HuggingFace" in result.output
+        assert "mlx-community/Model-4bit" in result.output
+
 
 # --------------------------------------------------------------------------- #
 # Test: Successful benchmark display
@@ -690,3 +697,135 @@ class TestToolCallingDisplay:
         result = runner.invoke(cli, ["bench", "fast"])
         assert result.exit_code == 0
         assert "skipped" in result.output.lower() or "does not support" in result.output.lower()
+
+
+# --------------------------------------------------------------------------- #
+# Test: HF repo string as standalone bench command
+# --------------------------------------------------------------------------- #
+
+
+class TestBenchHfRepo:
+    """Tests for mlx-stack bench with HuggingFace repo strings."""
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_hf_repo_bench_standalone(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """mlx-stack bench mlx-community/Model-4bit works as standalone command."""
+        mock_bench.return_value = BenchmarkResult_(
+            model_id="mlx-community/Model-4bit",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=120.0,
+                    gen_tps=65.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=12.0,
+                ),
+            ],
+            prompt_tps_mean=120.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=65.0,
+            gen_tps_std=0.0,
+            used_temporary_instance=True,
+            catalog_data_available=False,
+        )
+
+        result = runner.invoke(cli, ["bench", "mlx-community/Model-4bit"])
+        assert result.exit_code == 0
+        assert "mlx-community/Model-4bit" in result.output
+        mock_bench.assert_called_once_with(target="mlx-community/Model-4bit", save=False)
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_hf_repo_bench_with_save(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """mlx-stack bench mlx-community/Model-4bit --save saves results."""
+        mock_bench.return_value = BenchmarkResult_(
+            model_id="mlx-community/Model-4bit",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=120.0,
+                    gen_tps=65.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=12.0,
+                ),
+            ],
+            prompt_tps_mean=120.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=65.0,
+            gen_tps_std=0.0,
+            used_temporary_instance=True,
+            catalog_data_available=False,
+        )
+
+        result = runner.invoke(cli, ["bench", "mlx-community/Model-4bit", "--save"])
+        assert result.exit_code == 0
+        mock_bench.assert_called_once_with(target="mlx-community/Model-4bit", save=True)
+        assert "Results saved" in result.output
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_hf_repo_bench_shows_temp_instance(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+    ) -> None:
+        """HF repo bench shows 'temporary' instance indicator."""
+        mock_bench.return_value = BenchmarkResult_(
+            model_id="mlx-community/Model-4bit",
+            quant="int4",
+            iterations=[
+                IterationResult(
+                    prompt_tps=120.0,
+                    gen_tps=65.0,
+                    prompt_tokens=1000,
+                    completion_tokens=100,
+                    total_time=12.0,
+                ),
+            ],
+            prompt_tps_mean=120.0,
+            prompt_tps_std=0.0,
+            gen_tps_mean=65.0,
+            gen_tps_std=0.0,
+            used_temporary_instance=True,
+            catalog_data_available=False,
+        )
+
+        result = runner.invoke(cli, ["bench", "mlx-community/Model-4bit"])
+        assert result.exit_code == 0
+        assert "temporary" in result.output.lower()
+
+
+# --------------------------------------------------------------------------- #
+# Test: --save output references updated commands
+# --------------------------------------------------------------------------- #
+
+
+class TestBenchSaveOutputReferences:
+    """Tests that --save output does not reference removed commands."""
+
+    @patch("mlx_stack.core.benchmark.run_benchmark")
+    def test_save_output_no_recommend_or_init(
+        self,
+        mock_bench: MagicMock,
+        runner: CliRunner,
+        sample_result: BenchmarkResult_,
+    ) -> None:
+        """VAL-CROSS-009: bench --save output does not reference 'recommend' or 'init'."""
+        mock_bench.return_value = sample_result
+
+        result = runner.invoke(cli, ["bench", "fast", "--save"])
+        assert result.exit_code == 0
+        # Should not reference removed commands
+        lower_output = result.output.lower()
+        # Check that "recommend" and "init" don't appear as standalone command references
+        # (they may appear as substrings of other words, so check for command patterns)
+        assert "'recommend'" not in lower_output
+        assert "'init'" not in lower_output

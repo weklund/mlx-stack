@@ -1138,6 +1138,175 @@ class TestResolveTarget:
         assert target.is_running_tier is True
         assert target.temp_service_name is None
 
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-mlx-community/Model-4bit")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_resolves_hf_repo_string(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo string (containing '/') is resolved via the HF repo path."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Model-4bit"
+
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_id == "mlx-community/Model-4bit"
+        assert target.port == 8100
+        assert target.is_running_tier is False
+        assert target.temp_service_name == "bench-temp-mlx-community/Model-4bit"
+        assert target.quant == "int4"
+        assert target.entry.id == "mlx-community/Model-4bit"
+        assert target.entry.name == "Model-4bit"
+        mock_hf_source.assert_called_once_with("mlx-community/Model-4bit")
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_uses_local_path_when_downloaded(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo resolution uses local path when model is already downloaded."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "/home/user/.mlx-stack/models/Model-4bit"
+
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_name == "/home/user/.mlx-stack/models/Model-4bit"
+        mock_start.assert_called_once()
+        # Verify the local path was passed to _start_temp_instance
+        call_args = mock_start.call_args
+        assert call_args[0][0] == "/home/user/.mlx-stack/models/Model-4bit"
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_creates_synthetic_entry(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo resolution creates a synthetic CatalogEntry for benchmarking."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/DeepSeek-R1-4bit"
+
+        target = resolve_target("mlx-community/DeepSeek-R1-4bit")
+        # Verify synthetic entry has safe defaults
+        assert target.entry.family == "unknown"
+        assert target.entry.params_b == 0.0
+        assert target.entry.capabilities.tool_calling is False
+        assert target.entry.benchmarks == {}
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_takes_precedence_over_catalog(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo path is checked before catalog lookup for strings with '/'."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Model-4bit"
+
+        # Even if load_catalog would match, the '/' check should resolve first
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_id == "mlx-community/Model-4bit"
+        assert target.is_running_tier is False
+
+
+# --------------------------------------------------------------------------- #
+# Test: _make_synthetic_entry
+# --------------------------------------------------------------------------- #
+
+
+class TestMakeSyntheticEntry:
+    """Tests for _make_synthetic_entry."""
+
+    def test_creates_entry_with_repo_name(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("mlx-community/Phi-5-Mini-4bit")
+        assert entry.id == "mlx-community/Phi-5-Mini-4bit"
+        assert entry.name == "Phi-5-Mini-4bit"
+        assert entry.family == "unknown"
+        assert entry.params_b == 0.0
+
+    def test_creates_entry_without_slash(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("some-model")
+        assert entry.id == "some-model"
+        assert entry.name == "some-model"
+
+    def test_entry_has_safe_defaults(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("org/model")
+        assert entry.capabilities.tool_calling is False
+        assert entry.capabilities.thinking is False
+        assert entry.benchmarks == {}
+        assert entry.tags == []
+        assert entry.sources == {}
+
+
+# --------------------------------------------------------------------------- #
+# Test: _resolve_hf_repo_model_source
+# --------------------------------------------------------------------------- #
+
+
+class TestResolveHfRepoModelSource:
+    """Tests for _resolve_hf_repo_model_source."""
+
+    def test_returns_local_path_when_downloaded(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        # Create the local model directory
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Model-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        result = _resolve_hf_repo_model_source("mlx-community/Model-4bit")
+        assert result == str(model_path)
+
+    def test_returns_hf_repo_when_not_downloaded(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        result = _resolve_hf_repo_model_source("mlx-community/Model-4bit")
+        assert result == "mlx-community/Model-4bit"
+
+    def test_handles_no_slash_in_repo(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        result = _resolve_hf_repo_model_source("some-model")
+        assert result == "some-model"
+
 
 # --------------------------------------------------------------------------- #
 # Test: run_benchmark (integration-level with mocks)

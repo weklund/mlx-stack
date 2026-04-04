@@ -943,15 +943,84 @@ class BenchmarkTarget:
     temp_service_name: str | None = None  # Set if using a temp instance
 
 
+def _make_synthetic_entry(model_id: str) -> CatalogEntry:
+    """Create a minimal synthetic CatalogEntry for an HF repo string.
+
+    Used when benchmarking arbitrary HuggingFace models that are not in
+    the curated catalog. Provides just enough structure for the benchmark
+    engine to start a temp instance and run iterations.
+
+    Args:
+        model_id: The HF repo string (e.g., ``mlx-community/Model-4bit``).
+
+    Returns:
+        A minimal CatalogEntry with safe defaults.
+    """
+    from mlx_stack.core.catalog import (
+        Capabilities,
+        QualityScores,
+    )
+
+    return CatalogEntry(
+        id=model_id,
+        name=model_id.rsplit("/", 1)[-1] if "/" in model_id else model_id,
+        family="unknown",
+        params_b=0.0,
+        architecture="unknown",
+        min_mlx_lm_version="0.0.0",
+        sources={},
+        capabilities=Capabilities(
+            tool_calling=False,
+            tool_call_parser=None,
+            thinking=False,
+            reasoning_parser=None,
+            vision=False,
+        ),
+        quality=QualityScores(overall=0, coding=0, reasoning=0, instruction_following=0),
+        benchmarks={},
+        tags=[],
+    )
+
+
+def _resolve_hf_repo_model_source(hf_repo: str) -> str:
+    """Resolve an HF repo string to a local path or the repo itself.
+
+    Checks the local models directory for an already-downloaded copy.
+    If found, returns the local path; otherwise returns the HF repo
+    string so vllm-mlx can fetch it directly.
+
+    Args:
+        hf_repo: HuggingFace repo string (e.g., ``mlx-community/Model-4bit``).
+
+    Returns:
+        Local model path (if downloaded) or the original HF repo string.
+    """
+    try:
+        model_dir = str(get_value("model-dir"))
+        models_path = Path(model_dir).expanduser()
+    except (ConfigCorruptError, Exception):
+        models_path = get_data_home() / "models"
+
+    # Check by repo directory name (the part after '/')
+    repo_dir_name = hf_repo.rsplit("/", 1)[-1] if "/" in hf_repo else hf_repo
+    local_path = models_path / repo_dir_name
+    if local_path.exists():
+        return str(local_path)
+
+    # Use HuggingFace repo directly (vllm-mlx can serve from HF)
+    return hf_repo
+
+
 def resolve_target(target: str) -> BenchmarkTarget:
     """Resolve a benchmark target to a specific model and port.
 
     Tries in order:
     1. Running tier by name
-    2. Catalog model by ID (starts temp instance)
+    2. HF repo string (contains ``/``) — starts temp instance
+    3. Catalog model by ID — starts temp instance
 
     Args:
-        target: Tier name or model ID.
+        target: Tier name, HF repo string, or catalog model ID.
 
     Returns:
         A BenchmarkTarget with all needed info.
@@ -970,32 +1039,7 @@ def resolve_target(target: str) -> BenchmarkTarget:
         catalog = load_catalog()
         entry = get_entry_by_id(catalog, model_id)
         if entry is None:
-            # Still benchmark it even without catalog data
-            from mlx_stack.core.catalog import (
-                Capabilities,
-                CatalogEntry,
-                QualityScores,
-            )
-
-            entry = CatalogEntry(
-                id=model_id,
-                name=model_id,
-                family="unknown",
-                params_b=0.0,
-                architecture="unknown",
-                min_mlx_lm_version="0.0.0",
-                sources={},
-                capabilities=Capabilities(
-                    tool_calling=False,
-                    tool_call_parser=None,
-                    thinking=False,
-                    reasoning_parser=None,
-                    vision=False,
-                ),
-                quality=QualityScores(overall=0, coding=0, reasoning=0, instruction_following=0),
-                benchmarks={},
-                tags=[],
-            )
+            entry = _make_synthetic_entry(model_id)
 
         return BenchmarkTarget(
             model_id=model_id,
@@ -1006,7 +1050,30 @@ def resolve_target(target: str) -> BenchmarkTarget:
             is_running_tier=True,
         )
 
-    # 2. Try as a catalog model
+    # 2. Try as an HF repo string (contains '/')
+    if "/" in target:
+        quant = "int4"  # metadata-only for HF repos
+        model_source = _resolve_hf_repo_model_source(target)
+        entry = _make_synthetic_entry(target)
+
+        # Find a free port
+        used_ports = _get_used_ports()
+        port = _find_temp_port(used_ports)
+
+        # Start temp instance
+        service_name = _start_temp_instance(model_source, port, entry, quant)
+
+        return BenchmarkTarget(
+            model_id=target,
+            quant=quant,
+            port=port,
+            model_name=model_source,
+            entry=entry,
+            is_running_tier=False,
+            temp_service_name=service_name,
+        )
+
+    # 3. Try as a catalog model
     catalog = load_catalog()
     entry = get_entry_by_id(catalog, target)
     if entry is not None:
@@ -1040,7 +1107,7 @@ def resolve_target(target: str) -> BenchmarkTarget:
             temp_service_name=service_name,
         )
 
-    # Neither tier nor model
+    # Neither tier, HF repo, nor catalog model
     tier_names = _get_all_tier_names()
     running_tiers = _get_running_tier_names()
 
