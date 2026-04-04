@@ -1300,6 +1300,43 @@ class TestPullCLI:
     @patch("mlx_stack.core.pull.download_model")
     @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
     @patch("mlx_stack.core.pull.load_catalog")
+    def test_pull_bench_message_no_stale_command_refs(
+        self,
+        mock_catalog: MagicMock,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-CROSS-008: pull --bench output does not reference removed commands."""
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
+
+        with patch("mlx_stack.core.benchmark.run_benchmark") as mock_bench:
+            mock_bench.return_value = MagicMock(
+                prompt_tps_mean=150.0,
+                prompt_tps_std=5.0,
+                gen_tps_mean=80.0,
+                gen_tps_std=2.5,
+            )
+            runner = CliRunner()
+            result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--bench"])
+            assert result.exit_code == 0
+            # Must NOT reference removed or stale commands
+            assert "recommend" not in result.output
+            assert "init" not in result.output.split()
+            assert "models --recommend" not in result.output
+            # Must still indicate results are saved for scoring
+            assert "Results saved" in result.output
+            assert "scoring" in result.output
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    @patch("mlx_stack.core.pull.load_catalog")
     def test_pull_bench_calls_run_benchmark_with_save(
         self,
         mock_catalog: MagicMock,
