@@ -1,0 +1,53 @@
+{
+  "milestone": "absorb-profile",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest --cov=src/mlx_stack -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "failedFeatures": [
+      "absorb-profile-into-status"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "absorb-profile-into-status",
+      "severity": "blocking",
+      "description": "VAL-STATUS-008 is not satisfied for persisted profiles: load_profile() reconstructs HardwareProfile with is_estimate=false, so status output cannot display '(estimate)' for unknown chips loaded from profile.json."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": "AGENTS.md",
+      "suggestion": "Clarify the boundary that core/hardware.py can be minimally updated when required to preserve factual hardware metadata (for example estimate signaling) needed by validation assertions.",
+      "evidence": "AGENTS.md currently says core/hardware.py must remain unchanged, while VAL-STATUS-008 requires estimate signaling and review found load_profile() currently drops that metadata.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [
+    {
+      "observation": "Feature worker did not follow cli-worker TDD ordering strictly.",
+      "reason": "already-documented"
+    }
+  ],
+  "previousRound": null
+}
