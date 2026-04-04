@@ -1,0 +1,54 @@
+{
+  "milestone": "ungate-pull",
+  "round": 2,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest --cov=src/mlx_stack -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "failedFeatures": [
+      "fix-bench-hf-repo-target-resolution"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "fix-bench-hf-repo-target-resolution",
+      "severity": "blocking",
+      "description": "Temporary benchmark instances derive service_name directly from HF repo IDs containing '/', and process PID/log paths use service_name as a filename stem. This can create invalid nested paths and prevent reliable startup for `mlx-stack bench <hf-repo>`."
+    }
+  ],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added a filesystem-safety constraint for dynamic service names to `.factory/library/architecture.md` under 'Operational Constraint: Service Name Safety'.",
+      "sourceFeature": "fix-bench-hf-repo-target-resolution"
+    }
+  ],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": ".factory/skills/cli-worker/SKILL.md",
+      "suggestion": "Clarify expected evidence and enforcement for TDD-first ordering (failing test before implementation), or explicitly document acceptable exceptions for minimal scaffolding.",
+      "evidence": "Both `ungate-pull-command` and `fix-bench-hf-repo-target-resolution` reviews observed implementation edits before test additions while the skill still mandates strict test-first sequencing.",
+      "isSystemic": true
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/ungate-pull/scrutiny/synthesis.round1.json"
+}
