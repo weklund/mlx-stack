@@ -1,0 +1,171 @@
+{
+  "groupId": "setup-output-guidance",
+  "milestone": "setup-modification",
+  "testedAt": "2026-04-04T22:11:12.808130+00:00",
+  "isolation": {
+    "HOME": "/tmp/mlx-utv-setup-output-guidance",
+    "MLX_STACK_HOMEBase": "/tmp/mlx-utv-setup-output-guidance/cases",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53"
+  },
+  "toolsUsed": [
+    "shell",
+    "pytest"
+  ],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-setup-output-guidance uv run pytest -vv --tb=short tests/unit/test_cli_setup.py::TestSetupRemoveMultiple::test_remove_two_tiers tests/unit/test_cli_setup.py::TestSetupAddNoPull::test_add_no_pull_does_not_download tests/unit/test_cli_setup.py::TestSetupAddCatalogId::test_add_invalid_catalog_id_shows_error tests/unit/test_cli_setup.py::TestSetupRemoveMultiple::test_remove_all_via_multiple_flags_errors tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_auto_assigns_tier_name tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_output_mentions_mlx_stack_up tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_tier_output_mentions_up tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_output_describes_change tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_tier_describes_change",
+      "evidence": "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove fast --remove reasoning",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-020-cli.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Model-4bit --no-pull",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-022-cli.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add nonexistent-model",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-023-cli.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove standard --remove fast",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-025-cli.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-026-cli.txt"
+    },
+    {
+      "command": "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove fast",
+      "evidence": "setup-modification/setup-output-guidance/VAL-SETUP-027-remove-cli.txt"
+    }
+  ],
+  "assertions": [
+    {
+      "id": "VAL-SETUP-020",
+      "title": "Multiple --remove flags in one invocation",
+      "status": "pass",
+      "reason": "CLI run exited 0, removed both tiers, and resulting stack retained only standard tier; targeted pytest also passed.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove fast --remove reasoning",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupRemoveMultiple::test_remove_two_tiers -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-020-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-020-stack-after.yaml",
+        "setup-modification/setup-output-guidance/VAL-SETUP-020-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-022",
+      "title": "--add with --no-pull modifies config without download",
+      "status": "pass",
+      "reason": "CLI run exited 0 and increased tier count; targeted pytest confirmed download function was not called.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Model-4bit --no-pull",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddNoPull::test_add_no_pull_does_not_download -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-022-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-022-stack-after.yaml",
+        "setup-modification/setup-output-guidance/VAL-SETUP-022-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-023",
+      "title": "--add with invalid catalog ID produces model-not-found error",
+      "status": "pass",
+      "reason": "CLI run exited non-zero with explicit model-not-found message and left stack unchanged; targeted pytest passed.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add nonexistent-model",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddCatalogId::test_add_invalid_catalog_id_shows_error -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-023-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-023-stack-after.yaml",
+        "setup-modification/setup-output-guidance/VAL-SETUP-023-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-025",
+      "title": "Multiple --remove that would empty stack produces error",
+      "status": "pass",
+      "reason": "CLI run exited non-zero with minimum-tier error and stack remained unchanged; targeted pytest passed.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove standard --remove fast",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupRemoveMultiple::test_remove_all_via_multiple_flags_errors -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-025-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-025-stack-after.yaml",
+        "setup-modification/setup-output-guidance/VAL-SETUP-025-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-026",
+      "title": "--add auto-assigns descriptive tier name when --as omitted",
+      "status": "pass",
+      "reason": "CLI run exited 0 and created non-empty auto-generated tier name ('added-1'); targeted pytest passed.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_auto_assigns_tier_name -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-026-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-026-stack-after.yaml",
+        "setup-modification/setup-output-guidance/VAL-SETUP-026-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-027",
+      "title": "Modification output tells user to run mlx-stack up",
+      "status": "pass",
+      "reason": "Both add and remove CLI outputs include 'Run mlx-stack up to apply changes'; paired pytest checks passed for both operations.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit",
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove fast",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_output_mentions_mlx_stack_up tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_tier_output_mentions_up -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-027-add-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-027-remove-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-027-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-028",
+      "title": "Modification output describes what changed",
+      "status": "pass",
+      "reason": "Add output names added tier/model and remove output names removed tier; paired pytest checks passed.",
+      "commandsRun": [
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit",
+        "/Users/weae1504/Projects/mlx-stack/.venv/bin/mlx-stack setup --remove fast",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddHfRepo::test_add_hf_repo_output_describes_change tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_tier_describes_change -q --tb=short"
+      ],
+      "evidence": [
+        "setup-modification/setup-output-guidance/VAL-SETUP-028-add-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-028-remove-cli.txt",
+        "setup-modification/setup-output-guidance/VAL-SETUP-028-pytest.txt",
+        "setup-modification/setup-output-guidance/assigned-assertions-pytest-vv.txt"
+      ],
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Validated 7 assigned assertions (VAL-SETUP-020, 022, 023, 025, 026, 027, 028): all passed via targeted CLI scenarios plus assertion-specific pytest checks."
+}
