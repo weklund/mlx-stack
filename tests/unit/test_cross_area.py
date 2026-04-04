@@ -5,9 +5,9 @@ working together end-to-end. These assertions were blocked in earlier
 milestones because not all commands were implemented yet.
 
 Validates:
-- VAL-CROSS-001: run_init -> pull -> up -> models API returns 200 -> down cleans up
-- VAL-CROSS-007: config changes propagate to run_init, up, pull, recommend
-- VAL-CROSS-012: bench --save overrides catalog data in recommend scoring
+- VAL-CROSS-001: setup (run_init) -> pull -> up -> models API returns 200 -> down cleans up
+- VAL-CROSS-007: config changes propagate to setup (run_init), up, pull, models --recommend
+- VAL-CROSS-012: bench --save overrides catalog data in models --recommend scoring
 - VAL-CROSS-013: Data consistency across profile/models/stack files used by all commands
 """
 
@@ -181,9 +181,9 @@ def _read_litellm_yaml(home: Path) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # VAL-CROSS-001: End-to-end first-time user journey
 #
-# init -> pull -> up -> models API returns 200 -> down cleans up
+# setup (run_init) -> pull -> up -> models API returns 200 -> down cleans up
 #
-# Tests the full data flow across init, pull, up, down with mocked
+# Tests the full data flow across setup, pull, up, down with mocked
 # subprocess/network layers.
 # --------------------------------------------------------------------------- #
 
@@ -309,9 +309,9 @@ class TestCrossAreaEndToEnd:
         mock_up_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-CROSS-001: Full init -> pull -> up -> models API -> down flow.
+        """VAL-CROSS-001: Full setup -> pull -> up -> models API -> down flow.
 
-        1. Runs init to generate configs.
+        1. Runs setup (run_init) to generate configs.
         2. Mocks pull to create models.json inventory entries.
         3. Runs up (mocked subprocess) to create PID files.
         4. Mocks a GET to /v1/models returning 200 with model list.
@@ -486,7 +486,7 @@ class TestCrossAreaEndToEnd:
 
 
 # --------------------------------------------------------------------------- #
-# VAL-CROSS-007: Config changes propagate to init, up, pull, recommend
+# VAL-CROSS-007: Config changes propagate to setup, up, pull, models --recommend
 #
 # After config set, subsequent commands use the new values.
 # Assertions check concrete values, not just exit codes.
@@ -506,7 +506,7 @@ class TestConfigPropagation:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set litellm-port 5000, init generates litellm.yaml with port 5000.
+        """After config set litellm-port 5000, setup generates litellm.yaml with port 5000.
 
         Verifies the concrete port value appears in the LiteLLM config
         general_settings, not just that the command exits 0.
@@ -530,7 +530,7 @@ class TestConfigPropagation:
 
         # Verify the port 5000 is reflected in the stack or litellm config
         # (the actual litellm.yaml doesn't store the port since it's a
-        # CLI flag, but the init output should mention it, and the
+        # CLI flag, but the setup output should mention it, and the
         # dry-run should use it)
         with (
             patch("mlx_stack.core.stack_up.load_catalog", return_value=_make_test_catalog()),
@@ -590,7 +590,7 @@ class TestConfigPropagation:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set memory-budget-pct 60, init uses 60% budget.
+        """After config set memory-budget-pct 60, setup uses 60% budget.
 
         With 128 GB and 60%, budget is 76.8 GB. All selected models must
         fit within 76.8 GB each.
@@ -928,7 +928,7 @@ class TestBenchSaveOverridesCatalog:
 # --------------------------------------------------------------------------- #
 # VAL-CROSS-013: Data consistency across profile/models/stack files
 #
-# profile.json written by profile is parsed by recommend, init, bench.
+# profile.json written by setup is parsed by models --recommend, setup, bench.
 # models.json updated by pull is consistent with models output.
 # Stack schema_version checked by up. vllm_flags translate to CLI flags.
 # --------------------------------------------------------------------------- #
@@ -941,7 +941,7 @@ class TestDataConsistency:
         self,
         mlx_stack_home: Path,
     ) -> None:
-        """profile.json written by profile is parseable by recommend, init, bench."""
+        """profile.json written by setup is parseable by models --recommend, setup, bench."""
         # Arrange
         profile = make_profile(memory_gb=128)
         _write_profile(mlx_stack_home, profile)

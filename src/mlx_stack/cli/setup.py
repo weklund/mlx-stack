@@ -1,8 +1,8 @@
 """Interactive guided setup for mlx-stack.
 
 Walks through hardware detection, model selection, and stack startup
-in a single command. Replaces the profile -> recommend -> init -> pull -> up
-flow with a guided experience.
+in a single command. Replaces the old multi-step onboarding flow with a
+single guided experience.
 
 Use ``--accept-defaults`` for non-interactive CI/scripting mode.
 
