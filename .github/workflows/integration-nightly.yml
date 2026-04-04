@@ -9,6 +9,9 @@ on:
         description: "Specific model ID to test (blank = all non-gated models that fit in memory)"
         required: false
 
+permissions:
+  contents: read
+
 concurrency:
   group: nightly-integration
   cancel-in-progress: true

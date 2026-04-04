@@ -410,6 +410,15 @@ class TestFollowSurvivesRotation:
                     output_callback=lambda text: captured.append(text),
                 )
 
+        def wait_for_content(marker: str, timeout: float = 5.0) -> bool:
+            """Wait until marker appears in captured output."""
+            end = time.monotonic() + timeout
+            while time.monotonic() < end:
+                if any(marker in c for c in captured):
+                    return True
+                time.sleep(0.05)
+            return False
+
         thread = threading.Thread(target=follow_thread, daemon=True)
         thread.start()
 
@@ -423,7 +432,9 @@ class TestFollowSurvivesRotation:
         with open(log, "a") as f:
             f.write("after-truncation\n")
 
-        time.sleep(1.0)
+        assert wait_for_content("after-truncation"), (
+            f"Timed out waiting for 'after-truncation' in captured output: {captured}"
+        )
 
         import ctypes
 
@@ -434,9 +445,6 @@ class TestFollowSurvivesRotation:
                 ctypes.py_object(KeyboardInterrupt),
             )
         thread.join(timeout=3)
-
-        combined = "\n".join(captured)
-        assert "after-truncation" in combined
 
     def test_follow_continues_after_multiple_rotations(
         self, mlx_stack_home: Path, logs_dir: Path
