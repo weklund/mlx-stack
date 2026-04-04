@@ -1,0 +1,21 @@
+{
+  "featureId": "fix-setup-catalog-id-and-model-start-behavior",
+  "reviewedAt": "2026-04-04T22:01:14Z",
+  "commitId": "daac9f03d9a1d40dd1286cc324b0bd3591d7185c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix fully addresses both prior blocking failures. Catalog-ID resolution now writes `entry.id` into `tiers[].model` and resolved HF repo into `tiers[].source`, and `setup --model` no longer auto-starts services while consistently printing `mlx-stack up` guidance. Updated tests now assert the relevant model/source contract fields and no-start behavior.",
+    "issues": []
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The `cli-worker` skill mandates TDD ('write failing tests before implementation'), but this fix session implemented code edits in `src/mlx_stack/cli/setup.py` before adding/updating tests. This recurring deviation suggests either the skill should be relaxed to match practice or enforcement should be improved.",
+      "evidence": "Transcript skeleton for worker session `6fcf5e6a-186e-4d6b-804c-d8954f311f85` shows `Edit` calls on `src/mlx_stack/cli/setup.py` before the first `Edit` calls in `tests/unit/test_cli_setup.py`."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/setup-modification/scrutiny/reviews/setup-add-remove-flags.json; .factory/validation/setup-modification/scrutiny/reviews/setup-model-and-control-flags.json",
+  "summary": "Reviewed feature `fix-setup-catalog-id-and-model-start-behavior` using feature metadata, handoff, transcript skeleton, commit diff, skill file, and both prior failed reviews. The fix resolves the original blocking issues with no new blocking defects found, so this review passes."
+}

@@ -1,7 +1,7 @@
 {
   "milestone": "setup-modification",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,53 +20,26 @@
     }
   },
   "reviewsSummary": {
-    "total": 2,
-    "passed": 0,
-    "failed": 2,
-    "failedFeatures": [
-      "setup-add-remove-flags",
-      "setup-model-and-control-flags"
-    ]
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "setup-add-remove-flags",
-      "severity": "blocking",
-      "description": "Catalog-ID add path stores entry.name rather than canonical entry.id in tiers[].model, diverging from existing stack semantics and VAL-SETUP-002 expectations."
-    },
-    {
-      "featureId": "setup-model-and-control-flags",
-      "severity": "blocking",
-      "description": "Plain `setup --model` auto-starts services and only prints `mlx-stack up` guidance when startup is skipped, conflicting with mission convention and expected --model guidance behavior."
-    }
-  ],
-  "appliedUpdates": [
-    {
-      "target": "library",
-      "description": "Added stack tier field semantics to .factory/library/architecture.md, clarifying that catalog-backed tiers should keep canonical catalog ID in tiers[].model and resolved HF repo in tiers[].source.",
-      "sourceFeature": "setup-add-remove-flags"
-    }
-  ],
+  "blockingIssues": [],
+  "appliedUpdates": [],
   "suggestedGuidanceUpdates": [
     {
-      "target": "AGENTS.md",
-      "suggestion": "Document the semantic invariant for `stack.yaml` tier fields (`model` as canonical ID, `source` as resolved runtime repo) so setup-path changes do not drift to display labels.",
-      "evidence": "Review for setup-add-remove-flags found catalog-ID add path writing entry.name into tiers[].model while stack_init uses entry.id.",
-      "isSystemic": false
-    },
-    {
       "target": "cli-worker skill",
-      "suggestion": "Add a checklist item requiring explicit assertions for validation-contract field-level expectations (not only behavior-level assertions) when writing/updating tests.",
-      "evidence": "Review for setup-add-remove-flags found VAL-SETUP-002 regression passed because tests verified source resolution but not tiers[].model correctness.",
-      "isSystemic": true
-    },
-    {
-      "target": "AGENTS.md",
-      "suggestion": "Align and clarify startup guidance for `setup --model` versus `--add/--remove` to remove contradictions between mission guidance, feature expectations, and tests.",
-      "evidence": "Review for setup-model-and-control-flags found AGENTS says no auto-restart for --model while implementation/tests currently auto-start by default.",
+      "suggestion": "Clarify whether test-first ordering is mandatory or preferred: either enforce strict TDD ordering checks, or relax wording to 'prefer TDD' so process guidance matches common fix workflows.",
+      "evidence": "Reviewer for fix-setup-catalog-id-and-model-start-behavior observed code edits in src/mlx_stack/cli/setup.py before test updates in tests/unit/test_cli_setup.py within worker session 6fcf5e6a-186e-4d6b-804c-d8954f311f85.",
       "isSystemic": true
     }
   ],
-  "rejectedObservations": [],
-  "previousRound": null
+  "rejectedObservations": [
+    {
+      "observation": "Prior round observations for setup-add-remove-flags and setup-model-and-control-flags",
+      "reason": "already-documented"
+    }
+  ],
+  "previousRound": ".factory/validation/setup-modification/scrutiny/synthesis.round1.json"
 }
