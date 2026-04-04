@@ -10,13 +10,6 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from mlx_stack.core.catalog import (
-    BenchmarkResult,
-    Capabilities,
-    CatalogEntry,
-    QualityScores,
-    QuantSource,
-)
 from mlx_stack.core.pull import (
     ModelInventoryEntry,
     add_to_inventory,
@@ -24,48 +17,6 @@ from mlx_stack.core.pull import (
     load_inventory,
     save_inventory,
 )
-
-# --------------------------------------------------------------------------- #
-# Fixtures
-# --------------------------------------------------------------------------- #
-
-
-def _make_entry(
-    model_id: str = "qwen3.5-8b",
-    name: str = "Qwen 3.5 8B",
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family="Qwen 3.5",
-        params_b=8.0,
-        architecture="transformer",
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit",
-                disk_size_gb=4.5,
-            ),
-            "int8": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-8bit",
-                disk_size_gb=8.5,
-            ),
-        },
-        capabilities=Capabilities(
-            tool_calling=True,
-            tool_call_parser="hermes",
-            thinking=False,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(overall=68, coding=65, reasoning=62, instruction_following=72),
-        benchmarks={
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
-        },
-        tags=["balanced"],
-    )
-
 
 # =========================================================================== #
 # Inventory file I/O tests
@@ -81,13 +32,17 @@ class TestInventoryIO:
 
     def test_save_creates_file(self, mlx_stack_home: Path) -> None:
         """save_inventory creates models.json."""
+        # Act
         entries = [{"model_id": "test", "quant": "int4", "name": "Test"}]
         save_inventory(entries)
+
+        # Assert
         inv_path = mlx_stack_home / "models.json"
         assert inv_path.exists()
 
     def test_round_trip_preserves_data(self, mlx_stack_home: Path) -> None:
         """Save → load round-trip preserves all fields."""
+        # Arrange
         entry = {
             "model_id": "qwen3.5-8b",
             "name": "Qwen 3.5 8B",
@@ -98,8 +53,12 @@ class TestInventoryIO:
             "disk_size_gb": 4.5,
             "downloaded_at": "2025-01-01T00:00:00+00:00",
         }
+
+        # Act
         save_inventory([entry])
         loaded = load_inventory()
+
+        # Assert
         assert len(loaded) == 1
         for key, value in entry.items():
             assert loaded[0][key] == value
@@ -147,6 +106,7 @@ class TestInventoryOperations:
 
     def test_add_new_entry(self, mlx_stack_home: Path) -> None:
         """Adding a new entry creates it."""
+        # Arrange
         entry = ModelInventoryEntry(
             model_id="qwen3.5-8b",
             name="Qwen 3.5 8B",
@@ -157,7 +117,11 @@ class TestInventoryOperations:
             disk_size_gb=4.5,
             downloaded_at="2025-01-01T00:00:00+00:00",
         )
+
+        # Act
         add_to_inventory(entry)
+
+        # Assert
         loaded = load_inventory()
         assert len(loaded) == 1
 
@@ -200,6 +164,7 @@ class TestInventoryOperations:
 
     def test_find_existing_entry(self, mlx_stack_home: Path) -> None:
         """Finding an existing entry returns it."""
+        # Arrange
         entry = ModelInventoryEntry(
             model_id="qwen3.5-8b",
             name="Qwen 3.5 8B",
@@ -212,7 +177,10 @@ class TestInventoryOperations:
         )
         add_to_inventory(entry)
 
+        # Act
         found = find_in_inventory("qwen3.5-8b", "int4")
+
+        # Assert
         assert found is not None
         assert found["name"] == "Qwen 3.5 8B"
 

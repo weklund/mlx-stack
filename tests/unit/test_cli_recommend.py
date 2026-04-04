@@ -28,103 +28,24 @@ from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
 from mlx_stack.cli.recommend import parse_budget
-from mlx_stack.core.catalog import (
-    BenchmarkResult,
-    Capabilities,
-    CatalogEntry,
-    QualityScores,
-    QuantSource,
-)
-from mlx_stack.core.hardware import HardwareProfile
+from mlx_stack.core.catalog import BenchmarkResult, CatalogEntry
+from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
-# Fixtures — reusable test data
+# Recommend-specific catalog — 5 diverse models needed by most tests here
 # --------------------------------------------------------------------------- #
 
 
-def _make_profile(
-    chip: str = "Apple M4 Max",
-    gpu_cores: int = 40,
-    memory_gb: int = 128,
-    bandwidth_gbps: float = 546.0,
-    is_estimate: bool = False,
-) -> HardwareProfile:
-    """Create a HardwareProfile for testing."""
-    return HardwareProfile(
-        chip=chip,
-        gpu_cores=gpu_cores,
-        memory_gb=memory_gb,
-        bandwidth_gbps=bandwidth_gbps,
-        is_estimate=is_estimate,
-    )
+def _make_recommend_catalog() -> list[CatalogEntry]:
+    """Build a diverse test catalog for recommendation tests.
 
-
-def _make_small_profile() -> HardwareProfile:
-    """Create a small-memory profile (32 GB)."""
-    return HardwareProfile(
-        chip="Apple M4 Pro",
-        gpu_cores=20,
-        memory_gb=32,
-        bandwidth_gbps=273.0,
-        is_estimate=False,
-    )
-
-
-def _make_entry(
-    model_id: str = "test-model",
-    name: str = "Test Model",
-    family: str = "Test",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    quality_overall: int = 70,
-    quality_coding: int = 65,
-    quality_reasoning: int = 60,
-    quality_instruction: int = 72,
-    tool_calling: bool = True,
-    tool_call_parser: str | None = "hermes",
-    thinking: bool = False,
-    benchmarks: dict[str, BenchmarkResult] | None = None,
-    tags: list[str] | None = None,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    if benchmarks is None:
-        benchmarks = {
-            "m4-pro-32": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
-        }
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(hf_repo=f"test/{model_id}-4bit", disk_size_gb=4.5),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser=tool_call_parser if tool_calling else None,
-            thinking=thinking,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(
-            overall=quality_overall,
-            coding=quality_coding,
-            reasoning=quality_reasoning,
-            instruction_following=quality_instruction,
-        ),
-        benchmarks=benchmarks,
-        tags=tags or [],
-    )
-
-
-def _make_test_catalog() -> list[CatalogEntry]:
-    """Build a diverse test catalog for recommendation tests."""
+    This catalog has specific models with known quality/speed/architecture
+    characteristics that the tier-assignment tests depend on.  It differs from
+    the shared ``make_test_catalog`` (2 generic models) so it is kept local.
+    """
     return [
         # High quality model (standard tier candidate)
-        _make_entry(
+        make_entry(
             model_id="high-quality-32b",
             name="High Quality 32B",
             family="Quality",
@@ -141,7 +62,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             tags=["quality"],
         ),
         # Fast small model (fast tier candidate)
-        _make_entry(
+        make_entry(
             model_id="fast-0.8b",
             name="Fast 0.8B",
             family="Fast",
@@ -158,7 +79,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             tags=["fast"],
         ),
         # Medium model
-        _make_entry(
+        make_entry(
             model_id="medium-8b",
             name="Medium 8B",
             family="Medium",
@@ -175,7 +96,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             tags=["balanced"],
         ),
         # Longctx model (mamba2-hybrid architecture)
-        _make_entry(
+        make_entry(
             model_id="longctx-32b",
             name="LongCtx 32B",
             family="LongCtx",
@@ -193,7 +114,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             tags=["long-context"],
         ),
         # Large model that only fits on big systems
-        _make_entry(
+        make_entry(
             model_id="huge-72b",
             name="Huge 72B",
             family="Huge",
@@ -276,11 +197,15 @@ class TestBudgetFiltering:
         mlx_stack_home: Path,
     ) -> None:
         """All recommended models have memory ≤ computed budget."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         # Huge 72B requires 42 GB, budget is 128*0.4=51.2 GB, so it should appear
         # All smaller models should also appear
@@ -295,11 +220,15 @@ class TestBudgetFiltering:
         mlx_stack_home: Path,
     ) -> None:
         """Models exceeding explicit budget are excluded."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--budget", "10gb"])
+
+        # Assert
         assert result.exit_code == 0
         # Only models with memory ≤ 10 GB should appear
         assert "Fast 0.8B" in result.output
@@ -326,11 +255,15 @@ class TestDefaultBudget:
         mlx_stack_home: Path,
     ) -> None:
         """On 64 GB system, budget = 25.6 GB. 32B models (20 GB) fit."""
-        mock_load_profile.return_value = _make_profile(memory_gb=64)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=64)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         # 25.6 GB budget: 20 GB models fit, 42 GB model doesn't
         assert "25.6 GB" in result.output
@@ -345,11 +278,15 @@ class TestDefaultBudget:
         mlx_stack_home: Path,
     ) -> None:
         """On 128 GB system, budget = 51.2 GB. All models fit."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         # 51.2 GB budget: all models fit (42 GB largest)
         assert "51.2 GB" in result.output
@@ -373,12 +310,16 @@ class TestBudgetOverride:
         mlx_stack_home: Path,
     ) -> None:
         """--budget 30gb overrides default on 64 GB machine."""
-        mock_load_profile.return_value = _make_profile(memory_gb=64)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=64)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         # Default budget would be 25.6 GB; override to 30 GB
         result = runner.invoke(cli, ["recommend", "--budget", "30gb", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         assert "30.0 GB" in result.output
         # 20 GB models fit (they didn't need override, but 30 GB includes them)
@@ -393,11 +334,15 @@ class TestBudgetOverride:
         mlx_stack_home: Path,
     ) -> None:
         """--budget 4gb excludes most models."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--budget", "4gb", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         # Only 0.6 GB model fits
         assert "Fast 0.8B" in result.output
@@ -426,12 +371,16 @@ class TestIntentDifference:
         instead of the intent-weighted composite score, so both intents produced
         identical tier assignments.
         """
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result_balanced = runner.invoke(cli, ["recommend", "--intent", "balanced"])
         result_agent = runner.invoke(cli, ["recommend", "--intent", "agent-fleet"])
+
+        # Assert
         assert result_balanced.exit_code == 0
         assert result_agent.exit_code == 0
 
@@ -472,11 +421,15 @@ class TestTierAssignment:
         mlx_stack_home: Path,
     ) -> None:
         """Standard tier gets the model with the highest intent-weighted composite score."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         output_lines = result.output.split("\n")
         standard_line = [line for line in output_lines if "standard" in line.lower()]
@@ -494,11 +447,15 @@ class TestTierAssignment:
         mlx_stack_home: Path,
     ) -> None:
         """Fast tier gets the highest gen_tps model (different from standard)."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         output_lines = result.output.split("\n")
         fast_line = [
@@ -519,11 +476,15 @@ class TestTierAssignment:
         mlx_stack_home: Path,
     ) -> None:
         """Longctx tier gets a mamba2-hybrid model if budget allows."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         output_lines = result.output.split("\n")
         longctx_line = [line for line in output_lines if "longctx" in line.lower()]
@@ -548,11 +509,15 @@ class TestTierCount:
         mlx_stack_home: Path,
     ) -> None:
         """128 GB system gets up to 3 tiers."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "standard" in result.output.lower()
         assert "fast" in result.output.lower()
@@ -567,10 +532,11 @@ class TestTierCount:
         mlx_stack_home: Path,
     ) -> None:
         """With very small budget, only 1-2 tiers available."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
         # Use only small models in catalog
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="tiny-1b",
                 name="Tiny 1B",
                 quality_overall=30,
@@ -581,9 +547,12 @@ class TestTierCount:
         ]
         mock_load_catalog.return_value = catalog  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         # Budget 5gb - only one model fits
         result = runner.invoke(cli, ["recommend", "--budget", "5gb"])
+
+        # Assert
         assert result.exit_code == 0
         # With only 1 model, can only have 1 tier
         assert "standard" in result.output.lower()
@@ -607,12 +576,16 @@ class TestProfileResolution:
         mlx_stack_home: Path,
     ) -> None:
         """When profile.json exists, it is used."""
-        profile = _make_profile(memory_gb=64)
+        # Arrange
+        profile = make_profile(memory_gb=64)
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "64 GB" in result.output
 
@@ -627,12 +600,16 @@ class TestProfileResolution:
         mlx_stack_home: Path,
     ) -> None:
         """When no profile.json, auto-detect in memory (no file write)."""
+        # Arrange
         mock_load_profile.return_value = None  # type: ignore[attr-defined]
-        mock_detect.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_detect.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "detecting hardware" in result.output.lower()
         mock_detect.assert_called_once()  # type: ignore[attr-defined]
@@ -653,12 +630,16 @@ class TestProfileResolution:
         """If auto-detect fails, exits with error."""
         from mlx_stack.core.hardware import HardwareError
 
+        # Arrange
         mock_load_profile.return_value = None  # type: ignore[attr-defined]
         mock_detect.side_effect = HardwareError("Not Apple Silicon")  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code != 0
         assert "Not Apple Silicon" in result.output
 
@@ -680,20 +661,22 @@ class TestEstimatedPerformance:
         mlx_stack_home: Path,
     ) -> None:
         """Unknown hardware profile shows estimated labels and bench suggestion."""
-        # Use a profile_id that doesn't match any catalog benchmarks
-        profile = _make_profile(
+        # Arrange — use a profile_id that doesn't match any catalog benchmarks
+        profile = make_profile(
             chip="Apple M6 Ultra",
             memory_gb=256,
             bandwidth_gbps=800.0,
             is_estimate=True,
         )
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert — should show "(est.)" or "estimated" in output
         assert result.exit_code == 0
-        # Should show "(est.)" or "estimated" in output
         assert "est." in result.output.lower()
         assert "bench --save" in result.output
 
@@ -715,11 +698,15 @@ class TestOutputFormats:
         mlx_stack_home: Path,
     ) -> None:
         """Default output shows Recommended Stack with tier names."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "Recommended Stack" in result.output
         assert "standard" in result.output.lower()
@@ -733,11 +720,15 @@ class TestOutputFormats:
         mlx_stack_home: Path,
     ) -> None:
         """--show-all shows all budget-fitting models sorted by score."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         assert "All Budget-Fitting Models" in result.output
         # All 5 models should appear (51.2 GB budget, all fit)
@@ -756,8 +747,8 @@ class TestOutputFormats:
         mlx_stack_home: Path,
     ) -> None:
         """--show-all output includes Score column."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
@@ -773,8 +764,8 @@ class TestOutputFormats:
         mlx_stack_home: Path,
     ) -> None:
         """Default tier output includes Gen TPS and Memory columns."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
@@ -804,8 +795,9 @@ class TestCloudFallback:
         mlx_stack_home: Path,
     ) -> None:
         """Cloud fallback shown when OpenRouter key is set."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         def side_effect(key: str) -> object:
             if key == "openrouter-key":
@@ -816,8 +808,11 @@ class TestCloudFallback:
 
         mock_get_value.side_effect = side_effect  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "Cloud Fallback" in result.output
         assert "OpenRouter" in result.output
@@ -831,11 +826,15 @@ class TestCloudFallback:
         mlx_stack_home: Path,
     ) -> None:
         """Cloud fallback NOT shown when no OpenRouter key."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "Cloud Fallback" not in result.output
 
@@ -857,14 +856,17 @@ class TestDisplayOnly:
         mlx_stack_home: Path,
     ) -> None:
         """Running recommend does not create stacks/ or litellm.yaml."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
-
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
         stacks_dir = mlx_stack_home / "stacks"
         litellm_file = mlx_stack_home / "litellm.yaml"
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert not stacks_dir.exists()
         assert not litellm_file.exists()
@@ -878,14 +880,17 @@ class TestDisplayOnly:
         mlx_stack_home: Path,
     ) -> None:
         """--show-all also does not write files."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
-
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
         stacks_dir = mlx_stack_home / "stacks"
         litellm_file = mlx_stack_home / "litellm.yaml"
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         assert not stacks_dir.exists()
         assert not litellm_file.exists()
@@ -899,11 +904,15 @@ class TestDisplayOnly:
         mlx_stack_home: Path,
     ) -> None:
         """Output includes display-only notice and init suggestion."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         assert "no files were written" in result.output.lower()
         assert "init" in result.output.lower()
@@ -926,11 +935,15 @@ class TestEdgeCases:
         mlx_stack_home: Path,
     ) -> None:
         """Budget too small for any model produces clear error."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--budget", "0.1gb"])
+
+        # Assert
         assert result.exit_code != 0
         assert "no models fit" in result.output.lower()
 
@@ -974,11 +987,15 @@ class TestEdgeCases:
         """Catalog load failure shows clear error."""
         from mlx_stack.core.catalog import CatalogError
 
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
         mock_load_catalog.side_effect = CatalogError("Corrupt catalog")  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code != 0
         assert "Corrupt catalog" in result.output
         assert "Traceback" not in result.output
@@ -1001,12 +1018,16 @@ class TestProfileDataFlow:
         mlx_stack_home: Path,
     ) -> None:
         """The profile's profile_id is used to look up catalog benchmarks."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         # Profile is m4-max-128, benchmark data for this profile should be used
         assert "Apple M4 Max" in result.output
@@ -1029,9 +1050,10 @@ class TestSavedBenchmarks:
         mlx_stack_home: Path,
     ) -> None:
         """Saved benchmark data overrides catalog data in scoring."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         # Write saved benchmarks
         benchmarks_dir = mlx_stack_home / "benchmarks"
@@ -1045,8 +1067,11 @@ class TestSavedBenchmarks:
         }
         (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         # The saved benchmark gen_tps (100.0) should be used instead of catalog (77.0)
         assert "100.0" in result.output
@@ -1071,8 +1096,8 @@ class TestConfigIntegration:
         mlx_stack_home: Path,
     ) -> None:
         """memory-budget-pct from config is used when no --budget flag."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         def side_effect(key: str) -> object:
             if key == "memory-budget-pct":
@@ -1083,8 +1108,11 @@ class TestConfigIntegration:
 
         mock_get_value.side_effect = side_effect  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
+
+        # Assert
         assert result.exit_code == 0
         # Budget should be 76.8 GB (60% of 128)
         assert "76.8 GB" in result.output
@@ -1132,15 +1160,17 @@ class TestRecommendNoFileWrites:
         mlx_stack_home: Path,
     ) -> None:
         """Auto-detection during recommend must NOT write profile.json."""
+        # Arrange
         mock_load_profile.return_value = None  # type: ignore[attr-defined]
-        mock_detect.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_detect.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend"])
-        assert result.exit_code == 0
 
-        # No profile.json should be written
+        # Assert
+        assert result.exit_code == 0
         profile_path = mlx_stack_home / "profile.json"
         assert not profile_path.exists()
 
@@ -1153,18 +1183,19 @@ class TestRecommendNoFileWrites:
         mlx_stack_home: Path,
     ) -> None:
         """No files created under any recommend flag combination."""
-        mock_load_profile.return_value = _make_profile(memory_gb=128)  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
-
         import os
+
+        # Arrange
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
         files_before = set()
         for root, _dirs, files in os.walk(str(mlx_stack_home)):
             for f in files:
                 files_before.add(os.path.join(root, f))
 
+        # Act
         runner = CliRunner()
-        # Test multiple flag combos
         for flags in [
             ["recommend"],
             ["recommend", "--show-all"],
@@ -1174,6 +1205,7 @@ class TestRecommendNoFileWrites:
             result = runner.invoke(cli, flags)
             assert result.exit_code == 0
 
+        # Assert
         files_after = set()
         for root, _dirs, files in os.walk(str(mlx_stack_home)):
             for f in files:
@@ -1200,11 +1232,11 @@ class TestMalformedSavedBenchmarks:
         mlx_stack_home: Path,
     ) -> None:
         """Malformed numeric values in saved benchmarks fall through gracefully."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
-        # Write malformed saved benchmarks with non-numeric gen_tps
         benchmarks_dir = mlx_stack_home / "benchmarks"
         benchmarks_dir.mkdir(parents=True)
         saved_data = {
@@ -1216,9 +1248,11 @@ class TestMalformedSavedBenchmarks:
         }
         (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
-        # Must not crash with ValueError traceback
+
+        # Assert — must not crash with ValueError traceback
         assert result.exit_code == 0
         assert "Traceback" not in result.output
         # Should still show recommendations from catalog data
@@ -1233,16 +1267,19 @@ class TestMalformedSavedBenchmarks:
         mlx_stack_home: Path,
     ) -> None:
         """Corrupt JSON file in benchmarks produces warning, not traceback."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile  # type: ignore[attr-defined]
-        mock_load_catalog.return_value = _make_test_catalog()  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
 
-        # Write corrupt JSON
         benchmarks_dir = mlx_stack_home / "benchmarks"
         benchmarks_dir.mkdir(parents=True)
         (benchmarks_dir / f"{profile.profile_id}.json").write_text("{{{invalid json")
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["recommend", "--show-all"])
+
+        # Assert
         assert result.exit_code == 0
         assert "Traceback" not in result.output

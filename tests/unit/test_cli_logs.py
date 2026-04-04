@@ -6,35 +6,13 @@ service filtering, rotation, and archived log viewing.
 
 from __future__ import annotations
 
-import gzip
 from pathlib import Path
 from unittest.mock import patch
 
 from click.testing import CliRunner
 
 from mlx_stack.cli.logs import logs
-
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
-
-
-def _create_log(logs_dir: Path, service: str, content: str = "") -> Path:
-    """Create a log file for a service."""
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    log_path = logs_dir / f"{service}.log"
-    log_path.write_text(content)
-    return log_path
-
-
-def _create_archive(logs_dir: Path, service: str, number: int, content: str) -> Path:
-    """Create a gzip archive for a service."""
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = logs_dir / f"{service}.log.{number}.gz"
-    with gzip.open(str(archive_path), "wb") as f:
-        f.write(content.encode("utf-8"))
-    return archive_path
-
+from tests.factories import create_archive, create_log_file
 
 # --------------------------------------------------------------------------- #
 # Listing (no args)
@@ -46,13 +24,16 @@ class TestListLogs:
 
     def test_lists_log_files(self, mlx_stack_home: Path) -> None:
         """Lists available log files with sizes and times."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "some log content here\n")
-        _create_log(logs_dir, "litellm", "litellm output\n")
+        create_log_file(logs_dir, "fast", "some log content here\n")
+        create_log_file(logs_dir, "litellm", "litellm output\n")
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(logs, [])
 
+        # Assert
         assert result.exit_code == 0
         assert "fast.log" in result.output
         assert "litellm.log" in result.output
@@ -87,13 +68,16 @@ class TestViewLogs:
 
     def test_shows_tail_default(self, mlx_stack_home: Path) -> None:
         """Shows last 50 lines by default."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
         lines = [f"line {i}" for i in range(100)]
-        _create_log(logs_dir, "fast", "\n".join(lines))
+        create_log_file(logs_dir, "fast", "\n".join(lines))
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(logs, ["fast"])
 
+        # Assert
         assert result.exit_code == 0
         output_lines = result.output.strip().splitlines()
         assert len(output_lines) == 50
@@ -104,7 +88,7 @@ class TestViewLogs:
         """--tail N shows exactly N lines."""
         logs_dir = mlx_stack_home / "logs"
         lines = [f"line {i}" for i in range(50)]
-        _create_log(logs_dir, "fast", "\n".join(lines))
+        create_log_file(logs_dir, "fast", "\n".join(lines))
 
         runner = CliRunner()
         result = runner.invoke(logs, ["fast", "--tail", "10"])
@@ -116,7 +100,7 @@ class TestViewLogs:
     def test_empty_log(self, mlx_stack_home: Path) -> None:
         """Empty log shows informational message."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "")
+        create_log_file(logs_dir, "fast", "")
 
         runner = CliRunner()
         result = runner.invoke(logs, ["fast"])
@@ -136,8 +120,8 @@ class TestServiceFiltering:
     def test_service_argument(self, mlx_stack_home: Path) -> None:
         """Positional service argument shows correct log."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "fast content\n")
-        _create_log(logs_dir, "standard", "standard content\n")
+        create_log_file(logs_dir, "fast", "fast content\n")
+        create_log_file(logs_dir, "standard", "standard content\n")
 
         runner = CliRunner()
         result = runner.invoke(logs, ["fast"])
@@ -148,7 +132,7 @@ class TestServiceFiltering:
     def test_service_flag(self, mlx_stack_home: Path) -> None:
         """--service flag shows correct log."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "fast content\n")
+        create_log_file(logs_dir, "fast", "fast content\n")
 
         runner = CliRunner()
         result = runner.invoke(logs, ["--service", "fast"])
@@ -159,7 +143,7 @@ class TestServiceFiltering:
     def test_invalid_service_error(self, mlx_stack_home: Path) -> None:
         """Invalid service name produces clear error."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "content")
+        create_log_file(logs_dir, "fast", "content")
 
         runner = CliRunner()
         result = runner.invoke(logs, ["nonexistent"])
@@ -228,7 +212,7 @@ class TestRotation:
     def test_rotate_no_rotation_needed(self, mlx_stack_home: Path) -> None:
         """Reports 'no rotation needed' when files are small."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "small content")
+        create_log_file(logs_dir, "fast", "small content")
 
         with patch(
             "mlx_stack.core.log_viewer.get_value",
@@ -251,7 +235,7 @@ class TestRotation:
     def test_rotate_invalid_service(self, mlx_stack_home: Path) -> None:
         """--rotate with invalid --service shows error."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "content")
+        create_log_file(logs_dir, "fast", "content")
 
         runner = CliRunner()
         result = runner.invoke(logs, ["--rotate", "--service", "invalid"])
@@ -271,19 +255,21 @@ class TestAllLogs:
 
     def test_shows_archives_and_current(self, mlx_stack_home: Path) -> None:
         """--all shows archived and current logs chronologically."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_archive(logs_dir, "fast", 2, "oldest archived")
-        _create_archive(logs_dir, "fast", 1, "newest archived")
-        _create_log(logs_dir, "fast", "current content")
+        create_archive(logs_dir, "fast", 2, "oldest archived")
+        create_archive(logs_dir, "fast", 1, "newest archived")
+        create_log_file(logs_dir, "fast", "current content")
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(logs, ["fast", "--all"])
 
+        # Assert
         assert result.exit_code == 0
         assert "oldest archived" in result.output
         assert "newest archived" in result.output
         assert "current content" in result.output
-        # Check chronological order
         oldest_pos = result.output.index("oldest archived")
         newest_pos = result.output.index("newest archived")
         current_pos = result.output.index("current content")
@@ -304,8 +290,8 @@ class TestAllLogs:
     def test_all_archives_only_no_current(self, mlx_stack_home: Path) -> None:
         """--all shows archives even when current log file is missing."""
         logs_dir = mlx_stack_home / "logs"
-        _create_archive(logs_dir, "fast", 2, "old archived content")
-        _create_archive(logs_dir, "fast", 1, "recent archived content")
+        create_archive(logs_dir, "fast", 2, "old archived content")
+        create_archive(logs_dir, "fast", 1, "recent archived content")
         # No fast.log current file
 
         runner = CliRunner()
@@ -377,13 +363,16 @@ class TestEdgeCases:
 
     def test_service_argument_takes_precedence_over_flag(self, mlx_stack_home: Path) -> None:
         """Positional argument takes precedence over --service flag."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "fast content\n")
-        _create_log(logs_dir, "standard", "standard content\n")
+        create_log_file(logs_dir, "fast", "fast content\n")
+        create_log_file(logs_dir, "standard", "standard content\n")
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(logs, ["fast", "--service", "standard"])
 
+        # Assert
         assert result.exit_code == 0
         assert "fast content" in result.output
 

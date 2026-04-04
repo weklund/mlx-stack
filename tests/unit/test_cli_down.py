@@ -14,11 +14,9 @@ Validates:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
 from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
@@ -36,78 +34,7 @@ from mlx_stack.core.stack_down import (
     _stop_single_service,
     run_down,
 )
-
-# --------------------------------------------------------------------------- #
-# Fixtures — reusable test data
-# --------------------------------------------------------------------------- #
-
-
-def _make_stack_yaml(
-    tiers: list[dict[str, Any]] | None = None,
-    schema_version: int = 1,
-) -> dict[str, Any]:
-    """Create a stack definition dict for testing."""
-    if tiers is None:
-        tiers = [
-            {
-                "name": "standard",
-                "model": "big-model",
-                "quant": "int4",
-                "source": "mlx-community/big-model-4bit",
-                "port": 8000,
-                "vllm_flags": {
-                    "continuous_batching": True,
-                    "use_paged_cache": True,
-                },
-            },
-            {
-                "name": "fast",
-                "model": "fast-model",
-                "quant": "int4",
-                "source": "mlx-community/fast-model-4bit",
-                "port": 8001,
-                "vllm_flags": {
-                    "continuous_batching": True,
-                    "use_paged_cache": True,
-                },
-            },
-        ]
-    return {
-        "schema_version": schema_version,
-        "name": "default",
-        "hardware_profile": "m4-max-128",
-        "intent": "balanced",
-        "created": "2026-03-24T00:00:00+00:00",
-        "tiers": tiers,
-    }
-
-
-def _write_stack_yaml(
-    mlx_stack_home: Path,
-    stack: dict[str, Any] | None = None,
-) -> Path:
-    """Write a stack YAML file and return its path."""
-    if stack is None:
-        stack = _make_stack_yaml()
-    stacks_dir = mlx_stack_home / "stacks"
-    stacks_dir.mkdir(parents=True, exist_ok=True)
-    stack_path = stacks_dir / "default.yaml"
-    stack_path.write_text(yaml.dump(stack, default_flow_style=False))
-    return stack_path
-
-
-def _create_pid_file(
-    mlx_stack_home: Path,
-    service_name: str,
-    pid: int | str = 12345,
-) -> Path:
-    """Create a PID file in the pids directory."""
-    pids_dir = mlx_stack_home / "pids"
-    pids_dir.mkdir(parents=True, exist_ok=True)
-    pid_path = pids_dir / f"{service_name}.pid"
-    pid_path.write_text(str(pid))
-    return pid_path
-
+from tests.factories import create_pid_file, make_stack_yaml, write_stack_yaml
 
 # --------------------------------------------------------------------------- #
 # Tests — _get_tier_names_from_stack
@@ -119,12 +46,15 @@ class TestGetTierNamesFromStack:
 
     def test_returns_tier_names_from_stack(self, mlx_stack_home: Path) -> None:
         """Returns tier names from a valid stack definition."""
-        _write_stack_yaml(mlx_stack_home)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
 
+        # Act
         with patch("mlx_stack.core.stack_down.load_catalog") as mock_catalog:
             mock_catalog.side_effect = Exception("no catalog")
             names = _get_tier_names_from_stack()
 
+        # Assert
         assert set(names) == {"standard", "fast"}
 
     def test_returns_empty_on_missing_stack(self, mlx_stack_home: Path) -> None:
@@ -138,7 +68,7 @@ class TestGetValidTierNames:
 
     def test_returns_valid_tier_names(self, mlx_stack_home: Path) -> None:
         """Returns tier names from the stack definition."""
-        _write_stack_yaml(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
         names = _get_valid_tier_names()
         assert set(names) == {"standard", "fast"}
 
@@ -158,8 +88,10 @@ class TestStopSingleService:
 
     def test_stops_running_process_gracefully(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-002: Stops a running process gracefully."""
-        _create_pid_file(mlx_stack_home, "fast", 12345)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 12345)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.read_pid_file", return_value=12345),
             patch("mlx_stack.core.stack_down.is_process_alive", return_value=True),
@@ -170,6 +102,7 @@ class TestStopSingleService:
         ):
             result = _stop_single_service("fast")
 
+        # Assert
         assert result.name == "fast"
         assert result.status == "stopped"
         assert result.graceful is True
@@ -177,8 +110,10 @@ class TestStopSingleService:
 
     def test_stops_running_process_forced(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-002: Reports forced shutdown when SIGKILL needed."""
-        _create_pid_file(mlx_stack_home, "fast", 99999)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 99999)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.read_pid_file", return_value=99999),
             patch("mlx_stack.core.stack_down.is_process_alive", return_value=True),
@@ -189,13 +124,16 @@ class TestStopSingleService:
         ):
             result = _stop_single_service("fast")
 
+        # Assert
         assert result.status == "stopped"
         assert result.graceful is False
 
     def test_handles_stale_pid(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Detects stale PID and cleans up."""
-        _create_pid_file(mlx_stack_home, "fast", 12345)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 12345)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.read_pid_file", return_value=12345),
             patch("mlx_stack.core.stack_down.is_process_alive", return_value=False),
@@ -203,6 +141,7 @@ class TestStopSingleService:
         ):
             result = _stop_single_service("fast")
 
+        # Assert
         assert result.status == "stale"
         assert result.pid == 12345
         assert "already dead" in (result.error or "")
@@ -210,8 +149,10 @@ class TestStopSingleService:
 
     def test_handles_corrupt_pid(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Handles corrupt PID file gracefully."""
-        _create_pid_file(mlx_stack_home, "fast", "not-a-number")
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", "not-a-number")
 
+        # Act
         with (
             patch(
                 "mlx_stack.core.stack_down.read_pid_file",
@@ -221,6 +162,7 @@ class TestStopSingleService:
         ):
             result = _stop_single_service("fast")
 
+        # Assert
         assert result.status == "corrupt"
         assert result.pid is None
         assert "non-numeric" in (result.error or "")
@@ -252,10 +194,11 @@ class TestRunDown:
 
     def test_full_shutdown_correct_order(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-001: LiteLLM stopped first, then servers in reverse order."""
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "standard", 1001)
-        _create_pid_file(mlx_stack_home, "fast", 1002)
-        _create_pid_file(mlx_stack_home, "litellm", 1003)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        create_pid_file(mlx_stack_home, "standard", 1001)
+        create_pid_file(mlx_stack_home, "fast", 1002)
+        create_pid_file(mlx_stack_home, "litellm", 1003)
 
         shutdown_order: list[str] = []
 
@@ -268,6 +211,7 @@ class TestRunDown:
                 graceful=True,
             )
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_down._stop_single_service", side_effect=mock_stop),
@@ -278,6 +222,7 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert result.nothing_to_stop is False
         assert len(result.services) == 3
 
@@ -288,8 +233,10 @@ class TestRunDown:
 
     def test_lockfile_acquired_during_shutdown(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-003: Lockfile acquired during down."""
-        _create_pid_file(mlx_stack_home, "litellm", 1001)
+        # Arrange
+        create_pid_file(mlx_stack_home, "litellm", 1001)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch(
@@ -307,12 +254,15 @@ class TestRunDown:
 
             run_down()
 
+        # Assert
         mock_lock.assert_called_once()
 
     def test_lockfile_error_propagated(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-003: Lock conflict raises LockError."""
-        _create_pid_file(mlx_stack_home, "fast", 1001)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 1001)
 
+        # Act / Assert
         with (
             patch(
                 "mlx_stack.core.stack_down.acquire_lock",
@@ -324,10 +274,11 @@ class TestRunDown:
 
     def test_tier_filter_stops_only_specified_tier(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier stops only the specified tier."""
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "standard", 1001)
-        _create_pid_file(mlx_stack_home, "fast", 1002)
-        _create_pid_file(mlx_stack_home, "litellm", 1003)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        create_pid_file(mlx_stack_home, "standard", 1001)
+        create_pid_file(mlx_stack_home, "fast", 1002)
+        create_pid_file(mlx_stack_home, "litellm", 1003)
 
         stopped_services: list[str] = []
 
@@ -340,6 +291,7 @@ class TestRunDown:
                 graceful=True,
             )
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_down._stop_single_service", side_effect=mock_stop),
@@ -349,35 +301,40 @@ class TestRunDown:
 
             result = run_down(tier_filter="fast")
 
-        # Only 'fast' should be stopped
+        # Assert — only 'fast' should be stopped
         assert len(result.services) == 1
         assert result.services[0].name == "fast"
         assert stopped_services == ["fast"]
 
     def test_tier_filter_invalid_tier_raises_error(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: Invalid tier name errors with valid tier list."""
-        _write_stack_yaml(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
 
         with pytest.raises(DownError, match="Unknown tier 'nonexistent'"):
             run_down(tier_filter="nonexistent")
 
     def test_tier_filter_invalid_tier_shows_valid_list(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: Error message includes valid tier names."""
-        _write_stack_yaml(mlx_stack_home)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
 
+        # Act
         with pytest.raises(DownError) as exc_info:
             run_down(tier_filter="nonexistent")
 
+        # Assert
         error_msg = str(exc_info.value)
         assert "fast" in error_msg
         assert "standard" in error_msg
 
     def test_tier_filter_not_running(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier for a valid but not-running tier."""
-        _write_stack_yaml(mlx_stack_home)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
         # Create a PID file for a different tier to avoid "nothing to stop"
-        _create_pid_file(mlx_stack_home, "standard", 1001)
+        create_pid_file(mlx_stack_home, "standard", 1001)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
         ):
@@ -386,14 +343,17 @@ class TestRunDown:
 
             result = run_down(tier_filter="fast")
 
+        # Assert
         assert len(result.services) == 1
         assert result.services[0].name == "fast"
         assert result.services[0].status == "not-running"
 
     def test_stale_pid_detected_and_cleaned(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Stale PIDs detected, reported, and cleaned up."""
-        _create_pid_file(mlx_stack_home, "fast", 12345)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 12345)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch(
@@ -411,14 +371,17 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert len(result.services) == 1
         assert result.services[0].status == "stale"
         assert "already dead" in (result.services[0].error or "")
 
     def test_corrupt_pid_detected_and_cleaned(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Corrupt PID files reported and removed."""
-        _create_pid_file(mlx_stack_home, "fast", "garbage")
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", "garbage")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch(
@@ -436,15 +399,17 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert len(result.services) == 1
         assert result.services[0].status == "corrupt"
 
     def test_mixed_stale_and_running_services(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Mix of stale, corrupt, and running services processed."""
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "standard", 1001)
-        _create_pid_file(mlx_stack_home, "fast", "bad")
-        _create_pid_file(mlx_stack_home, "litellm", 1003)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        create_pid_file(mlx_stack_home, "standard", 1001)
+        create_pid_file(mlx_stack_home, "fast", "bad")
+        create_pid_file(mlx_stack_home, "litellm", 1003)
 
         results_map = {
             "litellm": ServiceStopResult(
@@ -470,6 +435,7 @@ class TestRunDown:
         def mock_stop(service_name: str) -> ServiceStopResult:
             return results_map[service_name]
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_down._stop_single_service", side_effect=mock_stop),
@@ -480,6 +446,7 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert len(result.services) == 3
         statuses = {s.name: s.status for s in result.services}
         assert statuses["litellm"] == "stopped"
@@ -488,9 +455,11 @@ class TestRunDown:
 
     def test_orphaned_services_cleaned_up(self, mlx_stack_home: Path) -> None:
         """Services not in stack definition are still cleaned up."""
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "orphaned-service", 9999)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        create_pid_file(mlx_stack_home, "orphaned-service", 9999)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch(
@@ -509,16 +478,19 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert len(result.services) == 1
         assert result.services[0].name == "orphaned-service"
         assert result.services[0].status == "stopped"
 
     def test_pid_files_cleaned_after_shutdown(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-003 / VAL-CROSS-001: PID files deleted after termination."""
+        # Arrange
         pids_dir = mlx_stack_home / "pids"
         pids_dir.mkdir(parents=True, exist_ok=True)
         (pids_dir / "fast.pid").write_text("12345")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.process.psutil") as mock_psutil,
@@ -536,13 +508,15 @@ class TestRunDown:
 
             run_down()
 
-        # PID file should be removed
+        # Assert
         assert not (pids_dir / "fast.pid").exists()
 
     def test_no_stack_definition_falls_back(self, mlx_stack_home: Path) -> None:
         """When no stack exists, PID files are still processed."""
-        _create_pid_file(mlx_stack_home, "fast", 12345)
+        # Arrange
+        create_pid_file(mlx_stack_home, "fast", 12345)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch(
@@ -560,6 +534,7 @@ class TestRunDown:
 
             result = run_down()
 
+        # Assert
         assert len(result.services) == 1
         assert result.services[0].status == "stopped"
 
@@ -591,6 +566,7 @@ class TestDownCli:
 
     def test_shutdown_displays_summary_table(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-001: Displays shutdown summary."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -614,10 +590,12 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         assert "Shutdown Summary" in result.output
         assert "litellm" in result.output
@@ -626,6 +604,7 @@ class TestDownCli:
 
     def test_shutdown_shows_graceful_method(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-002: Reports graceful vs forced per service."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -643,10 +622,12 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         assert "graceful" in result.output
         assert "SIGTERM" in result.output
@@ -654,6 +635,7 @@ class TestDownCli:
 
     def test_forced_sigkill_explicit_in_output(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-002: SIGKILL escalation explicitly reported per service."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -665,10 +647,12 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         # Must explicitly say "forced (SIGKILL)" for force-killed service
         assert "forced (SIGKILL)" in result.output
@@ -677,6 +661,7 @@ class TestDownCli:
 
     def test_graceful_sigterm_explicit_in_output(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-002: Graceful shutdown explicitly reports SIGTERM."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -688,15 +673,18 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         assert "graceful (SIGTERM)" in result.output
 
     def test_tier_filter_option(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier option passed to run_down."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -708,10 +696,12 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result) as mock_run:
             runner = CliRunner()
             result = runner.invoke(cli, ["down", "--tier", "fast"])
 
+        # Assert
         assert result.exit_code == 0
         mock_run.assert_called_once_with(tier_filter="fast")
 
@@ -741,6 +731,7 @@ class TestDownCli:
 
     def test_stale_pid_shown_in_output(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Stale PID reported in output."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -752,15 +743,18 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         assert "stale" in result.output.lower()
 
     def test_corrupt_pid_shown_in_output(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Corrupt PID reported in output."""
+        # Arrange
         mock_result = DownResult(
             services=[
                 ServiceStopResult(
@@ -772,10 +766,12 @@ class TestDownCli:
             ],
         )
 
+        # Act
         with patch("mlx_stack.cli.down.run_down", return_value=mock_result):
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 0
         assert "corrupt" in result.output.lower()
 
@@ -798,6 +794,7 @@ class TestDownCli:
 
     def test_no_traceback_on_error(self, mlx_stack_home: Path) -> None:
         """Errors never show Python tracebacks."""
+        # Act
         with patch(
             "mlx_stack.cli.down.run_down",
             side_effect=DownError("Something went wrong"),
@@ -805,6 +802,7 @@ class TestDownCli:
             runner = CliRunner()
             result = runner.invoke(cli, ["down"])
 
+        # Assert
         assert result.exit_code == 1
         assert "Traceback" not in result.output
         assert "Error:" in result.output
@@ -820,13 +818,15 @@ class TestDownEndToEnd:
 
     def test_full_lifecycle_cleanup(self, mlx_stack_home: Path) -> None:
         """VAL-CROSS-001: After down, zero PID files remain."""
-        _write_stack_yaml(mlx_stack_home)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
         pids_dir = mlx_stack_home / "pids"
         pids_dir.mkdir(parents=True, exist_ok=True)
         (pids_dir / "standard.pid").write_text("12345")
         (pids_dir / "fast.pid").write_text("12346")
         (pids_dir / "litellm.pid").write_text("12347")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.process.psutil") as mock_psutil,
@@ -855,19 +855,21 @@ class TestDownEndToEnd:
             ):
                 run_down()
 
-        # All PID files should be cleaned up
+        # Assert
         remaining_pids = list(pids_dir.glob("*.pid"))
         assert remaining_pids == [], f"PID files remain: {remaining_pids}"
 
     def test_selective_tier_leaves_others(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-004: --tier leaves other services' PID files intact."""
-        _write_stack_yaml(mlx_stack_home)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
         pids_dir = mlx_stack_home / "pids"
         pids_dir.mkdir(parents=True, exist_ok=True)
         (pids_dir / "standard.pid").write_text("1001")
         (pids_dir / "fast.pid").write_text("1002")
         (pids_dir / "litellm.pid").write_text("1003")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.process.psutil") as mock_psutil,
@@ -884,7 +886,7 @@ class TestDownEndToEnd:
 
             run_down(tier_filter="fast")
 
-        # Only fast PID should be removed
+        # Assert — only fast PID should be removed
         assert not (pids_dir / "fast.pid").exists()
         # Others should remain
         assert (pids_dir / "standard.pid").exists()
@@ -892,11 +894,13 @@ class TestDownEndToEnd:
 
     def test_corrupt_and_stale_mixed(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-005: Mixed corrupt + stale PID files all cleaned."""
+        # Arrange
         pids_dir = mlx_stack_home / "pids"
         pids_dir.mkdir(parents=True, exist_ok=True)
         (pids_dir / "fast.pid").write_text("not_a_pid")
         (pids_dir / "standard.pid").write_text("99999")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.process.psutil") as mock_psutil,
@@ -911,7 +915,7 @@ class TestDownEndToEnd:
 
             result = run_down()
 
-        # Both PID files should be cleaned
+        # Assert
         remaining = list(pids_dir.glob("*.pid"))
         assert remaining == [], f"PID files remain: {remaining}"
 
@@ -930,10 +934,11 @@ class TestShutdownOrder:
 
     def test_litellm_stopped_before_model_servers(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-001: LiteLLM stopped first."""
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "standard", 1001)
-        _create_pid_file(mlx_stack_home, "fast", 1002)
-        _create_pid_file(mlx_stack_home, "litellm", 1003)
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        create_pid_file(mlx_stack_home, "standard", 1001)
+        create_pid_file(mlx_stack_home, "fast", 1002)
+        create_pid_file(mlx_stack_home, "litellm", 1003)
 
         order: list[str] = []
 
@@ -946,6 +951,7 @@ class TestShutdownOrder:
                 graceful=True,
             )
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_down._stop_single_service", side_effect=mock_stop),
@@ -956,11 +962,12 @@ class TestShutdownOrder:
 
             run_down()
 
+        # Assert
         assert order[0] == "litellm"
 
     def test_model_servers_reversed(self, mlx_stack_home: Path) -> None:
         """VAL-DOWN-001: Model servers stopped in reverse startup order."""
-        # Stack with 3 tiers of different sizes
+        # Arrange — stack with 3 tiers of different sizes
         tiers = [
             {
                 "name": "standard",
@@ -987,11 +994,11 @@ class TestShutdownOrder:
                 "vllm_flags": {},
             },
         ]
-        stack = _make_stack_yaml(tiers=tiers)
-        _write_stack_yaml(mlx_stack_home, stack)
+        stack = make_stack_yaml(tiers=tiers)
+        write_stack_yaml(mlx_stack_home, stack)
 
         for tier in tiers:
-            _create_pid_file(mlx_stack_home, tier["name"], 1000)
+            create_pid_file(mlx_stack_home, tier["name"], 1000)
 
         order: list[str] = []
 
@@ -1004,6 +1011,7 @@ class TestShutdownOrder:
                 graceful=True,
             )
 
+        # Act
         with (
             patch("mlx_stack.core.stack_down.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_down._stop_single_service", side_effect=mock_stop),
@@ -1014,7 +1022,7 @@ class TestShutdownOrder:
 
             run_down()
 
-        # With no catalog, tiers are in stack definition order
+        # Assert — with no catalog, tiers are in stack definition order
         # Reversed means last-defined tier stops first (among model servers)
         model_servers = [s for s in order if s != "litellm"]
         # Reverse of the startup order; startup order = stack definition order

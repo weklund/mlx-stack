@@ -11,20 +11,11 @@ Validates two scrutiny fixes:
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-import yaml
 from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
-from mlx_stack.core.catalog import (
-    BenchmarkResult,
-    Capabilities,
-    CatalogEntry,
-    QualityScores,
-    QuantSource,
-)
 from mlx_stack.core.process import HealthCheckResult, ServiceInfo
 from mlx_stack.core.stack_up import (
     TierStatus,
@@ -32,123 +23,11 @@ from mlx_stack.core.stack_up import (
     check_local_model_exists,
     run_up,
 )
-
-# --------------------------------------------------------------------------- #
-# Test helpers
-# --------------------------------------------------------------------------- #
-
-
-def _make_stack_yaml(
-    tiers: list[dict[str, Any]] | None = None,
-    schema_version: int = 1,
-) -> dict[str, Any]:
-    """Create a stack definition dict for testing."""
-    if tiers is None:
-        tiers = [
-            {
-                "name": "standard",
-                "model": "big-model",
-                "quant": "int4",
-                "source": "mlx-community/big-model-4bit",
-                "port": 8000,
-                "vllm_flags": {
-                    "continuous_batching": True,
-                    "use_paged_cache": True,
-                },
-            },
-            {
-                "name": "fast",
-                "model": "fast-model",
-                "quant": "int4",
-                "source": "mlx-community/fast-model-4bit",
-                "port": 8001,
-                "vllm_flags": {
-                    "continuous_batching": True,
-                    "use_paged_cache": True,
-                },
-            },
-        ]
-    return {
-        "schema_version": schema_version,
-        "name": "default",
-        "hardware_profile": "m4-max-128",
-        "intent": "balanced",
-        "created": "2026-03-24T00:00:00+00:00",
-        "tiers": tiers,
-    }
-
-
-def _write_stack_yaml(
-    mlx_stack_home: Path,
-    stack: dict[str, Any] | None = None,
-) -> Path:
-    """Write a stack YAML file and return its path."""
-    if stack is None:
-        stack = _make_stack_yaml()
-    stacks_dir = mlx_stack_home / "stacks"
-    stacks_dir.mkdir(parents=True, exist_ok=True)
-    stack_path = stacks_dir / "default.yaml"
-    stack_path.write_text(yaml.dump(stack, default_flow_style=False))
-    return stack_path
-
-
-def _write_litellm_yaml(mlx_stack_home: Path) -> Path:
-    """Write a minimal litellm.yaml config."""
-    litellm_config = {
-        "model_list": [
-            {
-                "model_name": "standard",
-                "litellm_params": {
-                    "model": "openai/big-model",
-                    "api_base": "http://localhost:8000/v1",
-                    "api_key": "dummy",
-                },
-            },
-        ],
-    }
-    litellm_path = mlx_stack_home / "litellm.yaml"
-    litellm_path.write_text(yaml.dump(litellm_config, default_flow_style=False))
-    return litellm_path
-
-
-def _make_entry(
-    model_id: str = "test-model",
-    params_b: float = 8.0,
-    memory_gb: float = 5.5,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    return CatalogEntry(
-        id=model_id,
-        name=f"Test {model_id}",
-        family="Test",
-        params_b=params_b,
-        architecture="transformer",
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(hf_repo=f"mlx-community/{model_id}-4bit", disk_size_gb=4.5),
-        },
-        capabilities=Capabilities(
-            tool_calling=True,
-            tool_call_parser="hermes",
-            thinking=False,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(overall=70, coding=65, reasoning=60, instruction_following=72),
-        benchmarks={
-            "m4-max-128": BenchmarkResult(prompt_tps=100.0, gen_tps=50.0, memory_gb=memory_gb),
-        },
-        tags=[],
-    )
-
-
-def _make_test_catalog() -> list[CatalogEntry]:
-    """Create a test catalog."""
-    return [
-        _make_entry("big-model", params_b=49.0, memory_gb=30.0),
-        _make_entry("fast-model", params_b=3.0, memory_gb=2.0),
-    ]
-
+from tests.factories import (
+    make_test_catalog,
+    write_litellm_yaml,
+    write_stack_yaml,
+)
 
 # =========================================================================== #
 # Issue 1: Preflight local-model existence checks
@@ -160,50 +39,65 @@ class TestCheckLocalModelExists:
 
     def test_model_found_by_id(self, mlx_stack_home: Path) -> None:
         """Model found when directory matches model ID."""
+        # Arrange
         models_dir = mlx_stack_home / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
         (models_dir / "big-model").mkdir()
-
         tier = {"model": "big-model", "source": "mlx-community/big-model-4bit"}
+
+        # Act / Assert
         assert check_local_model_exists(tier) is None
 
     def test_model_found_by_source_dir(self, mlx_stack_home: Path) -> None:
         """Model found when directory matches source repo name."""
+        # Arrange
         models_dir = mlx_stack_home / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
         (models_dir / "big-model-4bit").mkdir()
-
         tier = {"model": "big-model", "source": "mlx-community/big-model-4bit"}
+
+        # Act / Assert
         assert check_local_model_exists(tier) is None
 
     def test_model_missing_returns_diagnostic(self, mlx_stack_home: Path) -> None:
         """Missing model returns error message with pull suggestion."""
+        # Arrange
         models_dir = mlx_stack_home / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
-
         tier = {
             "model": "missing-model",
             "source": "mlx-community/missing-model-4bit",
         }
+
+        # Act
         error = check_local_model_exists(tier)
+
+        # Assert
         assert error is not None
         assert "missing-model" in error
         assert "mlx-stack pull" in error
 
     def test_model_missing_no_models_dir(self, mlx_stack_home: Path) -> None:
         """Missing model when models directory doesn't exist."""
+        # Arrange -- no models directory created
         tier = {"model": "any-model", "source": "mlx-community/any-model-4bit"}
+
+        # Act
         error = check_local_model_exists(tier)
+
+        # Assert
         assert error is not None
         assert "mlx-stack pull" in error
 
     def test_model_found_empty_source(self, mlx_stack_home: Path) -> None:
         """Model found by ID even when source is empty."""
+        # Arrange
         models_dir = mlx_stack_home / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
         (models_dir / "my-model").mkdir()
-
         tier = {"model": "my-model", "source": ""}
+
+        # Act / Assert
         assert check_local_model_exists(tier) is None
 
 
@@ -233,9 +127,10 @@ class TestPreflightInStartup:
         mlx_stack_home: Path,
     ) -> None:
         """Tier with missing model is skipped with pull suggestion."""
-        _write_stack_yaml(mlx_stack_home)
-        _write_litellm_yaml(mlx_stack_home)
-        mock_load_catalog.return_value = _make_test_catalog()
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        write_litellm_yaml(mlx_stack_home)
+        mock_load_catalog.return_value = make_test_catalog()
         models_dir = mlx_stack_home / "models"
         models_dir.mkdir(parents=True, exist_ok=True)
         mock_get_value.side_effect = lambda key: {
@@ -257,17 +152,15 @@ class TestPreflightInStartup:
             healthy=True, response_time=0.5, status_code=200
         )
 
-        # No models on disk → both tiers should be skipped
+        # Act -- no models on disk, both tiers should be skipped
         result = run_up()
 
-        # All tiers should be skipped with missing model message
+        # Assert
         skipped_tiers = [t for t in result.tiers if t.status == "skipped"]
         assert len(skipped_tiers) == 2
         for tier in skipped_tiers:
             assert "not found locally" in (tier.error or "")
             assert "mlx-stack pull" in (tier.error or "")
-
-        # LiteLLM should be skipped since no tiers are healthy
         assert result.litellm is not None
         assert result.litellm.status == "skipped"
 
@@ -294,10 +187,13 @@ class TestPreflightInStartup:
         mlx_stack_home: Path,
     ) -> None:
         """One model present, one missing → mixed results."""
-        _write_stack_yaml(mlx_stack_home)
-        _write_litellm_yaml(mlx_stack_home)
-        mock_load_catalog.return_value = _make_test_catalog()
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        write_litellm_yaml(mlx_stack_home)
+        mock_load_catalog.return_value = make_test_catalog()
         models_dir = mlx_stack_home / "models"
+        models_dir.mkdir(parents=True, exist_ok=True)
+        (models_dir / "fast-model-4bit").mkdir()  # only fast-model on disk
         mock_get_value.side_effect = lambda key: {
             "litellm-port": 4000,
             "openrouter-key": "",
@@ -317,22 +213,15 @@ class TestPreflightInStartup:
             healthy=True, response_time=0.5, status_code=200
         )
 
-        # Create model directory for "fast-model" source
-        models_dir = mlx_stack_home / "models"
-        models_dir.mkdir(parents=True, exist_ok=True)
-        (models_dir / "fast-model-4bit").mkdir()
-
+        # Act
         result = run_up()
 
+        # Assert -- big-model skipped (not on disk), fast-model healthy
         statuses = {t.name: t.status for t in result.tiers}
-        # big-model (standard) should be skipped — not on disk
         assert statuses["standard"] == "skipped"
         message = next(t.error for t in result.tiers if t.name == "standard") or ""
         assert "not found locally" in message
-        # fast-model (fast) should be healthy — on disk
         assert statuses["fast"] == "healthy"
-
-        # LiteLLM should start since at least one tier is healthy
         assert result.litellm is not None
         assert result.litellm.status == "healthy"
 
@@ -345,18 +234,20 @@ class TestPreflightInStartup:
         mlx_stack_home: Path,
     ) -> None:
         """Dry-run still shows commands even for missing models."""
-        _write_stack_yaml(mlx_stack_home)
-        _write_litellm_yaml(mlx_stack_home)
-        mock_load_catalog.return_value = _make_test_catalog()
+        # Arrange -- no models on disk
+        write_stack_yaml(mlx_stack_home)
+        write_litellm_yaml(mlx_stack_home)
+        mock_load_catalog.return_value = make_test_catalog()
         mock_get_value.side_effect = lambda key: {
             "litellm-port": 4000,
             "openrouter-key": "",
         }.get(key, "")
 
-        # No models on disk — dry-run still shows commands
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["up", "--dry-run"])
-        # Dry-run should succeed — it doesn't check for model existence
+
+        # Assert -- dry-run succeeds without checking model existence
         assert result.exit_code == 0
         assert "Dry run" in result.output
 
@@ -365,11 +256,12 @@ class TestPreflightInStartup:
         mlx_stack_home: Path,
     ) -> None:
         """CLI output shows pull suggestion for missing models."""
-        _write_stack_yaml(mlx_stack_home)
-        _write_litellm_yaml(mlx_stack_home)
-
+        # Arrange
+        write_stack_yaml(mlx_stack_home)
+        write_litellm_yaml(mlx_stack_home)
         runner = CliRunner()
 
+        # Act
         with (
             patch("mlx_stack.cli.up.run_up") as mock_run_up,
         ):
@@ -394,6 +286,7 @@ class TestPreflightInStartup:
             )
             result = runner.invoke(cli, ["up"])
 
+        # Assert
         assert result.exit_code != 0
         assert "pull" in result.output.lower()
 
@@ -408,9 +301,14 @@ class TestReadOnlyNoDataHomeCreation:
 
     def test_status_no_create(self, clean_mlx_stack_home: Path) -> None:
         """status command does not create ~/.mlx-stack/."""
+        # Arrange
         assert not clean_mlx_stack_home.exists()
         runner = CliRunner()
+
+        # Act
         result = runner.invoke(cli, ["status"])
+
+        # Assert
         assert result.exit_code == 0
         assert not clean_mlx_stack_home.exists()
 
@@ -487,9 +385,14 @@ class TestStateWritingCommandsStillCreateDataHome:
 
     def test_config_set_creates_dir(self, clean_mlx_stack_home: Path) -> None:
         """config set creates ~/.mlx-stack/ (needs it to store config)."""
+        # Arrange
         assert not clean_mlx_stack_home.exists()
         runner = CliRunner()
+
+        # Act
         result = runner.invoke(cli, ["config", "set", "default-quant", "int4"])
+
+        # Assert
         assert result.exit_code == 0
         assert clean_mlx_stack_home.exists()
 
@@ -498,9 +401,11 @@ class TestStateWritingCommandsStillCreateDataHome:
 
         Profile calls save_profile which calls ensure_data_home internally.
         """
+        # Arrange
         assert not clean_mlx_stack_home.exists()
         runner = CliRunner()
-        # Profile needs real hardware — mock detect, but let save run real
+
+        # Act -- mock detect_hardware but let save_profile write to disk
         with (
             patch("mlx_stack.cli.profile.detect_hardware") as mock_detect,
         ):
@@ -514,5 +419,6 @@ class TestStateWritingCommandsStillCreateDataHome:
                 is_estimate=False,
             )
             runner.invoke(cli, ["profile"])
-        # Profile command should create the data directory
+
+        # Assert
         assert clean_mlx_stack_home.exists()

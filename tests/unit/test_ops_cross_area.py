@@ -39,6 +39,7 @@ from mlx_stack.core.watchdog import (
     restart_service,
     rotate_service_logs,
 )
+from tests.factories import read_gz
 
 # --------------------------------------------------------------------------- #
 # Shared fixtures
@@ -118,7 +119,12 @@ def config_file(mlx_stack_home: Path) -> Path:
 
 
 def _create_log(path: Path, size_mb: float = 0, content: str | None = None) -> None:
-    """Create a log file with the given size or specific content."""
+    """Create a log file with the given size or specific content.
+
+    Unlike ``create_log_file`` from factories (which takes *logs_dir* and
+    *service* separately), this helper accepts a full *path* because the
+    cross-area tests create files in arbitrary locations.
+    """
     if content is not None:
         path.write_text(content)
     else:
@@ -127,12 +133,6 @@ def _create_log(path: Path, size_mb: float = 0, content: str | None = None) -> N
             path.write_bytes(b"x" * size_bytes)
         else:
             path.touch()
-
-
-def _read_gz(path: Path) -> bytes:
-    """Read and decompress a gzip file."""
-    with gzip.open(str(path), "rb") as f:
-        return f.read()
 
 
 # =========================================================================== #
@@ -152,27 +152,22 @@ class TestWatchdogAutoRotation:
         self, mlx_stack_home: Path, logs_dir: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Watchdog poll cycle rotates logs exceeding the configured threshold."""
-        # Create a log file over the threshold (use 1MB threshold for speed)
+        # Arrange -- one log above 1 MB threshold, one below
         fast_log = logs_dir / "fast.log"
         _create_log(fast_log, size_mb=2)
-
-        # Create a log file under threshold — should NOT be rotated
         standard_log = logs_dir / "standard.log"
         _create_log(standard_log, content="small log\n")
-
         state = WatchdogState()
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status") as mock_status,
             patch("mlx_stack.core.watchdog.get_value") as mock_get_value,
         ):
-            # All services healthy — no restarts needed
             mock_result = MagicMock()
             mock_result.no_stack = False
             mock_result.services = []
             mock_status.return_value = mock_result
-
-            # Configure rotation thresholds
             mock_get_value.side_effect = lambda key: {
                 "log-max-size-mb": 1,
                 "log-max-files": 5,
@@ -186,15 +181,13 @@ class TestWatchdogAutoRotation:
                 restart_delay=10,
             )
 
-        # fast.log was above 1MB → should have been rotated
+        # Assert -- fast.log rotated, standard.log untouched
         assert result.rotations_performed >= 1
-        assert fast_log.stat().st_size == 0  # truncated
+        assert fast_log.stat().st_size == 0
         archive = logs_dir / "fast.log.1.gz"
         assert archive.exists()
-        data = _read_gz(archive)
+        data = read_gz(archive)
         assert len(data) == 2 * 1024 * 1024
-
-        # standard.log should NOT have been rotated (below threshold)
         assert standard_log.stat().st_size > 0
         assert not (logs_dir / "standard.log.1.gz").exists()
 
@@ -207,23 +200,21 @@ class TestWatchdogAutoRotation:
         the file should already be below threshold, so manual rotation
         is a no-op (idempotent).
         """
+        # Arrange
         log = logs_dir / "fast.log"
         _create_log(log, size_mb=2)
 
-        # First rotation: simulates watchdog
+        # Act -- first rotation (watchdog), then second rotation (manual)
         result_1 = rotate_log(log, max_size_mb=1, max_files=5)
+        result_2 = rotate_log(log, max_size_mb=1, max_files=5)
+
+        # Assert
         assert result_1 is True
+        assert result_2 is False  # File is now 0 bytes -- skip
         assert log.stat().st_size == 0
         archive_1 = logs_dir / "fast.log.1.gz"
         assert archive_1.exists()
-
-        # Second rotation: simulates manual --rotate (concurrent)
-        result_2 = rotate_log(log, max_size_mb=1, max_files=5)
-        assert result_2 is False  # File is now 0 bytes — skip
-
-        # Archive should still be intact
-        assert archive_1.exists()
-        data = _read_gz(archive_1)
+        data = read_gz(archive_1)
         assert len(data) == 2 * 1024 * 1024
 
     def test_concurrent_rotation_with_new_content(

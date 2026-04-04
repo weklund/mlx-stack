@@ -25,11 +25,7 @@ from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
 from mlx_stack.core.catalog import (
-    BenchmarkResult,
-    Capabilities,
-    CatalogEntry,
     CatalogError,
-    QualityScores,
     QuantSource,
 )
 from mlx_stack.core.pull import (
@@ -51,61 +47,29 @@ from mlx_stack.core.pull import (
     save_inventory,
     validate_quant,
 )
+from tests.factories import make_entry
 
 # --------------------------------------------------------------------------- #
 # Fixtures — reusable test data
 # --------------------------------------------------------------------------- #
 
 
-def _make_entry(
-    model_id: str = "qwen3.5-8b",
-    name: str = "Qwen 3.5 8B",
-    family: str = "Qwen 3.5",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    tool_calling: bool = True,
-    disk_size_gb: float = 4.5,
-    disk_size_gb_int8: float = 8.5,
-    disk_size_gb_bf16: float = 16.0,
-    gated: bool = False,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit",
-                disk_size_gb=disk_size_gb,
-            ),
-            "int8": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-8bit",
-                disk_size_gb=disk_size_gb_int8,
-            ),
-            "bf16": QuantSource(
-                hf_repo=f"Qwen/{name.replace(' ', '-')}",
-                disk_size_gb=disk_size_gb_bf16,
-                convert_from=True,
-            ),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser="hermes" if tool_calling else None,
-            thinking=False,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(overall=68, coding=65, reasoning=62, instruction_following=72),
-        benchmarks={
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
-        },
-        tags=["balanced", "agent-ready"],
-        gated=gated,
-    )
+# Pull-specific sources include int4, int8, and a bf16 conversion source.
+_PULL_SOURCES = {
+    "int4": QuantSource(
+        hf_repo="mlx-community/qwen3.5-8b-4bit",
+        disk_size_gb=4.5,
+    ),
+    "int8": QuantSource(
+        hf_repo="mlx-community/qwen3.5-8b-8bit",
+        disk_size_gb=8.5,
+    ),
+    "bf16": QuantSource(
+        hf_repo="Qwen/Qwen-3.5-8B",
+        disk_size_gb=16.0,
+        convert_from=True,
+    ),
+}
 
 
 # =========================================================================== #
@@ -143,23 +107,56 @@ class TestResolveSource:
 
     def test_mlx_community_preferred_int4(self) -> None:
         """mlx-community source is used for int4 (convert_from=False)."""
-        entry = _make_entry()
+        # Arrange
+        entry = make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )
+
+        # Act
         source, source_type = resolve_source(entry, "int4")
+
+        # Assert
         assert source_type == "mlx-community"
         assert "mlx-community" in source.hf_repo
         assert source.convert_from is False
 
     def test_mlx_community_preferred_int8(self) -> None:
         """mlx-community source is used for int8."""
-        entry = _make_entry()
+        # Arrange
+        entry = make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )
+
+        # Act
         source, source_type = resolve_source(entry, "int8")
+
+        # Assert
         assert source_type == "mlx-community"
         assert "mlx-community" in source.hf_repo
 
     def test_conversion_fallback_bf16(self) -> None:
         """bf16 with convert_from=True uses conversion source type."""
-        entry = _make_entry()
+        # Arrange
+        entry = make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )
+
+        # Act
         source, source_type = resolve_source(entry, "bf16")
+
+        # Assert
         assert source_type == "converted"
         assert source.convert_from is True
         assert "Qwen/" in source.hf_repo
@@ -168,28 +165,16 @@ class TestResolveSource:
         """Requesting unavailable quant raises PullError."""
         import pytest
 
-        # Create entry with only int4 source
-        entry = CatalogEntry(
-            id="test-model",
-            name="Test Model",
-            family="Test",
-            params_b=1.0,
-            architecture="transformer",
-            min_mlx_lm_version="0.22.0",
+        # Arrange -- entry with only int4 source (shared factory default)
+        entry = make_entry(
+            model_id="test-model",
+            tool_calling=False,
             sources={
                 "int4": QuantSource(hf_repo="mlx-community/test-4bit", disk_size_gb=1.0),
             },
-            capabilities=Capabilities(
-                tool_calling=False,
-                tool_call_parser=None,
-                thinking=False,
-                reasoning_parser=None,
-                vision=False,
-            ),
-            quality=QualityScores(overall=50, coding=50, reasoning=50, instruction_following=50),
-            benchmarks={},
-            tags=[],
         )
+
+        # Act / Assert
         with pytest.raises(PullError, match="Quantization 'int8' is not available"):
             resolve_source(entry, "int8")
 
@@ -410,7 +395,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-001: Successful pull downloads to correct location."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         result = pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
         assert result.model_id == "qwen3.5-8b"
@@ -428,7 +419,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-007: Model appears in inventory after pull."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
         inv = load_inventory()
@@ -442,7 +439,13 @@ class TestPullModel:
         """VAL-PULL-009: Invalid model ID raises InvalidModelError."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(InvalidModelError, match="not found in catalog"):
             pull_model("nonexistent-model", catalog=catalog)
 
@@ -450,7 +453,13 @@ class TestPullModel:
         """VAL-PULL-009: Error message suggests models --catalog."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(InvalidModelError, match="models --catalog"):
             pull_model("bad-model", catalog=catalog)
 
@@ -458,7 +467,13 @@ class TestPullModel:
         """VAL-PULL-003: Invalid quant is rejected."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(PullError, match="Invalid quantization"):
             pull_model("qwen3.5-8b", quant="int6", catalog=catalog)
 
@@ -471,7 +486,13 @@ class TestPullModel:
         """VAL-PULL-004: Insufficient space raises DiskSpaceError."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(DiskSpaceError, match="Insufficient disk space"):
             pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
@@ -484,7 +505,13 @@ class TestPullModel:
         """VAL-PULL-004: Disk space error shows required vs available."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(DiskSpaceError, match=r"(?s)Required: 4\.5 GB.*Available: 2\.0 GB"):
             pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
@@ -497,7 +524,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-006: Already-downloaded model skips re-download."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         # Create the model directory with a file to simulate existing download
         models_dir = mlx_stack_home / "models"
@@ -518,7 +551,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-006: --force re-downloads existing model."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         # Create the model directory with a file
         models_dir = mlx_stack_home / "models"
@@ -539,7 +578,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-003: Without --quant, uses config default (int4)."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         result = pull_model("qwen3.5-8b", quant=None, catalog=catalog)
         assert result.quant == "int4"
 
@@ -554,7 +599,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-003: Uses config default-quant when set to int8."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         result = pull_model("qwen3.5-8b", quant=None, catalog=catalog)
         assert result.quant == "int8"
 
@@ -567,7 +618,13 @@ class TestPullModel:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-002: bf16 with convert_from uses mlx_lm conversion."""
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         result = pull_model("qwen3.5-8b", quant="bf16", catalog=catalog)
 
         assert result.source_type == "converted"
@@ -583,7 +640,13 @@ class TestPullModel:
         """VAL-PULL-008: Download error is propagated."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(DownloadError, match="Network error"):
             pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
@@ -598,7 +661,13 @@ class TestPullModel:
         """VAL-PULL-010: Conversion error is propagated."""
         import pytest
 
-        catalog = [_make_entry()]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         with pytest.raises(ConversionError, match="Convert failed"):
             pull_model("qwen3.5-8b", quant="bf16", catalog=catalog)
 
@@ -941,7 +1010,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-001: Successful pull via CLI."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--quant", "int4"])
@@ -956,7 +1031,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-009: Invalid model exits with error."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "nonexistent-model"])
@@ -971,7 +1052,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-003: Invalid quant exits with error."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--quant", "int6"])
@@ -987,7 +1074,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-004: Insufficient space exits with clear error."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
@@ -1005,7 +1098,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-006: Already-downloaded model reports exists."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         # Create the model directory
         models_dir = mlx_stack_home / "models"
@@ -1030,7 +1129,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-006: --force re-downloads even when model exists."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         # Create existing model
         models_dir = mlx_stack_home / "models"
@@ -1059,7 +1164,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-008: Network error shows clear message."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
@@ -1080,7 +1191,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-010: Conversion error shows clear message."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b", "--quant", "bf16"])
@@ -1098,7 +1215,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-007: After pull, model is in inventory."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
@@ -1120,7 +1243,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-005: Progress-related info shown during download."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
@@ -1145,7 +1274,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-CROSS-014: --bench flag runs benchmark and shows output."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
 
         with patch("mlx_stack.core.benchmark.run_benchmark") as mock_bench:
             mock_bench.return_value = MagicMock(
@@ -1175,7 +1310,13 @@ class TestPullCLI:
         """pull --bench calls run_benchmark(save=True) to persist results."""
         from mlx_stack.core.benchmark import BenchmarkResult_
 
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         mock_result = BenchmarkResult_(
             model_id="qwen3.5-8b",
             quant="int4",
@@ -1203,7 +1344,13 @@ class TestPullCLI:
         mlx_stack_home: Path,
     ) -> None:
         """No Python traceback shown for any error scenario."""
-        mock_catalog.return_value = [_make_entry()]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
         mock_download.side_effect = DownloadError("Test error")
 
         runner = CliRunner()
@@ -1244,7 +1391,13 @@ class TestPullModelsIntegration:
         mlx_stack_home: Path,
     ) -> None:
         """VAL-PULL-007: After pull, model appears in mlx-stack models output."""
-        entry = _make_entry()
+        entry = make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )
         mock_pull_catalog.return_value = [entry]
         mock_models_catalog.return_value = [entry]
 
@@ -1284,7 +1437,14 @@ class TestGatedModelHandling:
         """Gated model without HF token raises GatedModelError."""
         import pytest
 
-        catalog = [_make_entry(gated=True)]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+            gated=True,
+        )]
         with pytest.raises(GatedModelError, match="requires HuggingFace authentication"):
             pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
 
@@ -1299,7 +1459,14 @@ class TestGatedModelHandling:
         mlx_stack_home: Path,
     ) -> None:
         """Gated model with valid token proceeds to download."""
-        catalog = [_make_entry(gated=True)]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+            gated=True,
+        )]
         result = pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
         assert result.already_existed is False
         mock_download.assert_called_once()
@@ -1311,7 +1478,14 @@ class TestGatedModelHandling:
         mlx_stack_home: Path,
     ) -> None:
         """Non-gated model does not check for token."""
-        catalog = [_make_entry(gated=False)]
+        catalog = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+            gated=False,
+        )]
         with patch("mlx_stack.core.pull.download_model"):
             with patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0)):
                 pull_model("qwen3.5-8b", quant="int4", catalog=catalog)
@@ -1357,7 +1531,14 @@ class TestGatedModelHandling:
         mlx_stack_home: Path,
     ) -> None:
         """CLI shows 'Authentication required' for gated model errors."""
-        mock_catalog.return_value = [_make_entry(gated=True)]
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+            gated=True,
+        )]
 
         runner = CliRunner()
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])

@@ -24,100 +24,27 @@ from click.testing import CliRunner
 from mlx_stack.cli.main import cli
 from mlx_stack.core.catalog import (
     BenchmarkResult,
-    Capabilities,
     CatalogEntry,
-    QualityScores,
     QuantSource,
 )
 from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.pull import ModelInventoryEntry
+from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
 # Shared test data helpers
 # --------------------------------------------------------------------------- #
 
 
-def _make_profile(
-    chip: str = "Apple M4 Max",
-    gpu_cores: int = 40,
-    memory_gb: int = 128,
-    bandwidth_gbps: float = 546.0,
-    is_estimate: bool = False,
-) -> HardwareProfile:
-    """Create a HardwareProfile for testing."""
-    return HardwareProfile(
-        chip=chip,
-        gpu_cores=gpu_cores,
-        memory_gb=memory_gb,
-        bandwidth_gbps=bandwidth_gbps,
-        is_estimate=is_estimate,
-    )
-
-
-def _make_entry(
-    model_id: str = "test-model",
-    name: str = "Test Model",
-    family: str = "Test",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    quality_overall: int = 70,
-    quality_coding: int = 65,
-    quality_reasoning: int = 60,
-    quality_instruction: int = 72,
-    tool_calling: bool = True,
-    tool_call_parser: str | None = "hermes",
-    thinking: bool = False,
-    reasoning_parser: str | None = None,
-    benchmarks: dict[str, BenchmarkResult] | None = None,
-    tags: list[str] | None = None,
-    disk_size_gb: float = 4.5,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    if benchmarks is None:
-        benchmarks = {
-            "m4-pro-32": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
-        }
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit",
-                disk_size_gb=disk_size_gb,
-            ),
-            "int8": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-8bit",
-                disk_size_gb=disk_size_gb * 2,
-            ),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser=tool_call_parser if tool_calling else None,
-            thinking=thinking,
-            reasoning_parser=reasoning_parser,
-            vision=False,
-        ),
-        quality=QualityScores(
-            overall=quality_overall,
-            coding=quality_coding,
-            reasoning=quality_reasoning,
-            instruction_following=quality_instruction,
-        ),
-        benchmarks=benchmarks,
-        tags=tags or [],
-    )
-
-
 def _make_test_catalog() -> list[CatalogEntry]:
-    """Build a diverse test catalog for cross-area tests."""
+    """Build a diverse test catalog for cross-area tests.
+
+    Uses multi-benchmark / multi-source entries (m4-pro-32 + m4-max-128
+    benchmarks, int4 + int8 sources) needed by the cross-area tests.
+    """
     return [
         # High quality model (standard tier candidate)
-        _make_entry(
+        make_entry(
             model_id="high-quality-32b",
             name="High Quality 32B",
             family="Quality",
@@ -133,9 +60,13 @@ def _make_test_catalog() -> list[CatalogEntry]:
             },
             tags=["quality"],
             disk_size_gb=18.0,
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/high-quality-32b-4bit", disk_size_gb=18.0),
+                "int8": QuantSource(hf_repo="mlx-community/high-quality-32b-8bit", disk_size_gb=36.0),
+            },
         ),
         # Fast small model (fast tier candidate)
-        _make_entry(
+        make_entry(
             model_id="fast-0.8b",
             name="Fast 0.8B",
             family="Fast",
@@ -151,9 +82,13 @@ def _make_test_catalog() -> list[CatalogEntry]:
             },
             tags=["fast"],
             disk_size_gb=0.5,
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/fast-0.8b-4bit", disk_size_gb=0.5),
+                "int8": QuantSource(hf_repo="mlx-community/fast-0.8b-8bit", disk_size_gb=1.0),
+            },
         ),
         # Medium model
-        _make_entry(
+        make_entry(
             model_id="medium-8b",
             name="Medium 8B",
             family="Medium",
@@ -169,9 +104,13 @@ def _make_test_catalog() -> list[CatalogEntry]:
             },
             tags=["balanced"],
             disk_size_gb=4.5,
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/medium-8b-4bit", disk_size_gb=4.5),
+                "int8": QuantSource(hf_repo="mlx-community/medium-8b-8bit", disk_size_gb=9.0),
+            },
         ),
         # Longctx model (mamba2-hybrid architecture)
-        _make_entry(
+        make_entry(
             model_id="longctx-32b",
             name="LongCtx 32B",
             family="LongCtx",
@@ -189,6 +128,10 @@ def _make_test_catalog() -> list[CatalogEntry]:
             },
             tags=["longctx"],
             disk_size_gb=17.0,
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/longctx-32b-4bit", disk_size_gb=17.0),
+                "int8": QuantSource(hf_repo="mlx-community/longctx-32b-8bit", disk_size_gb=34.0),
+            },
         ),
     ]
 
@@ -258,21 +201,21 @@ class TestCrossAreaEndToEnd:
         mlx_stack_home: Path,
     ) -> None:
         """Init generates stack+litellm configs with consistent data."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
+        # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
 
-        # Verify stack YAML created and valid
+        # Assert
+        assert result.exit_code == 0
         stack = _read_stack_yaml(mlx_stack_home)
         assert stack["schema_version"] == 1
         assert stack["intent"] == "balanced"
         assert len(stack["tiers"]) > 0
-
-        # Verify LiteLLM config created and valid
         litellm = _read_litellm_yaml(mlx_stack_home)
         assert "model_list" in litellm
         assert len(litellm["model_list"]) == len(stack["tiers"])
@@ -293,7 +236,7 @@ class TestCrossAreaEndToEnd:
         stack definition ports match LiteLLM config api_base ports and
         the up --dry-run command ports.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         catalog = _make_test_catalog()
         mock_catalog.return_value = catalog
@@ -379,7 +322,7 @@ class TestCrossAreaEndToEnd:
         """
         from mlx_stack.core.process import HealthCheckResult, ServiceInfo
 
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         catalog = _make_test_catalog()
         mock_init_catalog.return_value = catalog
@@ -571,17 +514,15 @@ class TestConfigPropagation:
         Verifies the concrete port value appears in the LiteLLM config
         general_settings, not just that the command exits 0.
         """
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
-
         runner = CliRunner()
 
-        # Set custom litellm-port to 5000
+        # Act — set config then init
         result = runner.invoke(cli, ["config", "set", "litellm-port", "5000"])
         assert result.exit_code == 0
-
-        # Run init
         result = runner.invoke(cli, ["init", "--accept-defaults"])
         assert result.exit_code == 0
 
@@ -624,7 +565,7 @@ class TestConfigPropagation:
         With 128 GB memory and 60% budget, the effective budget is 76.8 GB.
         Asserts the concrete value appears in recommend output.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile
         mock_load_catalog.return_value = _make_test_catalog()
 
@@ -658,7 +599,7 @@ class TestConfigPropagation:
         With 128 GB and 60%, budget is 76.8 GB. All selected models must
         fit within 76.8 GB each.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
@@ -754,7 +695,7 @@ class TestConfigPropagation:
         mlx_stack_home: Path,
     ) -> None:
         """After config set litellm-port 5001, up --dry-run shows port 5001."""
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         catalog = _make_test_catalog()
         mock_init_catalog.return_value = catalog
@@ -796,7 +737,7 @@ class TestConfigPropagation:
         Sets litellm-port, runs init, changes memory-budget-pct, re-runs
         init --force, and verifies changes are reflected.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
@@ -847,7 +788,7 @@ class TestBenchSaveOverridesCatalog:
         After bench --save writes gen_tps=85 for medium-8b, recommend
         --show-all must display 85.0, not 77.0.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile
         mock_load_catalog.return_value = _make_test_catalog()
 
@@ -956,7 +897,7 @@ class TestBenchSaveOverridesCatalog:
         If medium-8b gets dramatically higher gen_tps (500) from benchmarks,
         the scoring and tier assignment should change.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_load_profile.return_value = profile
         mock_load_catalog.return_value = _make_test_catalog()
 
@@ -1009,22 +950,27 @@ class TestDataConsistency:
         mlx_stack_home: Path,
     ) -> None:
         """profile.json written by profile is parseable by recommend, init, bench."""
-        profile = _make_profile(memory_gb=128)
+        # Arrange
+        profile = make_profile(memory_gb=128)
         _write_profile(mlx_stack_home, profile)
 
-        # Verify the file is valid JSON with all required fields
+        # Act — read raw JSON
         profile_path = mlx_stack_home / "profile.json"
         data = json.loads(profile_path.read_text())
+
+        # Assert — all required fields present
         assert "chip" in data
         assert "gpu_cores" in data
         assert "memory_gb" in data
         assert "bandwidth_gbps" in data
         assert "profile_id" in data
 
-        # Verify it can be loaded by the hardware module
+        # Act — load via hardware module
         from mlx_stack.core.hardware import load_profile
 
         loaded = load_profile()
+
+        # Assert — round-trip fidelity
         assert loaded is not None
         assert loaded.chip == profile.chip
         assert loaded.memory_gb == profile.memory_gb
@@ -1171,7 +1117,7 @@ class TestDataConsistency:
 
         Verifies that the init -> up data flow preserves vllm_flags.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         catalog = _make_test_catalog()
         mock_catalog.return_value = catalog
@@ -1231,7 +1177,7 @@ class TestDataConsistency:
         vllm_flags — and that the stack has schema_version, hardware_profile,
         intent, created, and tiers.
         """
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
@@ -1274,7 +1220,7 @@ class TestDataConsistency:
         mlx_stack_home: Path,
     ) -> None:
         """LiteLLM config model_list matches stack tier count and ports."""
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
@@ -1330,7 +1276,7 @@ class TestDataConsistency:
         mlx_stack_home: Path,
     ) -> None:
         """hardware_profile in stack.yaml matches the detected profile_id."""
-        profile = _make_profile(memory_gb=128)
+        profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 

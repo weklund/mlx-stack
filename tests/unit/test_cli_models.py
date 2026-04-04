@@ -21,12 +21,9 @@ from click.testing import CliRunner
 from mlx_stack.cli.main import cli
 from mlx_stack.core.catalog import (
     BenchmarkResult,
-    Capabilities,
     CatalogEntry,
-    QualityScores,
     QuantSource,
 )
-from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.models import (
     format_size,
     get_models_directory,
@@ -34,111 +31,66 @@ from mlx_stack.core.models import (
     list_catalog_models,
     scan_local_models,
 )
+from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
 # Fixtures — reusable test data
 # --------------------------------------------------------------------------- #
 
 
-def _make_profile(
-    chip: str = "Apple M4 Max",
-    gpu_cores: int = 40,
-    memory_gb: int = 128,
-    bandwidth_gbps: float = 546.0,
-    is_estimate: bool = False,
-) -> HardwareProfile:
-    """Create a HardwareProfile for testing."""
-    return HardwareProfile(
-        chip=chip,
-        gpu_cores=gpu_cores,
-        memory_gb=memory_gb,
-        bandwidth_gbps=bandwidth_gbps,
-        is_estimate=is_estimate,
-    )
-
-
-def _make_entry(
-    model_id: str = "test-model",
-    name: str = "Test Model",
-    family: str = "Test",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    quality_overall: int = 70,
-    tool_calling: bool = True,
-    benchmarks: dict[str, BenchmarkResult] | None = None,
-    tags: list[str] | None = None,
-    memory_gb: float = 5.5,
-    disk_size_gb: float = 4.5,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    if benchmarks is None:
-        benchmarks = {
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=memory_gb),
-            "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=memory_gb),
-        }
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-4bit",
-                disk_size_gb=disk_size_gb,
-            ),
-            "int8": QuantSource(
-                hf_repo=f"mlx-community/{model_id}-8bit",
-                disk_size_gb=disk_size_gb * 2,
-            ),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser="hermes" if tool_calling else None,
-            thinking=False,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(
-            overall=quality_overall,
-            coding=65,
-            reasoning=60,
-            instruction_following=72,
-        ),
-        benchmarks=benchmarks,
-        tags=tags or [],
-    )
-
-
 def _make_test_catalog() -> list[CatalogEntry]:
-    """Create a test catalog with several models."""
+    """Create a test catalog with several models.
+
+    Uses multi-benchmark / multi-source entries needed by the models tests
+    (m4-max-128 + m4-pro-48 benchmarks, int4 + int8 sources).
+    """
     return [
-        _make_entry(
+        make_entry(
             model_id="qwen3.5-8b",
             name="Qwen 3.5 8B",
             family="Qwen 3.5",
             params_b=8.0,
-            memory_gb=5.5,
             disk_size_gb=4.5,
             tags=["balanced", "agent-ready"],
+            benchmarks={
+                "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
+                "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
+            },
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/qwen3.5-8b-4bit", disk_size_gb=4.5),
+                "int8": QuantSource(hf_repo="mlx-community/qwen3.5-8b-8bit", disk_size_gb=9.0),
+            },
         ),
-        _make_entry(
+        make_entry(
             model_id="nemotron-8b",
             name="Nemotron 8B",
             family="Nemotron",
             params_b=8.0,
-            memory_gb=5.0,
             disk_size_gb=4.2,
             tags=["agent-ready"],
+            benchmarks={
+                "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.0),
+                "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.0),
+            },
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/nemotron-8b-4bit", disk_size_gb=4.2),
+                "int8": QuantSource(hf_repo="mlx-community/nemotron-8b-8bit", disk_size_gb=8.4),
+            },
         ),
-        _make_entry(
+        make_entry(
             model_id="gemma3-12b",
             name="Gemma 3 12B",
             family="Gemma 3",
             params_b=12.0,
-            memory_gb=7.5,
             disk_size_gb=6.5,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=7.5),
+                "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=7.5),
+            },
+            sources={
+                "int4": QuantSource(hf_repo="mlx-community/gemma3-12b-4bit", disk_size_gb=6.5),
+                "int8": QuantSource(hf_repo="mlx-community/gemma3-12b-8bit", disk_size_gb=13.0),
+            },
         ),
     ]
 
@@ -278,15 +230,12 @@ class TestScanLocalModels:
 
     def test_active_stack_indicator(self, mlx_stack_home: Path) -> None:
         """Marks models as active when referenced by the active stack."""
+        # Arrange
         models_dir = mlx_stack_home / "models"
         stacks_dir = mlx_stack_home / "stacks"
         catalog = _make_test_catalog()
-
-        # Create model dirs
         _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
         _create_model_dir(models_dir, "random-model", size_bytes=1000)
-
-        # Create stack referencing qwen3.5-8b
         stack_tiers = [
             {
                 "name": "fast",
@@ -298,9 +247,11 @@ class TestScanLocalModels:
         ]
         _create_stack_yaml(stacks_dir, stack_tiers)
 
+        # Act
         stack = yaml.safe_load((stacks_dir / "default.yaml").read_text())
         result = scan_local_models(models_dir=models_dir, catalog=catalog, stack=stack)
 
+        # Assert
         active = {m.name: m.is_active for m in result}
         assert active["qwen3.5-8b-4bit"] is True
         assert active["random-model"] is False
@@ -404,12 +355,14 @@ class TestListCatalogModels:
 
     def test_includes_hardware_benchmarks(self) -> None:
         """Includes gen_tps and memory_gb when profile matches catalog benchmarks."""
+        # Arrange
         catalog = _make_test_catalog()
-        profile = _make_profile()
+        profile = make_profile()
 
+        # Act
         result = list_catalog_models(catalog=catalog, profile=profile, local_models=[])
 
-        # All our test entries have m4-max-128 benchmarks
+        # Assert — all test entries have m4-max-128 benchmarks
         for cm in result:
             assert cm.gen_tps is not None
             assert cm.memory_gb is not None
@@ -419,7 +372,7 @@ class TestListCatalogModels:
         """Shows estimated values when hardware doesn't match catalog benchmarks."""
         catalog = _make_test_catalog()
         # Use a profile that doesn't match any catalog benchmark key
-        profile = _make_profile(
+        profile = make_profile(
             chip="Apple M3",
             memory_gb=24,
             bandwidth_gbps=100.0,
@@ -443,13 +396,16 @@ class TestListCatalogModels:
 
     def test_marks_local_models(self, mlx_stack_home: Path) -> None:
         """Indicates which catalog models are available locally."""
+        # Arrange
         catalog = _make_test_catalog()
         models_dir = mlx_stack_home / "models"
         _create_model_dir(models_dir, "qwen3.5-8b-4bit", size_bytes=1000)
-
         local_models = scan_local_models(models_dir=models_dir, catalog=catalog)
+
+        # Act
         result = list_catalog_models(catalog=catalog, profile=None, local_models=local_models)
 
+        # Assert
         local_map = {cm.id: cm.is_local for cm in result}
         assert local_map["qwen3.5-8b"] is True
         assert local_map["nemotron-8b"] is False
@@ -546,21 +502,25 @@ class TestModelsCommand:
         Verifies through the core scan function that models are discovered
         with correct size and quant, then checks CLI renders them.
         """
+        # Arrange
         models_dir = mlx_stack_home / "models"
         _create_model_dir(models_dir, "Qwen3.5-8B-4bit", size_bytes=4_500_000_000)
 
-        # Verify core scanning works correctly
+        # Act — core scan
         local_models = scan_local_models(models_dir=models_dir, catalog=[])
+
+        # Assert — core data
         assert len(local_models) == 1
         assert local_models[0].name == "Qwen3.5-8B-4bit"
         assert local_models[0].disk_size_bytes == 4_500_000_000
         assert local_models[0].quant == "int4"
 
-        # Verify CLI renders something (table with Local Models title)
+        # Act — CLI rendering
         runner = CliRunner()
         with patch("mlx_stack.cli.models.load_catalog", return_value=[]):
             result = runner.invoke(cli, ["models"])
 
+        # Assert — CLI output
         assert result.exit_code == 0
         assert "Local Models" in result.output
         assert "Model" in result.output  # Table header
@@ -735,7 +695,7 @@ class TestModelsCatalogCommand:
     def test_shows_hardware_specific_benchmarks(self, mlx_stack_home: Path) -> None:
         """VAL-MODELS-004: Shows benchmark data for current hardware."""
         catalog = _make_test_catalog()
-        profile = _make_profile()
+        profile = make_profile()
 
         runner = CliRunner()
         with (
@@ -757,7 +717,7 @@ class TestModelsCatalogCommand:
         """VAL-MODELS-004: Unknown hardware shows estimated values labeled as estimates."""
         catalog = _make_test_catalog()
         # Profile that doesn't match any benchmark key
-        profile = _make_profile(
+        profile = make_profile(
             chip="Apple M3",
             memory_gb=24,
             bandwidth_gbps=100.0,
@@ -893,19 +853,19 @@ class TestCatalogFilters:
     def test_filter_by_family(self, mlx_stack_home: Path) -> None:
         """--family filters catalog to matching family only."""
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="qwen-a",
                 name="Qwen A",
                 family="Qwen 3.5",
                 tags=["balanced"],
             ),
-            _make_entry(
+            make_entry(
                 model_id="qwen-b",
                 name="Qwen B",
                 family="Qwen 3.5",
                 tags=["balanced"],
             ),
-            _make_entry(
+            make_entry(
                 model_id="gemma-a",
                 name="Gemma A",
                 family="Gemma 3",
@@ -928,7 +888,7 @@ class TestCatalogFilters:
     def test_filter_by_family_case_insensitive(self, mlx_stack_home: Path) -> None:
         """--family is case-insensitive."""
         catalog = [
-            _make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
+            make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
         ]
 
         runner = CliRunner()
@@ -944,12 +904,12 @@ class TestCatalogFilters:
     def test_filter_by_tag(self, mlx_stack_home: Path) -> None:
         """--tag filters catalog to models with the specified tag."""
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="agent-model",
                 name="Agent Model",
                 tags=["agent-ready", "balanced"],
             ),
-            _make_entry(
+            make_entry(
                 model_id="basic-model",
                 name="Basic Model",
                 tags=["balanced"],
@@ -970,12 +930,12 @@ class TestCatalogFilters:
     def test_filter_by_tool_calling(self, mlx_stack_home: Path) -> None:
         """--tool-calling filters to tool-calling-capable models only."""
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="with-tools",
                 name="With Tools",
                 tool_calling=True,
             ),
-            _make_entry(
+            make_entry(
                 model_id="no-tools",
                 name="No Tools",
                 tool_calling=False,
@@ -996,21 +956,21 @@ class TestCatalogFilters:
     def test_combined_filters(self, mlx_stack_home: Path) -> None:
         """Multiple filters are applied together (AND logic)."""
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="match",
                 name="Match Both",
                 family="Qwen 3.5",
                 tool_calling=True,
                 tags=["agent-ready"],
             ),
-            _make_entry(
+            make_entry(
                 model_id="family-only",
                 name="Family Only",
                 family="Qwen 3.5",
                 tool_calling=False,
                 tags=[],
             ),
-            _make_entry(
+            make_entry(
                 model_id="tools-only",
                 name="Tools Only",
                 family="Gemma 3",
@@ -1037,7 +997,7 @@ class TestCatalogFilters:
     def test_no_matches_message(self, mlx_stack_home: Path) -> None:
         """Shows informative message when no models match filters."""
         catalog = [
-            _make_entry(model_id="x", name="Some Model", family="Gemma 3"),
+            make_entry(model_id="x", name="Some Model", family="Gemma 3"),
         ]
 
         runner = CliRunner()
@@ -1053,7 +1013,7 @@ class TestCatalogFilters:
     def test_filter_flags_imply_catalog(self, mlx_stack_home: Path) -> None:
         """Using --family without --catalog still shows catalog (auto-enables)."""
         catalog = [
-            _make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
+            make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
         ]
 
         runner = CliRunner()

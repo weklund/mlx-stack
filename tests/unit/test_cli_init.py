@@ -32,13 +32,7 @@ import yaml
 from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
-from mlx_stack.core.catalog import (
-    BenchmarkResult,
-    Capabilities,
-    CatalogEntry,
-    QualityScores,
-    QuantSource,
-)
+from mlx_stack.core.catalog import BenchmarkResult, CatalogEntry
 from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.stack_init import (
     InitError,
@@ -47,99 +41,23 @@ from mlx_stack.core.stack_init import (
     detect_missing_models,
     run_init,
 )
+from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
-# Fixtures — reusable test data
+# Helpers — test-specific data builders (shared factories in tests.factories)
 # --------------------------------------------------------------------------- #
-
-
-def _make_profile(
-    chip: str = "Apple M4 Max",
-    gpu_cores: int = 40,
-    memory_gb: int = 128,
-    bandwidth_gbps: float = 546.0,
-    is_estimate: bool = False,
-) -> HardwareProfile:
-    """Create a HardwareProfile for testing."""
-    return HardwareProfile(
-        chip=chip,
-        gpu_cores=gpu_cores,
-        memory_gb=memory_gb,
-        bandwidth_gbps=bandwidth_gbps,
-        is_estimate=is_estimate,
-    )
-
-
-def _make_small_profile() -> HardwareProfile:
-    """Create a small-memory profile (32 GB)."""
-    return HardwareProfile(
-        chip="Apple M4 Pro",
-        gpu_cores=20,
-        memory_gb=32,
-        bandwidth_gbps=273.0,
-        is_estimate=False,
-    )
-
-
-def _make_entry(
-    model_id: str = "test-model",
-    name: str = "Test Model",
-    family: str = "Test",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    quality_overall: int = 70,
-    quality_coding: int = 65,
-    quality_reasoning: int = 60,
-    quality_instruction: int = 72,
-    tool_calling: bool = True,
-    tool_call_parser: str | None = "hermes",
-    thinking: bool = False,
-    reasoning_parser: str | None = None,
-    benchmarks: dict[str, BenchmarkResult] | None = None,
-    tags: list[str] | None = None,
-    memory_gb: float = 5.5,
-    gated: bool = False,
-) -> CatalogEntry:
-    """Create a CatalogEntry for testing."""
-    if benchmarks is None:
-        benchmarks = {
-            "m4-pro-32": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=memory_gb),
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=memory_gb),
-        }
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(hf_repo=f"mlx-community/{model_id}-4bit", disk_size_gb=4.5),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser=tool_call_parser if tool_calling else None,
-            thinking=thinking,
-            reasoning_parser=reasoning_parser if thinking else None,
-            vision=False,
-        ),
-        quality=QualityScores(
-            overall=quality_overall,
-            coding=quality_coding,
-            reasoning=quality_reasoning,
-            instruction_following=quality_instruction,
-        ),
-        benchmarks=benchmarks,
-        tags=tags or [],
-        gated=gated,
-    )
 
 
 def _make_test_catalog() -> list[CatalogEntry]:
-    """Create a test catalog with several models."""
+    """Create a four-model test catalog using the shared ``make_entry`` factory.
+
+    The catalog composition matters for test correctness: big-model and
+    fast-model are standard/fast tier candidates, longctx-model exercises
+    architecture variety, and medium-model is used by --add/--remove tests.
+    """
     return [
         # High quality, slow — standard tier candidate
-        _make_entry(
+        make_entry(
             model_id="big-model",
             name="Big Model 49B",
             params_b=49.0,
@@ -157,7 +75,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             memory_gb=30.0,
         ),
         # Fast, small — fast tier candidate
-        _make_entry(
+        make_entry(
             model_id="fast-model",
             name="Fast Model 3B",
             params_b=3.0,
@@ -173,7 +91,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             memory_gb=2.0,
         ),
         # Long context architecture — longctx tier candidate
-        _make_entry(
+        make_entry(
             model_id="longctx-model",
             name="LongCtx Model 32B",
             params_b=32.0,
@@ -191,7 +109,7 @@ def _make_test_catalog() -> list[CatalogEntry]:
             memory_gb=20.0,
         ),
         # Medium model for add/remove tests
-        _make_entry(
+        make_entry(
             model_id="medium-model",
             name="Medium Model 8B",
             params_b=8.0,
@@ -259,50 +177,80 @@ class TestVLLMFlags:
 
     def test_base_flags_always_present(self) -> None:
         """continuous_batching and use_paged_cache always present."""
-        entry = _make_entry(tool_calling=False, thinking=False)
+        # Arrange
+        entry = make_entry(tool_calling=False, thinking=False)
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert flags["continuous_batching"] is True
         assert flags["use_paged_cache"] is True
 
     def test_tool_calling_flags(self) -> None:
         """Tool-calling models get enable_auto_tool_choice and tool_call_parser."""
-        entry = _make_entry(tool_calling=True, tool_call_parser="hermes")
+        # Arrange
+        entry = make_entry(tool_calling=True, tool_call_parser="hermes")
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert flags["enable_auto_tool_choice"] is True
         assert flags["tool_call_parser"] == "hermes"
 
     def test_no_tool_calling_flags_without_capability(self) -> None:
         """Non-tool-calling models don't get tool-calling flags."""
-        entry = _make_entry(tool_calling=False)
+        # Arrange
+        entry = make_entry(tool_calling=False)
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert "enable_auto_tool_choice" not in flags
         assert "tool_call_parser" not in flags
 
     def test_thinking_model_gets_reasoning_parser(self) -> None:
         """Thinking-capable models get reasoning_parser."""
-        entry = _make_entry(
+        # Arrange
+        entry = make_entry(
             tool_calling=False,
             thinking=True,
             reasoning_parser="deepseek_r1",
         )
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert flags["reasoning_parser"] == "deepseek_r1"
 
     def test_no_reasoning_parser_without_thinking(self) -> None:
         """Non-thinking models don't get reasoning_parser."""
-        entry = _make_entry(thinking=False)
+        # Arrange
+        entry = make_entry(thinking=False)
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert "reasoning_parser" not in flags
 
     def test_combined_tool_and_thinking_flags(self) -> None:
         """Model with both tool-calling and thinking gets all flags."""
-        entry = _make_entry(
+        # Arrange
+        entry = make_entry(
             tool_calling=True,
             tool_call_parser="hermes",
             thinking=True,
             reasoning_parser="nemotron",
         )
+
+        # Act
         flags = build_vllm_flags(entry)
+
+        # Assert
         assert flags["continuous_batching"] is True
         assert flags["use_paged_cache"] is True
         assert flags["enable_auto_tool_choice"] is True
@@ -320,89 +268,106 @@ class TestStackDefinitionGeneration:
 
     def test_schema_version_is_1(self, mlx_stack_home: Path) -> None:
         """Stack definition has schema_version: 1."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         assert result["stack"]["schema_version"] == 1
 
     def test_hardware_profile_matches(self, mlx_stack_home: Path) -> None:
         """hardware_profile matches the detected profile ID."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         assert result["stack"]["hardware_profile"] == profile.profile_id
 
     def test_intent_matches(self, mlx_stack_home: Path) -> None:
         """intent field matches the selected intent."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="agent-fleet", force=True)
 
+        # Assert
         assert result["stack"]["intent"] == "agent-fleet"
 
     def test_name_is_default(self, mlx_stack_home: Path) -> None:
         """Stack name is 'default'."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         assert result["stack"]["name"] == "default"
 
     def test_created_timestamp_is_iso8601(self, mlx_stack_home: Path) -> None:
         """created field is a valid ISO 8601 timestamp."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         created = result["stack"]["created"]
-        # Should parse as ISO 8601
         dt = datetime.fromisoformat(created)
         assert dt is not None
 
     def test_tiers_have_required_fields(self, mlx_stack_home: Path) -> None:
         """Each tier has name, model, quant, source, port, vllm_flags."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         for tier in result["stack"]["tiers"]:
             assert "name" in tier
             assert "model" in tier
@@ -413,7 +378,7 @@ class TestStackDefinitionGeneration:
 
     def test_tier_ports_are_unique(self, mlx_stack_home: Path) -> None:
         """All tier ports are unique."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -428,7 +393,7 @@ class TestStackDefinitionGeneration:
 
     def test_tier_ports_dont_conflict_with_litellm(self, mlx_stack_home: Path) -> None:
         """No tier port equals the LiteLLM port (default 4000)."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -452,7 +417,7 @@ class TestFileGeneration:
 
     def test_stack_yaml_written(self, mlx_stack_home: Path) -> None:
         """Stack YAML file is written to the correct path."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -471,7 +436,7 @@ class TestFileGeneration:
 
     def test_litellm_yaml_written(self, mlx_stack_home: Path) -> None:
         """LiteLLM YAML file is written to the correct path."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -489,7 +454,7 @@ class TestFileGeneration:
 
     def test_directory_auto_created(self, clean_mlx_stack_home: Path) -> None:
         """VAL-INIT-011: Directories are auto-created if missing."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
 
         with (
@@ -512,7 +477,7 @@ class TestLiteLLMConfigContent:
 
     def test_model_list_has_correct_count(self, mlx_stack_home: Path) -> None:
         """model_list has one entry per local tier."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -528,7 +493,7 @@ class TestLiteLLMConfigContent:
 
     def test_api_base_matches_tier_port(self, mlx_stack_home: Path) -> None:
         """api_base URLs match tier ports."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -550,7 +515,7 @@ class TestLiteLLMConfigContent:
 
     def test_model_uses_openai_prefix(self, mlx_stack_home: Path) -> None:
         """Model identifiers use openai/ prefix."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -565,7 +530,7 @@ class TestLiteLLMConfigContent:
 
     def test_api_key_is_dummy(self, mlx_stack_home: Path) -> None:
         """api_key is 'dummy' for local models."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -580,7 +545,7 @@ class TestLiteLLMConfigContent:
 
     def test_router_settings_present(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-013: router_settings present with correct values."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -597,7 +562,7 @@ class TestLiteLLMConfigContent:
 
     def test_fallback_chain_present(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-006: Fallback chain references valid tier names."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -627,7 +592,7 @@ class TestCloudFallback:
 
     def test_cloud_fallback_with_key(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-007: Cloud fallback added with OpenRouter key."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -663,7 +628,7 @@ class TestCloudFallback:
 
     def test_no_cloud_without_key(self, mlx_stack_home: Path) -> None:
         """No cloud fallback when OpenRouter key is empty."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -691,18 +656,17 @@ class TestOverwriteProtection:
 
     def test_overwrite_blocked_without_force(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-009: Existing stack requires --force to overwrite."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
-
-        # Create initial stack
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             run_init(intent="balanced", force=True)
 
-        # Try again without force
+        # Act / Assert
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
@@ -712,23 +676,24 @@ class TestOverwriteProtection:
 
     def test_overwrite_allowed_with_force(self, mlx_stack_home: Path) -> None:
         """--force allows overwriting existing stack."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
-
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             run_init(intent="balanced", force=True)
 
-        # Overwrite with force
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         assert result["stack"]["schema_version"] == 1
 
 
@@ -742,7 +707,7 @@ class TestAddRemove:
 
     def test_remove_tier(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-008: --remove excludes a tier."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -761,7 +726,7 @@ class TestAddRemove:
 
     def test_remove_invalid_tier_errors(self, mlx_stack_home: Path) -> None:
         """Removing a non-existent tier raises an error."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -778,7 +743,7 @@ class TestAddRemove:
 
     def test_add_model(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-008: --add includes an additional model."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -797,7 +762,7 @@ class TestAddRemove:
 
     def test_add_unknown_model_errors(self, mlx_stack_home: Path) -> None:
         """Adding an unknown model raises an error."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -814,7 +779,7 @@ class TestAddRemove:
 
     def test_invalid_intent_errors(self, mlx_stack_home: Path) -> None:
         """Invalid intent raises an error."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -896,7 +861,7 @@ class TestCLIInit:
 
     def test_accept_defaults_completes(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-001: --accept-defaults completes without prompts."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -911,7 +876,7 @@ class TestCLIInit:
 
     def test_accept_defaults_with_intent(self, mlx_stack_home: Path) -> None:
         """--accept-defaults combined with --intent works."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -926,7 +891,7 @@ class TestCLIInit:
 
     def test_overwrite_without_force_exits_error(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-009: Without --force, existing stack causes error exit."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -946,7 +911,7 @@ class TestCLIInit:
 
     def test_force_allows_overwrite(self, mlx_stack_home: Path) -> None:
         """--force allows overwriting existing stack."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -963,7 +928,7 @@ class TestCLIInit:
 
     def test_output_shows_file_paths(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-012: Output shows file paths."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -979,7 +944,7 @@ class TestCLIInit:
 
     def test_output_shows_tier_assignments(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-012: Output shows tier assignments."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -994,7 +959,7 @@ class TestCLIInit:
 
     def test_output_shows_next_steps(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-012: Output shows next-step instructions."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1010,7 +975,7 @@ class TestCLIInit:
 
     def test_missing_models_shows_pull_suggestion(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-010: Missing models show pull suggestion."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1026,7 +991,7 @@ class TestCLIInit:
 
     def test_generated_stack_yaml_is_valid(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-002: Stack YAML is valid and parseable."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1050,7 +1015,7 @@ class TestCLIInit:
 
     def test_generated_litellm_yaml_is_valid(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-005: LiteLLM YAML is valid and parseable."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1071,7 +1036,7 @@ class TestCLIInit:
 
     def test_add_option_works(self, mlx_stack_home: Path) -> None:
         """--add works via CLI."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1086,7 +1051,7 @@ class TestCLIInit:
 
     def test_remove_option_works(self, mlx_stack_home: Path) -> None:
         """--remove works via CLI."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1101,7 +1066,7 @@ class TestCLIInit:
 
     def test_different_intents_produce_different_stacks(self, mlx_stack_home: Path) -> None:
         """VAL-CROSS-005: Different intents produce different selections."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1120,7 +1085,7 @@ class TestCLIInit:
 
     def test_vllm_flags_in_generated_stack(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-004: vllm_flags have correct feature flags."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1200,7 +1165,7 @@ class TestPortInUseDetection:
 
     def test_port_detection_in_full_init(self, mlx_stack_home: Path) -> None:
         """Port-in-use detection is exercised during full init flow."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1231,7 +1196,7 @@ class TestTotalEstimatedMemory:
 
     def test_total_memory_in_result(self, mlx_stack_home: Path) -> None:
         """run_init returns total_memory_gb summing all tier memory."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1248,7 +1213,7 @@ class TestTotalEstimatedMemory:
 
     def test_total_memory_displayed_in_summary(self, mlx_stack_home: Path) -> None:
         """VAL-INIT-012: Terminal summary shows total estimated memory."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1266,7 +1231,7 @@ class TestTotalEstimatedMemory:
 
     def test_total_memory_sum_is_correct(self, mlx_stack_home: Path) -> None:
         """Total memory is the sum of individual tier memory_gb values."""
-        profile = _make_profile()
+        profile = make_profile()
         catalog = _make_test_catalog()
         _write_profile(mlx_stack_home, profile)
 
@@ -1294,18 +1259,17 @@ class TestGatedModelExclusion:
 
     def test_init_excludes_gated_models(self, mlx_stack_home: Path) -> None:
         """Default init excludes gated models from tier assignments."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         _write_profile(mlx_stack_home, profile)
-
-        # Create catalog where the best model is gated
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="gated-best",
                 name="Gated Best",
                 quality_overall=99,
                 gated=True,
             ),
-            _make_entry(
+            make_entry(
                 model_id="open-good",
                 name="Open Good",
                 quality_overall=70,
@@ -1313,26 +1277,29 @@ class TestGatedModelExclusion:
             ),
         ]
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
         ):
             result = run_init(intent="balanced", force=True)
 
+        # Assert
         tier_model_ids = {t["model"] for t in result["stack"]["tiers"]}
         assert "gated-best" not in tier_model_ids
         assert "open-good" in tier_model_ids
 
     def test_add_gated_model_warns(self, mlx_stack_home: Path) -> None:
         """Adding a gated model via --add produces a warning."""
-        profile = _make_profile()
+        # Arrange
+        profile = make_profile()
         _write_profile(mlx_stack_home, profile)
-
         catalog = [
-            _make_entry(model_id="open-model", name="Open Model"),
-            _make_entry(model_id="gated-model", name="Gated Model", gated=True),
+            make_entry(model_id="open-model", name="Open Model"),
+            make_entry(model_id="gated-model", name="Gated Model", gated=True),
         ]
 
+        # Act
         with (
             patch("mlx_stack.core.stack_init.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_init.load_profile", return_value=profile),
@@ -1343,6 +1310,7 @@ class TestGatedModelExclusion:
                 force=True,
             )
 
+        # Assert
         warnings = result["warnings"]
         gated_warnings = [w for w in warnings if "gated" in w.lower()]
         assert len(gated_warnings) >= 1
