@@ -195,7 +195,7 @@ def _display_catalog(
         out.print(f"[dim]Hardware: {profile.chip} ({profile.memory_gb} GB)[/dim]")
     else:
         out.print(
-            "[dim]No hardware profile — run 'mlx-stack profile' for hardware-specific data[/dim]"
+            "[dim]No hardware profile — run 'mlx-stack setup' for hardware-specific data[/dim]"
         )
 
     out.print()

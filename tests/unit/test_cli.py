@@ -21,9 +21,8 @@ class TestCLIHelp:
     def test_help_shows_command_names(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["--help"])
-        # All planned commands should appear in help output
+        # All registered commands should appear in help output
         for cmd in [
-            "profile",
             "recommend",
             "init",
             "pull",
@@ -35,6 +34,21 @@ class TestCLIHelp:
             "config",
         ]:
             assert cmd in result.output, f"Command '{cmd}' not found in --help output"
+
+    def test_help_does_not_show_profile(self) -> None:
+        """VAL-STATUS-002: Profile not listed in --help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--help"])
+        # profile should NOT appear as a command listing
+        # (it might appear inside a description of another command, but not as
+        # a top-level command entry — check the lines that start with a command name)
+        lines = result.output.splitlines()
+        command_lines = [
+            line.strip().split()[0]
+            for line in lines
+            if line.strip() and not line.strip().startswith(("-", "Usage", "Options", "mlx"))
+        ]
+        assert "profile" not in command_lines
 
     def test_help_shows_categories(self) -> None:
         runner = CliRunner()
@@ -119,8 +133,8 @@ class TestUnknownCommand:
 
     def test_typo_suggests_close_match(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(cli, ["proflie"])
-        assert "profile" in result.output
+        result = runner.invoke(cli, ["statu"])
+        assert "status" in result.output
         assert "Did you mean" in result.output
 
     def test_typo_suggest_init(self) -> None:

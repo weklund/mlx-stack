@@ -8,7 +8,13 @@ Validates:
 - VAL-STATUS-005: No stack or no services handled gracefully
 - VAL-STATUS-006: Stale PIDs detected as crashed
 - VAL-STATUS-007: Status is read-only and does not require lockfile
+- VAL-STATUS-008: Estimated bandwidth shows indicator
+- VAL-STATUS-009: Status help text reflects hardware capability
+- VAL-STATUS-010: Status handles corrupt profile.json gracefully
+- VAL-STATUS-011: No-stack scenario works with or without profile
+- VAL-STATUS-012: Hardware core module preserved
 - VAL-CROSS-002: Status accurately reflects each lifecycle stage
+- VAL-CROSS-007: Status no-stack message refers to setup not init
 """
 
 from __future__ import annotations
@@ -30,7 +36,26 @@ from mlx_stack.core.stack_status import (
     run_status,
     status_to_dict,
 )
-from tests.factories import create_pid_file, make_stack_yaml, write_stack_yaml
+from tests.factories import create_pid_file, make_profile, make_stack_yaml, write_stack_yaml
+
+
+def _write_profile(mlx_stack_home: Path, data: dict[str, Any] | None = None) -> Path:
+    """Write a profile.json file to the given home directory.
+
+    If *data* is not provided, writes a valid default profile matching
+    the ``make_profile()`` factory defaults.
+    """
+    if data is None:
+        profile = make_profile(
+            chip="Apple M4 Pro",
+            gpu_cores=20,
+            memory_gb=64,
+            bandwidth_gbps=273.0,
+        )
+        data = profile.to_dict()
+    path = mlx_stack_home / "profile.json"
+    path.write_text(json.dumps(data, indent=2) + "\n")
+    return path
 
 # --------------------------------------------------------------------------- #
 # Tests — _load_stack_for_status
@@ -108,14 +133,15 @@ class TestRunStatus:
     """Tests for the run_status orchestration function."""
 
     def test_no_stack_returns_message(self, mlx_stack_home: Path) -> None:
-        """VAL-STATUS-005: No stack configured reports suggestion."""
+        """VAL-STATUS-005 / VAL-CROSS-007: No stack configured reports setup suggestion."""
         # Act
         result = run_status()
 
         # Assert
         assert result.no_stack is True
         assert result.message is not None
-        assert "init" in result.message.lower()
+        assert "setup" in result.message.lower()
+        assert "init" not in result.message.lower()
         assert result.services == []
 
     @patch("mlx_stack.core.stack_status.get_service_status")
@@ -624,12 +650,13 @@ class TestStatusCli:
     """Tests for the `mlx-stack status` CLI command via CliRunner."""
 
     def test_no_stack_shows_message(self, mlx_stack_home: Path) -> None:
-        """VAL-STATUS-005: No stack shows helpful message."""
+        """VAL-STATUS-005 / VAL-CROSS-007: No stack shows setup guidance."""
         runner = CliRunner()
         result = runner.invoke(cli, ["status"])
 
         assert result.exit_code == 0
-        assert "init" in result.output.lower()
+        assert "setup" in result.output.lower()
+        assert "init" not in result.output.lower()
 
     @patch("mlx_stack.core.stack_status.get_service_status")
     @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
@@ -1293,3 +1320,384 @@ class TestEdgeCases:
         assert "down" in statuses.values()
         assert "crashed" in statuses.values()
         assert "stopped" in statuses.values()
+
+
+# --------------------------------------------------------------------------- #
+# Tests — Hardware info section (VAL-STATUS-003 through VAL-STATUS-012)
+# --------------------------------------------------------------------------- #
+
+
+class TestHardwareInfoTable:
+    """Tests for the hardware info section in status output."""
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_hardware_section_shown_with_profile(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-003: Hardware section shown when profile.json exists."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "healthy",
+            "pid": 12345,
+            "uptime": 3600.0,
+            "response_time": 0.05,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Hardware" in result.output
+        assert "Apple M4 Pro" in result.output
+        assert "20" in result.output  # GPU cores
+        assert "64 GB" in result.output  # Memory
+        assert "273.0 GB/s" in result.output  # Bandwidth
+        # Service table also present
+        assert "Service Status" in result.output
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_service_table_unchanged_with_hardware(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-007: Service status table retains all columns after hardware addition."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "healthy",
+            "pid": 12345,
+            "uptime": 3600.0,
+            "response_time": 0.05,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Service Status" in result.output
+        assert "Tier" in result.output
+        assert "Model" in result.output
+        assert "Port" in result.output
+        assert "Status" in result.output
+        assert "Uptime" in result.output
+
+    def test_status_works_without_profile(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-004: Missing profile.json does not crash status."""
+        # No profile written
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output
+        # Hardware section should not be present
+        assert "Apple M4" not in result.output
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_status_without_profile_still_shows_services(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-004: Services displayed normally without hardware profile."""
+        # Arrange — no profile.json written
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Service Status" in result.output
+        # Hardware section absent
+        assert "Hardware" not in result.output
+
+    def test_corrupt_profile_json_handled(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-010: Invalid JSON in profile.json does not crash status."""
+        # Arrange — write corrupt profile
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text("{{{invalid json!!!")
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output
+
+    def test_corrupt_profile_missing_fields(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-010: profile.json with missing fields does not crash status."""
+        # Arrange — write profile with missing fields
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text(json.dumps({"chip": "Apple M4"}) + "\n")
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_estimated_bandwidth_shows_indicator(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-008: Estimated bandwidth marked with (estimate)."""
+        # Arrange — write profile for unknown chip (is_estimate=True via load)
+        # Since load_profile sets is_estimate=False for saved profiles,
+        # we mock load_profile to return an estimated profile instead.
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        with patch("mlx_stack.cli.status.load_profile") as mock_load:
+            mock_load.return_value = make_profile(
+                chip="Apple M6",
+                gpu_cores=32,
+                memory_gb=64,
+                bandwidth_gbps=400.0,
+                is_estimate=True,
+            )
+            runner = CliRunner()
+            result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "estimate" in result.output.lower()
+
+
+class TestHardwareInfoJson:
+    """Tests for hardware data in --json output."""
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_json_includes_hardware_key(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-005: --json output contains hardware key with profile data."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "healthy",
+            "pid": 12345,
+            "uptime": 3600.0,
+            "response_time": 0.05,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "hardware" in data
+        hw = data["hardware"]
+        assert hw is not None
+        assert hw["chip"] == "Apple M4 Pro"
+        assert hw["gpu_cores"] == 20
+        assert hw["memory_gb"] == 64
+        assert hw["bandwidth_gbps"] == 273.0
+        assert hw["profile_id"] == "m4-pro-64"
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_json_hardware_field_types(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-005: Hardware JSON fields have correct types."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        data = json.loads(result.output)
+        hw = data["hardware"]
+        assert isinstance(hw["chip"], str)
+        assert isinstance(hw["gpu_cores"], int)
+        assert isinstance(hw["memory_gb"], int)
+        assert isinstance(hw["bandwidth_gbps"], (int, float))
+        assert isinstance(hw["profile_id"], str)
+
+    def test_json_hardware_null_without_profile(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-006: --json hardware is null when profile.json missing."""
+        # No profile written
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert "hardware" in data
+        assert data["hardware"] is None
+
+    def test_json_hardware_null_with_corrupt_profile(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-010: Corrupt profile produces null hardware in JSON."""
+        # Arrange
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text("{corrupt}")
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["hardware"] is None
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_json_services_unchanged_with_hardware(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-005: Services JSON array unchanged when hardware present."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "healthy",
+            "pid": 12345,
+            "uptime": 3600.0,
+            "response_time": 0.05,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        data = json.loads(result.output)
+        assert len(data["services"]) == 3
+        required_fields = {"tier", "model", "port", "status", "uptime", "uptime_display", "pid"}
+        for svc in data["services"]:
+            assert required_fields.issubset(svc.keys())
+
+
+class TestNoStackWithProfile:
+    """Tests for no-stack scenario with and without profile."""
+
+    def test_no_stack_with_profile_shows_hardware(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-011: No-stack + profile shows hardware section and guidance."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+        # No stack written
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "Apple M4 Pro" in result.output
+        assert "setup" in result.output.lower()
+        assert "Traceback" not in result.output
+
+    def test_no_stack_without_profile(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-011: No-stack + no profile shows guidance only."""
+        # No profile, no stack
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        assert result.exit_code == 0
+        assert "setup" in result.output.lower()
+        assert "Traceback" not in result.output
+
+    def test_no_stack_json_with_profile(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-011: No-stack JSON includes hardware when profile exists."""
+        # Arrange
+        _write_profile(mlx_stack_home)
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["no_stack"] is True
+        assert data["hardware"] is not None
+        assert data["hardware"]["chip"] == "Apple M4 Pro"
+        assert data["services"] == []
+
+
+class TestStatusHelpText:
+    """Tests for status help text updates."""
+
+    def test_help_mentions_hardware(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-009: Status --help mentions hardware info display."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--help"])
+
+        assert result.exit_code == 0
+        assert "hardware" in result.output.lower() or "chip" in result.output.lower()
+        assert "--json" in result.output
+
+
+class TestHardwareModulePreserved:
+    """Tests for hardware core module preservation."""
+
+    def test_hardware_module_importable(self) -> None:
+        """VAL-STATUS-012: core/hardware.py module preserved and importable."""
+        from mlx_stack.core.hardware import (
+            HardwareError,
+            HardwareProfile,
+            detect_hardware,
+            load_profile,
+        )
+
+        assert callable(detect_hardware)
+        assert callable(load_profile)
+        assert issubclass(HardwareError, Exception)
+        assert HardwareProfile is not None

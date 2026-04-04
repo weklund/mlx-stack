@@ -5,7 +5,7 @@ Validates two scrutiny fixes:
    Missing models emit a diagnostic with pull suggestion and skip the tier.
 2. Read-only commands (status, recommend, models, config get/list, bench)
    do NOT create ~/.mlx-stack/ if it does not exist. State-writing commands
-   (profile, config set, init, pull, up) still auto-create it.
+   (config set, init, pull, up) still auto-create it.
 """
 
 from __future__ import annotations
@@ -396,29 +396,4 @@ class TestStateWritingCommandsStillCreateDataHome:
         assert result.exit_code == 0
         assert clean_mlx_stack_home.exists()
 
-    def test_profile_creates_dir(self, clean_mlx_stack_home: Path) -> None:
-        """profile command creates ~/.mlx-stack/ (needs it to store profile).
 
-        Profile calls save_profile which calls ensure_data_home internally.
-        """
-        # Arrange
-        assert not clean_mlx_stack_home.exists()
-        runner = CliRunner()
-
-        # Act -- mock detect_hardware but let save_profile write to disk
-        with (
-            patch("mlx_stack.cli.profile.detect_hardware") as mock_detect,
-        ):
-            from mlx_stack.core.hardware import HardwareProfile
-
-            mock_detect.return_value = HardwareProfile(
-                chip="Apple M5 Max",
-                gpu_cores=40,
-                memory_gb=128,
-                bandwidth_gbps=546.0,
-                is_estimate=False,
-            )
-            runner.invoke(cli, ["profile"])
-
-        # Assert
-        assert clean_mlx_stack_home.exists()

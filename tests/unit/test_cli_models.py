@@ -752,7 +752,7 @@ class TestModelsCatalogCommand:
 
         assert result.exit_code == 0
         assert "No hardware profile" in result.output
-        assert "mlx-stack profile" in result.output
+        assert "mlx-stack setup" in result.output
 
     def test_locally_available_indicator(self, mlx_stack_home: Path) -> None:
         """VAL-MODELS-004: Locally available models are indicated."""
