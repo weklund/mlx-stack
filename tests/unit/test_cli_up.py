@@ -447,6 +447,7 @@ class TestRunUp:
         skipped = [t for t in result.tiers if t.status == "skipped"]
         assert len(skipped) == 1
         assert skipped[0].name == "standard"
+        assert skipped[0].error is not None
         assert "54321" in skipped[0].error
         assert "node" in skipped[0].error
         assert "8000" in skipped[0].error
@@ -570,6 +571,7 @@ class TestRunUp:
         skipped = [t for t in result.tiers if t.status == "skipped"]
         assert len(skipped) == 1
         assert skipped[0].name == "standard"
+        assert skipped[0].error is not None
         assert "not found" in skipped[0].error.lower()
         # fast should still start
         healthy = [t for t in result.tiers if t.status == "healthy"]
