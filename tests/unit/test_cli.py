@@ -50,6 +50,35 @@ class TestCLIHelp:
         assert result.exit_code == 0
         assert "mlx-stack" in result.output
 
+    def test_bare_command_shows_banner(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        # Banner contains box-drawing characters from the ASCII art
+        assert "███" in result.output
+
+    def test_bare_command_shows_version(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert __version__ in result.output
+
+    def test_bare_command_shows_command_categories(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert "Setup & Configuration" in result.output
+        assert "Model Management" in result.output
+        assert "Stack Lifecycle" in result.output
+        assert "Diagnostics" in result.output
+
+    def test_bare_command_shows_get_started(
+        self, clean_mlx_stack_home: Path,
+    ) -> None:
+        """When no profile/stack exists, shows 'Get started' nudge."""
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+        assert result.exit_code == 0
+        assert "mlx-stack setup" in result.output
+
 
 class TestCLIVersion:
     """Tests for --version output."""
