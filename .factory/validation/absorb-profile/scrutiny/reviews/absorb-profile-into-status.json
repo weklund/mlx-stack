@@ -1,0 +1,33 @@
+{
+  "featureId": "absorb-profile-into-status",
+  "reviewedAt": "2026-04-04T20:13:14Z",
+  "commitId": "f684034",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The profile command removal and status hardware integration are mostly correct, but VAL-STATUS-008 is not met in real usage: estimated bandwidth is never marked as estimated when status reads persisted profile.json data.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/hardware.py",
+        "line": 301,
+        "severity": "blocking",
+        "description": "load_profile() always reconstructs HardwareProfile with is_estimate=False, so status cannot emit '(estimate)' for unknown chips from saved profile data. status.py only adds the indicator when hw.is_estimate is true (src/mlx_stack/cli/status.py:72), which makes VAL-STATUS-008 fail for persisted profiles."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission guidance and validation contract are misaligned for estimate handling: AGENTS.md says core/hardware.py must remain unchanged, but VAL-STATUS-008 expects estimate signaling that the current load_profile format/path does not preserve.",
+      "evidence": "AGENTS.md:14 mandates core/hardware.py unchanged; validation-contract.md:317-318 requires estimate indicator; core/hardware.py:301 hardcodes is_estimate=False."
+    },
+    {
+      "area": "skills",
+      "observation": "The worker marked skill procedure as followed, but did not follow cli-worker's TDD step ordering (tests-first).",
+      "evidence": "cli-worker/SKILL.md:40-45 requires writing failing tests before implementation; transcript skeleton for session 916ec186-7707-4ffc-80b2-72d2134197f5 shows code edits/deletions were performed before the later 'Now I need to update the existing tests and add new ones' step."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review result: FAIL. The feature correctly removes `profile` and adds hardware output to `status`, but it does not satisfy VAL-STATUS-008 in real persisted-profile flows because estimate metadata is dropped by load_profile()."
+}
