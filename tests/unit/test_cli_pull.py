@@ -1544,3 +1544,502 @@ class TestGatedModelHandling:
         result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
         assert result.exit_code == 1
         assert "Authentication required" in result.output
+
+
+# =========================================================================== #
+# HF repo direct pull tests (ungated catalog)
+# =========================================================================== #
+
+
+class TestPullHfRepo:
+    """Tests for pulling models directly via HuggingFace repo strings.
+
+    Validates VAL-PULL-005 through VAL-PULL-020 for the HF repo path.
+    """
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_bypasses_catalog_lookup(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-005: Input containing '/' treated as HF repo, not catalog ID."""
+        with patch("mlx_stack.core.pull.get_entry_by_id") as mock_get_entry:
+            runner = CliRunner()
+            result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+            assert result.exit_code == 0
+            mock_get_entry.assert_not_called()
+            mock_download.assert_called_once()
+            # Verify download was called with the literal HF repo string
+            call_args = mock_download.call_args
+            assert call_args[0][0] == "mlx-community/Phi-5-Mini-4bit"
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_stored_under_repo_name(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-006: Local directory name derived from HF repo."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 0
+        # Verify the local_dir path ends with the repo name
+        call_args = mock_download.call_args
+        local_dir = call_args[0][1]
+        assert Path(local_dir).name == "Phi-5-Mini-4bit"
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_creates_inventory_entry(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-007: Inventory records HF repo pull."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 0
+        inv = load_inventory()
+        assert len(inv) == 1
+        assert inv[0]["hf_repo"] == "mlx-community/Phi-5-Mini-4bit"
+        assert inv[0]["model_id"] == "mlx-community/Phi-5-Mini-4bit"
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_quant_stored_as_metadata(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-008: --quant for HF repo stored as metadata, doesn't change download."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["pull", "mlx-community/Phi-5-Mini-4bit", "--quant", "int4"]
+        )
+
+        assert result.exit_code == 0
+        inv = load_inventory()
+        assert len(inv) == 1
+        assert inv[0]["quant"] == "int4"
+        # Download target should still be the original HF repo
+        call_args = mock_download.call_args
+        assert call_args[0][0] == "mlx-community/Phi-5-Mini-4bit"
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_already_downloaded_skipped(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-009: Existing model directory prevents re-download without --force."""
+        # Create existing model directory
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Phi-5-Mini-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 0
+        assert "already exists" in result.output
+        mock_download.assert_not_called()
+
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(False, 2.0))
+    def test_hf_repo_disk_space_check(
+        self,
+        mock_space: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-010: Insufficient disk space blocks HF repo download."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 1
+        assert "disk space" in result.output.lower()
+
+    @patch(
+        "mlx_stack.core.pull.download_model",
+        side_effect=DownloadError("Download failed for nonexistent-org/fake-model-xyz"),
+    )
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_nonexistent_shows_error(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-011: Nonexistent HF repo shows download error without traceback."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "nonexistent-org/fake-model-xyz"])
+
+        assert result.exit_code == 1
+        assert "Traceback" not in result.output
+        assert "Download error" in result.output
+
+    @patch(
+        "mlx_stack.core.pull.download_model",
+        side_effect=GatedModelError(
+            "Access denied for gated-org/gated-model — this is a gated model.\n"
+            "Your HuggingFace token does not have access.\n"
+            "Accept the model license at: https://huggingface.co/gated-org/gated-model\n"
+            "Then retry: mlx-stack pull"
+        ),
+    )
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_gated_shows_auth_required(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-012: Gated HF repo shows authentication required."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "gated-org/gated-model"])
+
+        assert result.exit_code == 1
+        assert "Authentication required" in result.output
+
+    @patch(
+        "mlx_stack.core.pull.download_model",
+        side_effect=DownloadError("Download failed: ConnectionError"),
+    )
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_network_failure(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-013: Network failure produces clean error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 1
+        assert "Download error" in result.output
+
+    def test_hf_repo_invalid_quant_rejected(
+        self,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-014: Invalid quantization value rejected for HF repo pull."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["pull", "mlx-community/Phi-5-Mini-4bit", "--quant", "fp32"]
+        )
+
+        assert result.exit_code == 1
+        assert "Invalid quantization" in result.output
+
+    @patch("mlx_stack.core.pull.load_catalog")
+    def test_catalog_id_invalid_rejected(
+        self,
+        mock_catalog: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-015: Unknown catalog ID shows 'not found in catalog' with guidance."""
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "nonexistent-model"])
+
+        assert result.exit_code == 1
+        assert "not found in catalog" in result.output
+        assert "models --catalog" in result.output
+
+    def test_pull_no_argument_shows_usage(self) -> None:
+        """VAL-PULL-016: Missing MODEL argument produces usage error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull"])
+
+        assert result.exit_code != 0
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    @patch("mlx_stack.core.pull.load_catalog")
+    def test_hf_repo_and_catalog_separate_inventory(
+        self,
+        mock_catalog: MagicMock,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-017: HF repo and catalog ID create separate inventory entries."""
+        mock_catalog.return_value = [make_entry(
+            model_id="qwen3.5-8b",
+            name="Qwen 3.5 8B",
+            family="Qwen 3.5",
+            sources=_PULL_SOURCES,
+            tags=["balanced", "agent-ready"],
+        )]
+
+        runner = CliRunner()
+
+        # Pull via catalog ID
+        result = runner.invoke(cli, ["pull", "qwen3.5-8b"])
+        assert result.exit_code == 0
+
+        # Pull via HF repo
+        result = runner.invoke(cli, ["pull", "mlx-community/qwen3.5-8b-4bit"])
+        assert result.exit_code == 0
+
+        inv = load_inventory()
+        assert len(inv) == 2
+        model_ids = {e["model_id"] for e in inv}
+        assert "qwen3.5-8b" in model_ids
+        assert "mlx-community/qwen3.5-8b-4bit" in model_ids
+
+    def test_pull_help_documents_hf_repo(self) -> None:
+        """VAL-PULL-018: pull --help mentions HuggingFace repo string format."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "--help"])
+
+        assert result.exit_code == 0
+        assert "HuggingFace" in result.output or "hf" in result.output.lower()
+        # Should show example of repo format (org/model)
+        assert "/" in result.output
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_bench_runs_benchmark(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-019: Benchmark invoked after HF repo pull."""
+        with patch("mlx_stack.core.benchmark.run_benchmark") as mock_bench:
+            mock_bench.return_value = MagicMock(
+                prompt_tps_mean=150.0,
+                prompt_tps_std=5.0,
+                gen_tps_mean=80.0,
+                gen_tps_std=2.5,
+            )
+            runner = CliRunner()
+            result = runner.invoke(
+                cli, ["pull", "mlx-community/Phi-5-Mini-4bit", "--bench"]
+            )
+
+            assert result.exit_code == 0
+            mock_bench.assert_called_once()
+            assert "Prompt TPS" in result.output
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_force_redownloads(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-PULL-020: --force re-downloads existing HF repo model."""
+        # Create existing model directory
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Phi-5-Mini-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["pull", "mlx-community/Phi-5-Mini-4bit", "--force"]
+        )
+
+        assert result.exit_code == 0
+        mock_download.assert_called_once()
+        assert "already exists" not in result.output
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_source_type_in_inventory(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """HF repo pull stores source_type as the org name."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["pull", "mlx-community/Phi-5-Mini-4bit"])
+
+        assert result.exit_code == 0
+        inv = load_inventory()
+        assert len(inv) == 1
+        assert inv[0]["source_type"] == "mlx-community"
+
+
+class TestPullHfRepoCore:
+    """Core-level tests for HF repo direct pull path."""
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_pull_model_hf_repo_override(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """pull_model with hf_repo_override bypasses catalog entirely."""
+        result = pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+        )
+
+        assert result.model_id == "mlx-community/Phi-5-Mini-4bit"
+        assert result.name == "Phi-5-Mini-4bit"
+        assert result.already_existed is False
+        mock_download.assert_called_once()
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_default_quant_int4(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """HF repo pull defaults to int4 quant when not specified."""
+        result = pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+        )
+
+        assert result.quant == "int4"
+
+    def test_hf_repo_invalid_quant_raises(
+        self,
+        mlx_stack_home: Path,
+    ) -> None:
+        """HF repo pull with invalid quant raises PullError."""
+        with pytest.raises(PullError, match="Invalid quantization 'fp32'"):
+            pull_model(
+                model_id="mlx-community/Phi-5-Mini-4bit",
+                quant="fp32",
+                hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+            )
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_local_path_uses_repo_name(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """HF repo pull stores model in directory named after repo."""
+        result = pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+        )
+
+        assert result.local_path.name == "Phi-5-Mini-4bit"
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_inventory_entry_created(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """HF repo pull creates proper inventory entry."""
+        pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+        )
+
+        inv = load_inventory()
+        assert len(inv) == 1
+        assert inv[0]["hf_repo"] == "mlx-community/Phi-5-Mini-4bit"
+        assert inv[0]["model_id"] == "mlx-community/Phi-5-Mini-4bit"
+        assert inv[0]["source_type"] == "mlx-community"
+        assert "downloaded_at" in inv[0]
+
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(False, 2.0))
+    def test_hf_repo_disk_space_blocks_download(
+        self,
+        mock_space: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Insufficient disk space raises DiskSpaceError for HF repo."""
+        with pytest.raises(DiskSpaceError, match="disk space"):
+            pull_model(
+                model_id="mlx-community/Phi-5-Mini-4bit",
+                hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+            )
+
+    @patch("mlx_stack.core.pull.download_model", side_effect=DownloadError("Connection error"))
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_download_error_propagated(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Download errors propagated for HF repo pulls."""
+        with pytest.raises(DownloadError, match="Connection error"):
+            pull_model(
+                model_id="mlx-community/Phi-5-Mini-4bit",
+                hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+            )
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_already_exists_detected(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Existing HF repo model directory detected and skipped."""
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Phi-5-Mini-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        result = pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+        )
+
+        assert result.already_existed is True
+        mock_download.assert_not_called()
+
+    @patch("mlx_stack.core.pull.download_model")
+    @patch("mlx_stack.core.pull.check_disk_space", return_value=(True, 100.0))
+    def test_hf_repo_force_redownloads(
+        self,
+        mock_space: MagicMock,
+        mock_download: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--force re-downloads existing HF repo model."""
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Phi-5-Mini-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        result = pull_model(
+            model_id="mlx-community/Phi-5-Mini-4bit",
+            hf_repo_override="mlx-community/Phi-5-Mini-4bit",
+            force=True,
+        )
+
+        assert result.already_existed is False
+        mock_download.assert_called_once()

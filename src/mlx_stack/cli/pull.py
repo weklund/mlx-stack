@@ -33,7 +33,7 @@ console = Console(stderr=True)
     "--quant",
     type=str,
     default=None,
-    help="Quantization level (int4, int8, bf16). Default from config.",
+    help="Quantization level (int4, int8, bf16). For HF repos, stored as metadata only.",
 )
 @click.option(
     "--bench",
@@ -48,13 +48,21 @@ console = Console(stderr=True)
     help="Re-download even if model already exists.",
 )
 def pull(model: str, quant: str | None, bench: bool, force: bool) -> None:
-    """Download a model from the catalog.
+    """Download a model by catalog ID or HuggingFace repo.
 
-    MODEL is the catalog model ID (e.g., qwen3.5-8b). Use 'mlx-stack models --catalog'
-    to see available models.
+    MODEL is a catalog model ID (e.g., qwen3.5-8b) or a HuggingFace repo
+    string (e.g., mlx-community/Phi-5-Mini-4bit).
+
+    \b
+    Catalog IDs are resolved via the built-in model catalog:
+      mlx-stack pull qwen3.5-8b
+    \b
+    HuggingFace repo strings (containing '/') download directly:
+      mlx-stack pull mlx-community/Phi-5-Mini-4bit
 
     Without --quant, uses the default quantization from config (default: int4).
-    Invalid quantization values are rejected with a clear error.
+    For HF repo pulls, --quant is stored as metadata only and does NOT change
+    the download target. Invalid quantization values are rejected with a clear error.
 
     Downloads are checked against available disk space before starting.
     Already-downloaded models are detected and skipped unless --force is used.
@@ -64,13 +72,25 @@ def pull(model: str, quant: str | None, bench: bool, force: bool) -> None:
     """
     out = Console()
 
+    # Route based on whether MODEL contains '/' (HF repo) or not (catalog ID)
+    is_hf_repo = "/" in model
+
     try:
-        result = pull_model(
-            model_id=model,
-            quant=quant,
-            force=force,
-            console=out,
-        )
+        if is_hf_repo:
+            result = pull_model(
+                model_id=model,
+                quant=quant,
+                force=force,
+                console=out,
+                hf_repo_override=model,
+            )
+        else:
+            result = pull_model(
+                model_id=model,
+                quant=quant,
+                force=force,
+                console=out,
+            )
 
         if bench:
             _run_post_download_bench(model, result.quant, out)
