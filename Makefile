@@ -4,11 +4,12 @@
 install:
 	uv sync --dev
 
-## Lint source and tests
+## Lint source and tests (ruff + pyright)
 lint:
 	uv run ruff check src/ tests/
+	uv run python -m pyright
 
-## Run type checker across the full project
+## Run type checker only (alias kept for CI compatibility)
 typecheck:
 	uv run python -m pyright
 
