@@ -1701,3 +1701,230 @@ class TestHardwareModulePreserved:
         assert callable(load_profile)
         assert issubclass(HardwareError, Exception)
         assert HardwareProfile is not None
+
+
+# --------------------------------------------------------------------------- #
+# Tests — is_estimate round-trip and display (VAL-STATUS-008)
+# --------------------------------------------------------------------------- #
+
+
+class TestEstimateIndicator:
+    """Tests for the is_estimate field round-trip and display."""
+
+    def test_known_chip_no_estimate_indicator(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-008: Known chip bandwidth does NOT show (estimate) indicator."""
+        # Arrange — write profile for known chip (Apple M4 Pro is in CHIP_SPECS)
+        _write_profile(mlx_stack_home)
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "273.0 GB/s" in result.output
+        assert "estimate" not in result.output.lower()
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_estimated_bandwidth_shows_estimate_in_table(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-008: Estimated bandwidth shows (estimate) in table output."""
+        # Arrange — write profile with is_estimate=True via JSON
+        profile_data = {
+            "chip": "Apple M6",
+            "gpu_cores": 32,
+            "memory_gb": 64,
+            "bandwidth_gbps": 400.0,
+            "profile_id": "m6-64",
+            "is_estimate": True,
+        }
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text(json.dumps(profile_data, indent=2) + "\n")
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "estimate" in result.output.lower()
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_known_chip_no_estimate_in_table(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-008: Known chip bandwidth does NOT show (estimate) in table."""
+        # Arrange — write profile with is_estimate=False (known chip)
+        profile_data = {
+            "chip": "Apple M4 Pro",
+            "gpu_cores": 20,
+            "memory_gb": 64,
+            "bandwidth_gbps": 273.0,
+            "profile_id": "m4-pro-64",
+            "is_estimate": False,
+        }
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text(json.dumps(profile_data, indent=2) + "\n")
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status"])
+
+        # Assert
+        assert result.exit_code == 0
+        assert "273.0 GB/s" in result.output
+        assert "estimate" not in result.output.lower()
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_json_includes_is_estimate_true(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-008: --json includes is_estimate=true for estimated bandwidth."""
+        # Arrange
+        profile_data = {
+            "chip": "Apple M6",
+            "gpu_cores": 32,
+            "memory_gb": 64,
+            "bandwidth_gbps": 400.0,
+            "profile_id": "m6-64",
+            "is_estimate": True,
+        }
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text(json.dumps(profile_data, indent=2) + "\n")
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["hardware"]["is_estimate"] is True
+
+    @patch("mlx_stack.core.stack_status.get_service_status")
+    @patch("mlx_stack.core.stack_status._get_litellm_port", return_value=4000)
+    def test_json_includes_is_estimate_false(
+        self,
+        mock_port: MagicMock,
+        mock_status: MagicMock,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-STATUS-008: --json includes is_estimate=false for known bandwidth."""
+        # Arrange
+        _write_profile(mlx_stack_home)  # default known chip
+        write_stack_yaml(mlx_stack_home)
+        mock_status.return_value = {
+            "status": "stopped",
+            "pid": None,
+            "uptime": None,
+            "response_time": None,
+        }
+
+        # Act
+        runner = CliRunner()
+        result = runner.invoke(cli, ["status", "--json"])
+
+        # Assert
+        assert result.exit_code == 0
+        data = json.loads(result.output)
+        assert data["hardware"]["is_estimate"] is False
+
+    def test_is_estimate_preserved_in_profile_roundtrip(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-008: is_estimate field preserved through save/load cycle."""
+        from mlx_stack.core.hardware import load_profile, save_profile
+
+        # Arrange — save profile with is_estimate=True
+        profile = make_profile(
+            chip="Apple M6",
+            gpu_cores=32,
+            memory_gb=64,
+            bandwidth_gbps=400.0,
+            is_estimate=True,
+        )
+        save_profile(profile)
+
+        # Act — load it back
+        loaded = load_profile()
+
+        # Assert
+        assert loaded is not None
+        assert loaded.is_estimate is True
+
+    def test_is_estimate_false_preserved_in_roundtrip(self, mlx_stack_home: Path) -> None:
+        """VAL-STATUS-008: is_estimate=False preserved through save/load cycle."""
+        from mlx_stack.core.hardware import load_profile, save_profile
+
+        # Arrange — save profile with is_estimate=False
+        profile = make_profile(
+            chip="Apple M4 Pro",
+            gpu_cores=20,
+            memory_gb=64,
+            bandwidth_gbps=273.0,
+            is_estimate=False,
+        )
+        save_profile(profile)
+
+        # Act
+        loaded = load_profile()
+
+        # Assert
+        assert loaded is not None
+        assert loaded.is_estimate is False
+
+    def test_legacy_profile_without_is_estimate_defaults_false(
+        self, mlx_stack_home: Path
+    ) -> None:
+        """VAL-STATUS-008: Legacy profile.json without is_estimate field defaults to False."""
+        # Arrange — write profile JSON without is_estimate field (legacy format)
+        profile_data = {
+            "chip": "Apple M4 Pro",
+            "gpu_cores": 20,
+            "memory_gb": 64,
+            "bandwidth_gbps": 273.0,
+            "profile_id": "m4-pro-64",
+        }
+        profile_path = mlx_stack_home / "profile.json"
+        profile_path.write_text(json.dumps(profile_data, indent=2) + "\n")
+
+        # Act
+        from mlx_stack.core.hardware import load_profile
+
+        loaded = load_profile()
+
+        # Assert
+        assert loaded is not None
+        assert loaded.is_estimate is False

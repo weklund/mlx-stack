@@ -83,13 +83,15 @@ def _hardware_to_dict(hw: HardwareProfile) -> dict[str, Any]:
         hw: The hardware profile to convert.
 
     Returns:
-        A dict with chip, gpu_cores, memory_gb, bandwidth_gbps, profile_id.
+        A dict with chip, gpu_cores, memory_gb, bandwidth_gbps, is_estimate,
+        profile_id.
     """
     return {
         "chip": hw.chip,
         "gpu_cores": hw.gpu_cores,
         "memory_gb": hw.memory_gb,
         "bandwidth_gbps": hw.bandwidth_gbps,
+        "is_estimate": hw.is_estimate,
         "profile_id": hw.profile_id,
     }
 
