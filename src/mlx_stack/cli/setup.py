@@ -1,8 +1,8 @@
 """Interactive guided setup for mlx-stack.
 
 Walks through hardware detection, model selection, and stack startup
-in a single command. Replaces the profile -> recommend -> init -> pull -> up
-flow with a guided experience.
+in a single command. Replaces the old multi-step onboarding flow with a
+single guided experience.
 
 Use ``--accept-defaults`` for non-interactive CI/scripting mode.
 
@@ -22,7 +22,9 @@ from rich.console import Console
 from rich.table import Table
 from rich.text import Text
 
+from mlx_stack.core.catalog import get_entry_by_id, load_catalog
 from mlx_stack.core.discovery import DiscoveredModel, DiscoveryError, discover_models
+from mlx_stack.core.litellm_gen import generate_litellm_config, render_litellm_yaml
 from mlx_stack.core.onboarding import (
     OnboardingError,
     ScoredDiscoveredModel,
@@ -267,6 +269,369 @@ def _prompt_always_on(accept_defaults: bool) -> bool:
 
 
 # --------------------------------------------------------------------------- #
+# Stack modification helpers
+# --------------------------------------------------------------------------- #
+
+
+def _resolve_model_source(model_arg: str) -> tuple[str, str]:
+    """Resolve a model argument to (source_hf_repo, display_name).
+
+    If model_arg contains '/' it's treated as an HF repo string.
+    Otherwise it's treated as a catalog ID and resolved via the catalog.
+
+    Returns:
+        (hf_repo, display_name) tuple.
+
+    Raises:
+        SystemExit: If catalog ID cannot be resolved.
+    """
+    if "/" in model_arg:
+        # HF repo string — use directly
+        display = model_arg.rsplit("/", 1)[-1]
+        return model_arg, display
+
+    # Catalog ID — resolve
+    try:
+        catalog = load_catalog()
+    except Exception as exc:
+        console.print(f"[bold red]Error:[/bold red] Could not load catalog: {exc}")
+        raise SystemExit(1) from None
+
+    entry = get_entry_by_id(catalog, model_arg)
+    if entry is None:
+        console.print(
+            f"[bold red]Error:[/bold red] Model '{model_arg}' not found in catalog. "
+            f"Run 'mlx-stack models --catalog' to see available models."
+        )
+        raise SystemExit(1)
+
+    # Use default int4 quant source
+    source = entry.sources.get("int4")
+    if source is None:
+        # Fall back to first available quant
+        source = next(iter(entry.sources.values()))
+    return source.hf_repo, entry.id
+
+
+def _auto_tier_name(existing_names: set[str], index: int) -> str:
+    """Generate an auto-assigned tier name that doesn't conflict.
+
+    Args:
+        existing_names: Set of already-used tier names.
+        index: 1-based index for numbering.
+
+    Returns:
+        A unique tier name like 'added-1', 'added-2', etc.
+    """
+    name = f"added-{index}"
+    while name in existing_names:
+        index += 1
+        name = f"added-{index}"
+    return name
+
+
+def _modify_stack(
+    add_models: list[str],
+    as_tier_name: str | None,
+    remove_tiers: list[str],
+    no_pull: bool,
+) -> None:
+    """Modify an existing stack by adding/removing tiers.
+
+    Reads existing stack.yaml, applies modifications, writes updated
+    stack.yaml and litellm.yaml. Does NOT re-run the wizard.
+    """
+    import yaml
+
+    from mlx_stack.core.paths import get_data_home, get_stacks_dir
+
+    stack_path = get_stacks_dir() / "default.yaml"
+    litellm_path = get_data_home() / "litellm.yaml"
+
+    # ── Check existing stack exists ──────────────────────────────────────
+    if not stack_path.exists():
+        console.print(
+            "[bold red]Error:[/bold red] No existing stack found. "
+            "Run 'mlx-stack setup' first to create a stack."
+        )
+        raise SystemExit(1)
+
+    # ── Read current stack ───────────────────────────────────────────────
+    try:
+        stack = yaml.safe_load(stack_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        console.print(f"[bold red]Error:[/bold red] Could not read stack config: {exc}")
+        raise SystemExit(1) from None
+
+    tiers: list[dict[str, Any]] = list(stack.get("tiers", []))
+    existing_names = {t["name"] for t in tiers}
+    changes: list[str] = []
+
+    # ── Apply removals first ─────────────────────────────────────────────
+    if remove_tiers:
+        for tier_name in remove_tiers:
+            if tier_name not in existing_names:
+                valid = ", ".join(sorted(existing_names))
+                console.print(
+                    f"[bold red]Error:[/bold red] Tier '{tier_name}' not found. "
+                    f"Valid tiers: {valid}"
+                )
+                raise SystemExit(1)
+
+        remaining = [t for t in tiers if t["name"] not in set(remove_tiers)]
+        if not remaining:
+            console.print(
+                "[bold red]Error:[/bold red] Cannot remove all tiers. "
+                "Stack must have at least one tier."
+            )
+            raise SystemExit(1)
+
+        for tier_name in remove_tiers:
+            changes.append(f"Removed tier '{tier_name}'")
+            existing_names.discard(tier_name)
+
+        tiers = remaining
+
+    # ── Apply additions ──────────────────────────────────────────────────
+    if add_models:
+        # Determine the next port
+        used_ports = {t["port"] for t in tiers}
+        next_port = max(used_ports) + 1 if used_ports else 8000
+
+        add_index = 1
+        for i, model_arg in enumerate(add_models):
+            hf_repo, display = _resolve_model_source(model_arg)
+
+            # Determine tier name
+            if as_tier_name and i == 0:
+                tier_name = as_tier_name
+            else:
+                tier_name = _auto_tier_name(existing_names, add_index)
+                add_index += 1
+
+            # Check for duplicate tier name
+            if tier_name in existing_names:
+                console.print(
+                    f"[bold red]Error:[/bold red] Tier name '{tier_name}' already exists. "
+                    f"Choose a different name with --as."
+                )
+                raise SystemExit(1)
+
+            # Skip litellm port
+            try:
+                from mlx_stack.core.config import get_value as _gv
+
+                litellm_port = int(_gv("litellm-port") or 4000)
+            except Exception:
+                litellm_port = 4000
+
+            while next_port == litellm_port or next_port in used_ports:
+                next_port += 1
+
+            new_tier: dict[str, Any] = {
+                "name": tier_name,
+                "model": display,
+                "quant": "int4",
+                "source": hf_repo,
+                "port": next_port,
+                "vllm_flags": {
+                    "continuous_batching": True,
+                    "use_paged_cache": True,
+                },
+            }
+            tiers.append(new_tier)
+            existing_names.add(tier_name)
+            used_ports.add(next_port)
+            next_port += 1
+
+            changes.append(f"Added tier '{tier_name}' with model {hf_repo}")
+
+    # ── Write updated stack.yaml ─────────────────────────────────────────
+    stack["tiers"] = tiers
+    stack_path.write_text(
+        yaml.dump(stack, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    # ── Write updated litellm.yaml ───────────────────────────────────────
+    litellm_tiers = [
+        {"name": t["name"], "model": t["model"], "port": t["port"]} for t in tiers
+    ]
+
+    try:
+        from mlx_stack.core.config import get_value as _gv2
+
+        openrouter_key = str(_gv2("openrouter-key") or "")
+    except Exception:
+        openrouter_key = ""
+
+    try:
+        from mlx_stack.core.config import get_value as _gv3
+
+        _litellm_port = int(_gv3("litellm-port") or 4000)
+    except Exception:
+        _litellm_port = 4000
+
+    litellm_config = generate_litellm_config(
+        tiers=litellm_tiers,
+        litellm_port=_litellm_port,
+        openrouter_key=openrouter_key,
+    )
+    litellm_path.write_text(
+        render_litellm_yaml(litellm_config),
+        encoding="utf-8",
+    )
+
+    # ── Print summary ────────────────────────────────────────────────────
+    out.print()
+    for change in changes:
+        out.print(f"  [bold green]✓[/bold green] {change}")
+    out.print()
+    out.print("  Run [bold]mlx-stack up[/bold] to apply changes.")
+    out.print()
+
+
+# --------------------------------------------------------------------------- #
+# Single-model quick setup
+# --------------------------------------------------------------------------- #
+
+
+def _single_model_setup(
+    model_arg: str,
+    no_pull: bool,
+    no_start: bool,
+) -> None:
+    """Create a single-tier stack from a model argument.
+
+    Skips the interactive wizard entirely. Creates stack.yaml with one
+    'standard' tier, generates litellm.yaml, and optionally pulls the
+    model. Never auto-starts services — always prints ``mlx-stack up``
+    guidance.
+
+    Args:
+        model_arg: HF repo string or catalog ID.
+        no_pull: If True, skip model download.
+        no_start: Accepted for API compatibility but ignored —
+            services are never started by this function.
+    """
+    import yaml
+
+    from mlx_stack.core.paths import ensure_data_home, get_stacks_dir
+
+    # Resolve model
+    hf_repo, display = _resolve_model_source(model_arg)
+
+    # Determine litellm port
+    try:
+        from mlx_stack.core.config import get_value as _gv
+
+        litellm_port = int(_gv("litellm-port") or 4000)
+    except Exception:
+        litellm_port = 4000
+
+    # Pick model port (skip litellm port)
+    model_port = 8000
+    if model_port == litellm_port:
+        model_port += 1
+
+    # Build single-tier stack
+    from datetime import UTC, datetime
+
+    home = ensure_data_home()
+    stacks_dir = get_stacks_dir()
+    stacks_dir.mkdir(parents=True, exist_ok=True)
+
+    tier: dict[str, Any] = {
+        "name": "standard",
+        "model": display,
+        "quant": "int4",
+        "source": hf_repo,
+        "port": model_port,
+        "vllm_flags": {
+            "continuous_batching": True,
+            "use_paged_cache": True,
+        },
+    }
+
+    stack_def: dict[str, Any] = {
+        "schema_version": 1,
+        "name": "default",
+        "intent": "balanced",
+        "created": datetime.now(UTC).isoformat(),
+        "tiers": [tier],
+    }
+
+    stack_path = stacks_dir / "default.yaml"
+    stack_path.write_text(
+        yaml.dump(stack_def, default_flow_style=False, sort_keys=False),
+        encoding="utf-8",
+    )
+
+    # Generate litellm.yaml
+    try:
+        from mlx_stack.core.config import get_value as _gv2
+
+        openrouter_key = str(_gv2("openrouter-key") or "")
+    except Exception:
+        openrouter_key = ""
+
+    litellm_tiers = [{"name": "standard", "model": display, "port": model_port}]
+    litellm_config = generate_litellm_config(
+        tiers=litellm_tiers,
+        litellm_port=litellm_port,
+        openrouter_key=openrouter_key,
+    )
+
+    litellm_path = home / "litellm.yaml"
+    litellm_path.write_text(
+        render_litellm_yaml(litellm_config),
+        encoding="utf-8",
+    )
+
+    out.print()
+    out.print(
+        f"  [bold green]✓[/bold green] Created single-tier stack with model {hf_repo}"
+    )
+
+    # Pull model
+    if not no_pull:
+        out.print()
+        out.print(Text("  Downloading Model", style="bold cyan"))
+        out.print("  " + "─" * 40)
+
+        from mlx_stack.core.discovery import DiscoveredModel
+
+        model_obj = DiscoveredModel(
+            hf_repo=hf_repo,
+            display_name=display,
+            params_b=0.0,
+            quant="int4",
+            downloads=0,
+            gen_tps=None,
+            prompt_tps=None,
+            memory_gb=None,
+            quality_overall=None,
+            tool_calling=False,
+            thinking=False,
+            has_benchmark=False,
+        )
+
+        try:
+            pull_setup_models([model_obj], out)
+        except Exception as exc:
+            console.print(f"[bold red]Download error:[/bold red] {exc}")
+            out.print(
+                "[yellow]  Download failed. Run 'mlx-stack pull' to retry.[/yellow]"
+            )
+
+    # Per convention: setup --model never auto-starts services.
+    # Always tell user to run 'mlx-stack up'.
+    out.print()
+    out.print("  Run [bold]mlx-stack up[/bold] to start your stack.")
+    out.print()
+
+
+# --------------------------------------------------------------------------- #
 # Main command
 # --------------------------------------------------------------------------- #
 
@@ -291,18 +656,97 @@ def _prompt_always_on(accept_defaults: bool) -> bool:
     default=None,
     help="Memory budget as percentage of unified memory (default: 40).",
 )
+@click.option(
+    "--add",
+    "add_models",
+    multiple=True,
+    default=(),
+    help="Add a model to the existing stack (HF repo or catalog ID). Repeatable.",
+)
+@click.option(
+    "--as",
+    "as_tier_name",
+    default=None,
+    help="Tier name to use for the model added via --add.",
+)
+@click.option(
+    "--remove",
+    "remove_tiers",
+    multiple=True,
+    default=(),
+    help="Remove a tier from the existing stack by name. Repeatable.",
+)
+@click.option(
+    "--model",
+    "model_arg",
+    default=None,
+    help="Single-model quick setup (HF repo or catalog ID). Skips wizard.",
+)
+@click.option(
+    "--no-pull",
+    is_flag=True,
+    default=False,
+    help="Skip model download.",
+)
+@click.option(
+    "--no-start",
+    is_flag=True,
+    default=False,
+    help="Skip stack startup after configuration.",
+)
 def setup(
     accept_defaults: bool,
     intent_override: str | None,
     budget_pct: int | None,
+    add_models: tuple[str, ...],
+    as_tier_name: str | None,
+    remove_tiers: tuple[str, ...],
+    model_arg: str | None,
+    no_pull: bool,
+    no_start: bool,
 ) -> None:
     """Interactive guided setup for your local LLM stack.
 
     Walks through hardware detection, model selection, and stack startup
-    in a single command.
+    in a single command. Use --accept-defaults for non-interactive
+    CI/scripting mode.
 
-    Use --accept-defaults for non-interactive CI/scripting mode.
+    To modify an existing stack without re-running the wizard, use
+    --add and/or --remove flags.
+
+    To create a single-model stack without the wizard, use --model.
     """
+    # ── Validate flag combinations ──────────────────────────────────────
+    if as_tier_name and not add_models:
+        console.print("[bold red]Error:[/bold red] --as requires --add.")
+        raise SystemExit(1)
+
+    if model_arg and (add_models or remove_tiers):
+        console.print(
+            "[bold red]Error:[/bold red] --model cannot be combined with "
+            "--add or --remove."
+        )
+        raise SystemExit(1)
+
+    # ── Single-model quick setup (--model) ───────────────────────────────
+    if model_arg:
+        _single_model_setup(
+            model_arg=model_arg,
+            no_pull=no_pull,
+            no_start=no_start,
+        )
+        return
+
+    # ── Stack modification path (--add / --remove) ───────────────────────
+    if add_models or remove_tiers:
+        _modify_stack(
+            add_models=list(add_models),
+            as_tier_name=as_tier_name,
+            remove_tiers=list(remove_tiers),
+            no_pull=no_pull,
+        )
+        return
+
     # Auto-detect non-interactive terminals
     try:
         is_tty = click.get_text_stream("stdin").isatty()
@@ -450,51 +894,61 @@ def setup(
         console.print(f"[bold red]Error generating config:[/bold red] {exc}")
         raise SystemExit(1) from None
 
-    # Pull models
-    out.print(Text("  Downloading Models", style="bold cyan"))
-    out.print("  " + "─" * 40)
+    # --no-pull implies --no-start (can't start without models)
+    effective_no_start = no_start or no_pull
 
-    models_to_pull = [t.model for t in tiers]
-    for i, _model in enumerate(models_to_pull, 1):
-        out.print(f"  [bold][{i}/{len(models_to_pull)}][/bold]", end=" ")
+    # Pull models (unless --no-pull)
+    if not no_pull:
+        out.print(Text("  Downloading Models", style="bold cyan"))
+        out.print("  " + "─" * 40)
 
-    try:
-        pull_setup_models(models_to_pull, out)
-    except Exception as exc:
-        console.print(f"[bold red]Download error:[/bold red] {exc}")
-        out.print("[yellow]  Some models failed. Run 'mlx-stack pull' to retry.[/yellow]")
+        models_to_pull = [t.model for t in tiers]
+        for i, _model in enumerate(models_to_pull, 1):
+            out.print(f"  [bold][{i}/{len(models_to_pull)}][/bold]", end=" ")
 
-    # Start stack
-    out.print()
-    out.print(Text("  Starting Stack", style="bold cyan"))
-    out.print("  " + "─" * 40)
+        try:
+            pull_setup_models(models_to_pull, out)
+        except Exception as exc:
+            console.print(f"[bold red]Download error:[/bold red] {exc}")
+            out.print("[yellow]  Some models failed. Run 'mlx-stack pull' to retry.[/yellow]")
 
-    try:
-        up_result = start_stack()
+    # Start stack (unless --no-start or --no-pull)
+    if not effective_no_start:
+        out.print()
+        out.print(Text("  Starting Stack", style="bold cyan"))
+        out.print("  " + "─" * 40)
 
-        for tier in up_result.tiers:
-            icon = (
-                "[bold green]✓[/bold green]"
-                if tier.status == "healthy"
-                else "[bold red]✗[/bold red]"
-            )
-            out.print(f"  {icon} {tier.name} ({tier.model}) on port {tier.port}")
+        try:
+            up_result = start_stack()
 
-        if up_result.litellm:
-            icon = (
-                "[bold green]✓[/bold green]"
-                if up_result.litellm.status == "healthy"
-                else "[bold red]✗[/bold red]"
-            )
-            out.print(f"  {icon} LiteLLM proxy on port {up_result.litellm.port}")
+            for tier in up_result.tiers:
+                icon = (
+                    "[bold green]✓[/bold green]"
+                    if tier.status == "healthy"
+                    else "[bold red]✗[/bold red]"
+                )
+                out.print(f"  {icon} {tier.name} ({tier.model}) on port {tier.port}")
 
-    except Exception as exc:
-        console.print(f"[bold red]Startup error:[/bold red] {exc}")
-        out.print("[yellow]  Stack may be partially started. Check 'mlx-stack status'.[/yellow]")
-        raise SystemExit(1) from None
+            if up_result.litellm:
+                icon = (
+                    "[bold green]✓[/bold green]"
+                    if up_result.litellm.status == "healthy"
+                    else "[bold red]✗[/bold red]"
+                )
+                out.print(f"  {icon} LiteLLM proxy on port {up_result.litellm.port}")
 
-    litellm_port = up_result.litellm.port if up_result.litellm else 4000
-    _display_final_status(tiers, litellm_port)
+        except Exception as exc:
+            console.print(f"[bold red]Startup error:[/bold red] {exc}")
+            out.print("[yellow]  Stack may be partially started. Check 'mlx-stack status'.[/yellow]")
+            raise SystemExit(1) from None
+
+        litellm_port = up_result.litellm.port if up_result.litellm else 4000
+        _display_final_status(tiers, litellm_port)
+
+    # If we skipped pull or start, tell user next step
+    if effective_no_start:
+        out.print()
+        out.print("  Run [bold]mlx-stack up[/bold] to start your stack.")
 
     # ── Step 6: Always-on ────────────────────────────────────────────────
     if _prompt_always_on(accept_defaults):

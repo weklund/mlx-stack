@@ -1,92 +1,80 @@
 # Architecture
 
-Architectural decisions, patterns discovered, and conventions.
+How the mlx-stack system works at a high level.
 
-**What belongs here:** Architecture decisions, module patterns, code conventions.
+## Overview
 
----
+mlx-stack is a CLI tool that manages local LLM infrastructure on Apple Silicon. It orchestrates vllm-mlx model servers behind a LiteLLM proxy, providing a unified OpenAI-compatible API endpoint.
 
-## Project Structure
-- `src/mlx_stack/` — main package (src layout)
-- `src/mlx_stack/cli/` — Click CLI package
-  - `cli/__init__.py` — package init
-  - `cli/main.py` — CLI entry point with Click command group
-  - `cli/profile.py` — `mlx-stack profile` command
-  - `cli/config.py` — `mlx-stack config` commands
-  - `cli/init.py` — `mlx-stack init` command (stack + LiteLLM config generation)
-  - `cli/recommend.py` — `mlx-stack recommend` command
-  - `cli/models.py` — `mlx-stack models` command (local model listing + catalog browsing)
-- `src/mlx_stack/core/` — shared business logic modules
-  - `core/hardware.py` — hardware detection (Apple Silicon profiling)
-  - `core/config.py` — configuration management (YAML-based)
-  - `core/catalog.py` — model catalog system (query API over YAML entries)
-  - `core/deps.py` — dependency management (auto-installing uv tools)
-  - `core/paths.py` — path utilities (`~/.mlx-stack/` and friends)
-  - `core/scoring.py` — recommendation scoring engine (intent-weighted composite scoring)
-  - `core/litellm_gen.py` — LiteLLM proxy config generation (model_list, router_settings, fallbacks)
-  - `core/stack_init.py` — stack initialization logic (port allocation, vllm_flags, overwrite protection)
-  - `core/models.py` — local model scanning, catalog listing, size formatting
-- `src/mlx_stack/data/` — static data files
-  - `data/catalog/` — shipped YAML catalog files (15 models)
-- `src/mlx_stack/utils/` — utility modules
-- `tests/` — pytest tests
-- `tests/fixtures/` — mock data (profiles, catalogs, etc.)
+## Layers
 
-## Conventions
-- Click for CLI, Rich for terminal output
-- PyYAML for all YAML operations
-- httpx for HTTP requests (async not needed — use sync client)
-- psutil for process management
-- All state lives in `~/.mlx-stack/` (configurable via `model-dir` for models)
-- Tests use `tmp_path` pytest fixture — NEVER touch real `~/.mlx-stack/`
-- External commands (sysctl, system_profiler, subprocess) are always mocked in unit tests
-- Click eager options (`--help`, `--version`) may exit before the group callback runs, so callback-based setup hooks should not be relied on for those code paths
-- Note: The config module currently sends success output to stderr. Future features should use stdout for successful output and stderr only for errors/warnings.
+```
+CLI Layer (src/mlx_stack/cli/)
+  ├── Commands: setup, up, down, status, models, pull, bench, logs, config, watch, install, uninstall
+  └── Each command is a Click command registered in main.py
 
-## Key Design Decisions
-- One vllm-mlx process per model (ADR-003)
-- vllm-mlx and litellm managed as pinned uv tools, auto-installed on first use
-- Catalog schema: no int6, disk_size_gb per quant source, min_mlx_lm_version top-level, verified_on in separate data/verification.yaml
-- 2 intents for MVP: balanced, agent-fleet (architecture supports more)
-- 40% default memory budget of total unified memory
-- Recommendation/init budget behavior: budget filtering is per-model eligibility (`model.memory_gb <= budget`); the combined memory of selected tiers can exceed the budget
+Core Layer (src/mlx_stack/core/)
+  ├── hardware.py      — Apple Silicon detection (chip, GPU cores, memory, bandwidth)
+  ├── catalog.py       — YAML catalog loading, validation, querying (15 curated models)
+  ├── discovery.py     — Live HuggingFace API query for mlx-community models
+  ├── scoring.py       — Hardware-aware model recommendation engine
+  ├── onboarding.py    — Setup wizard orchestration (scoring variant for DiscoveredModel)
+  ├── stack_init.py    — Stack definition generation (stack.yaml + litellm.yaml)
+  ├── litellm_gen.py   — LiteLLM proxy config generation
+  ├── stack_up.py      — Process management (start/stop vllm-mlx + LiteLLM)
+  ├── pull.py          — Model download (HuggingFace snapshot_download)
+  ├── benchmark.py     — Performance benchmarking
+  ├── watchdog.py      — Health monitoring + auto-restart
+  ├── launchd.py       — macOS LaunchAgent management
+  ├── config.py        — User config (~/.mlx-stack/config.yaml)
+  ├── paths.py         — Path resolution for data/config/stacks
+  └── process.py       — Low-level process management
 
-## Ops Layer (Milestone 5)
+Data Layer (src/mlx_stack/data/)
+  ├── catalog/*.yaml   — Curated model entries (15 files)
+  └── benchmark_data.json — Static performance overlay from mlx_transformers_benchmark
+```
 
-### New Modules
-- `core/log_rotation.py` — Copytruncate-based log rotation (copy → gzip → truncate)
-- `core/log_viewer.py` — Log viewing/following/listing logic
-- `core/watchdog.py` — Health polling loop, auto-restart, flap detection, daemon mode
-- `core/launchd.py` — Plist generation/loading/unloading via plistlib + launchctl
-- `cli/logs.py` — `mlx-stack logs` command
-- `cli/watch.py` — `mlx-stack watch` command
-- `cli/install.py` — `mlx-stack install` / `mlx-stack uninstall` commands
+## Data Flow
 
-### Key Integration Points
-- `process.py:start_service` — Log file open mode changed from "w" to "a" for rotation compatibility
-- `core/config.py` — 2 new keys: log-max-size-mb (int, default 50), log-max-files (int, default 5)
-- `process.py:acquire_lock` — Watchdog uses per-restart lock, not held during polling
-- `paths.py` — Watchdog PID at get_pids_dir()/watchdog.pid
-- `stack_status.py:run_status` — Used by watchdog for health polling
-- `process.py:start_service` / `stop_service` — Used by watchdog for restart
-- `cli/main.py` — 3 new commands registered: logs (Diagnostics), watch (Lifecycle), install/uninstall (Lifecycle)
+1. **Hardware detection** → `HardwareProfile` (chip, memory, bandwidth, GPU cores)
+2. **Model discovery** → `CatalogEntry` (from YAML catalog) or `DiscoveredModel` (from HF API)
+3. **Scoring** → `ScoredModel` / `ScoredDiscoveredModel` with composite scores
+4. **Tier assignment** → `TierAssignment` (model → tier name mapping)
+5. **Config generation** → `stack.yaml` (tier definitions) + `litellm.yaml` (proxy config)
+6. **Process management** → vllm-mlx subprocesses + LiteLLM proxy process
 
-### Log Rotation Strategy
-- Copytruncate: copy log to archive, gzip compress, truncate original in-place
-- Service FDs remain valid (point to same inode, just at offset 0 after truncation)
-- Naming: service.log.1.gz (most recent) → service.log.N.gz (oldest)
-- Archives shifted up before new rotation
-- No cooperation needed from child processes (vllm-mlx, litellm)
+## Stack Tier Field Semantics
 
-### Log Follow Caveat
-- `core/log_viewer.py:follow_log` detects truncation when `current_size < position`.
-- Edge case: truncate + immediate rewrite back to exactly the previous byte length may not trigger truncation detection (`current_size == position`), so the stream can miss lines until new writes advance file size.
+- `stack.yaml` tier objects use:
+  - `name`: tier identifier (e.g., `standard`, `fast`, `reasoning`)
+  - `model`: canonical model identifier used by mlx-stack logic
+  - `source`: concrete model source for runtime/download
+- For catalog-backed tiers, keep `model` as the catalog model ID (for example `qwen3.5-8b`) rather than a display label, and keep the resolved Hugging Face repo in `source`.
 
-### Watchdog Architecture
-- Single foreground loop (or daemonized with --daemon)
-- Polls get_service_status for all services each interval
-- Restart trigger: crashed state only (PID file exists, process dead)
-- NOT restarted: stopped (no PID file), healthy, degraded
-- Flap detection: rolling window of restart timestamps per service
-- Lock: acquire_lock only during actual restart, released immediately
-- Log rotation: triggered as side-effect of each poll cycle
+## Key Files for This Mission
+
+- `cli/main.py` — Command registration, `_COMMAND_CATEGORIES`, welcome screen, help formatting
+- `cli/pull.py` — Pull command (being ungated to accept HF repos)
+- `cli/status.py` — Status command (absorbing hardware display from profile)
+- `cli/models.py` — Models command (absorbing recommend functionality)
+- `cli/setup.py` — Setup command (gaining modification flags)
+- `cli/profile.py` — Being DELETED
+- `cli/recommend.py` — Being DELETED
+- `cli/init.py` — Being DELETED
+- `core/pull.py` — Download infrastructure (already accepts arbitrary HF repos)
+- `core/stack_init.py` — Config generation (preserved for internal use by setup)
+- `core/onboarding.py` — Setup wizard orchestration
+
+## Testing Patterns
+
+- All CLI tests use Click's `CliRunner().invoke(cli, ["command", ...])`
+- Core functions mocked via `@patch("mlx_stack.core.module.function")` or `monkeypatch.setattr`
+- `FakeServiceLayer` test double for stack_up/watchdog tests
+- Test factories in `tests/factories.py` for creating test data
+- No real HF downloads, no real hardware detection in unit tests
+
+## Operational Constraint: Service Name Safety
+
+- Service names are reused as PID/log filename stems by `core/process.py` (`pid_file` and log path construction).
+- Any dynamically generated `service_name` must be filesystem-safe (no path separators like `/`), or temp process startup can fail before health checks run.

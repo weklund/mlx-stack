@@ -1,0 +1,29 @@
+{
+  "milestone": "absorb-profile",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 12,
+    "passed": 12,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-STATUS-001",
+    "VAL-STATUS-002",
+    "VAL-STATUS-003",
+    "VAL-STATUS-004",
+    "VAL-STATUS-005",
+    "VAL-STATUS-006",
+    "VAL-STATUS-007",
+    "VAL-STATUS-008",
+    "VAL-STATUS-009",
+    "VAL-STATUS-010",
+    "VAL-STATUS-011",
+    "VAL-STATUS-012"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "previousRound": null
+}

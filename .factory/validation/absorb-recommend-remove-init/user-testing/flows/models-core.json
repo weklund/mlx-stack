@@ -1,0 +1,239 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "models-core",
+  "surface": "cli",
+  "testedAt": "2026-04-04T21:17:18.579062+00:00",
+  "isolation": {
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "home": "/tmp/mlx-utv-models-core",
+    "evidenceDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-recommend-remove-init/models-core"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv",
+    "mlx-stack CLI"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-MODELS-001",
+      "status": "pass",
+      "reason": "Default models invocation exited 0 and showed the no-models/local-models surface as specified.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-001-models-default.log"
+        ],
+        "checks": [
+          "exit code 0",
+          "output contains 'No models found'"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-002",
+      "status": "pass",
+      "reason": "--catalog with a seeded profile displayed the Model Catalog table, benchmark columns, and full family coverage including Qwen/Nemotron/Gemma/DeepSeek entries.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-002-models-catalog-with-profile.log"
+        ],
+        "checks": [
+          "exit code 0",
+          "contains 'Model Catalog'",
+          "contains 'Gen t/s' and 'Mem GB'",
+          "contains 'Apple M4 Max (128 GB)'"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-003",
+      "status": "pass",
+      "reason": "--catalog --family \"qwen 3.5\" returned only Qwen 3.5 family rows and excluded other families.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-003-models-catalog-family-qwen35.log"
+        ],
+        "checks": [
+          "exit code 0",
+          "contains Qwen 3.5 rows",
+          "does not contain Nemotron/Gemma/DeepSeek families"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-004",
+      "status": "pass",
+      "reason": "--recommend produced the scored Recommended Stack table with tier assignments and TPS/Memory columns.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-004-models-recommend.log"
+        ],
+        "checks": [
+          "exit code 0",
+          "contains 'Recommended Stack'",
+          "contains tier names (standard/fast/longctx)",
+          "contains 'Gen TPS' and 'Memory'"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-005",
+      "status": "pass",
+      "reason": "--recommend --budget 30gb applied a 30.0 GB budget and constrained recommendations versus 80gb (14 models fit at 30gb vs 15 at 80gb; 72B model present at 80gb but absent at 30gb).",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-005-models-recommend-budget-30-show-all.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-005-models-recommend-budget-80-show-all.log"
+        ],
+        "checks": [
+          "both commands exit code 0",
+          "30gb output contains 'Budget: 30.0 GB'",
+          "model count differs (14 vs 15)",
+          "Qwen 3.5 72B excluded at 30gb"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-006",
+      "status": "pass",
+      "reason": "--intent balanced and --intent agent-fleet both succeeded, displayed intent labels, and produced different recommendation outputs.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-006-models-recommend-intent-balanced.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-006-models-recommend-intent-agent-fleet.log"
+        ],
+        "checks": [
+          "both commands exit code 0",
+          "contains '(balanced)' and '(agent-fleet)'",
+          "recommended standard tier differs between intents"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-007",
+      "status": "pass",
+      "reason": "--recommend --show-all displayed the ranked All Budget-Fitting Models table with Score column.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-007-models-recommend-show-all.log"
+        ],
+        "checks": [
+          "exit code 0",
+          "contains 'All Budget-Fitting Models'",
+          "contains 'Score' column"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-008",
+      "status": "pass",
+      "reason": "--recommend remained display-only across flag combinations; no stacks/litellm/profile files were created and output included the no-files-written notice.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-008-models-recommend-display-only.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-008-models-recommend-display-only-show-all.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-008-models-recommend-display-only-intent.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-008-models-recommend-display-only-budget.log",
+          "absorb-recommend-remove-init/models-core/VAL-MODELS-008-file-diff.txt"
+        ],
+        "checks": [
+          "all recommend variants exit code 0",
+          "plain output contains 'no files were written'",
+          "file diff shows zero new files under ~/.mlx-stack"
+        ]
+      }
+    }
+  ],
+  "passedAssertions": [
+    "VAL-MODELS-001",
+    "VAL-MODELS-002",
+    "VAL-MODELS-003",
+    "VAL-MODELS-004",
+    "VAL-MODELS-005",
+    "VAL-MODELS-006",
+    "VAL-MODELS-007",
+    "VAL-MODELS-008"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "uv run mlx-stack models",
+      "exitCode": 0,
+      "observation": "Displayed 'No models found' empty-state guidance"
+    },
+    {
+      "command": "uv run mlx-stack models --catalog",
+      "exitCode": 0,
+      "observation": "Displayed catalog with profile-based benchmark columns"
+    },
+    {
+      "command": "uv run mlx-stack models --catalog --family qwen 3.5",
+      "exitCode": 0,
+      "observation": "Displayed only Qwen 3.5 family entries"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend",
+      "exitCode": 0,
+      "observation": "Displayed recommended stack tier table"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --budget 30gb --show-all",
+      "exitCode": 0,
+      "observation": "Budget line showed 30.0 GB and 14 fitting models"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --budget 80gb --show-all",
+      "exitCode": 0,
+      "observation": "Budget line showed 80.0 GB and 15 fitting models"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --intent balanced",
+      "exitCode": 0,
+      "observation": "Balanced intent produced balanced-labeled recommendations"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --intent agent-fleet",
+      "exitCode": 0,
+      "observation": "Agent-fleet intent produced different recommendations"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --show-all",
+      "exitCode": 0,
+      "observation": "Show-all output included Score-ranked table"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend",
+      "exitCode": 0,
+      "observation": "Display-only recommend variant ran with no file writes"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --show-all",
+      "exitCode": 0,
+      "observation": "Display-only recommend variant ran with no file writes"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --intent agent-fleet",
+      "exitCode": 0,
+      "observation": "Display-only recommend variant ran with no file writes"
+    },
+    {
+      "command": "uv run mlx-stack models --recommend --budget 30gb",
+      "exitCode": 0,
+      "observation": "Display-only recommend variant ran with no file writes"
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Rich table output truncates some right-edge text in non-interactive log captures (e.g., Gen TPS cell suffix wraps as tok/).",
+      "resolved": true,
+      "resolution": "Used explicit budget/model-count lines and cross-command comparison (30gb vs 80gb) to validate exclusion behavior.",
+      "affectedAssertions": [
+        "VAL-MODELS-005",
+        "VAL-MODELS-007"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 8 assertions (VAL-MODELS-001..008): 8 passed, 0 failed, 0 blocked."
+}

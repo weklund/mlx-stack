@@ -76,8 +76,12 @@ class TestHardwareProfile:
         assert d["memory_gb"] == 32
         assert d["bandwidth_gbps"] == 120.0
         assert d["profile_id"] == "m4-32"
-        # is_estimate is NOT included in the serialized dict
-        assert "is_estimate" not in d
+        assert d["is_estimate"] is False
+
+    def test_to_dict_includes_is_estimate_true(self) -> None:
+        p = HardwareProfile("Apple M6", 32, 64, 400.0, True)
+        d = p.to_dict()
+        assert d["is_estimate"] is True
 
     def test_to_dict_values_non_null(self) -> None:
         p = HardwareProfile("Apple M3 Pro", 18, 36, 150.0, False)

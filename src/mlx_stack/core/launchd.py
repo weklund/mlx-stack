@@ -50,7 +50,7 @@ class PlatformError(LaunchdError):
 
 
 class PrerequisiteError(LaunchdError):
-    """Raised when a prerequisite is not met (e.g., init not run)."""
+    """Raised when a prerequisite is not met (e.g., setup not run)."""
 
 
 # --------------------------------------------------------------------------- #
@@ -108,17 +108,17 @@ def check_platform() -> None:
 
 
 def check_init_prerequisite() -> None:
-    """Check that mlx-stack init has been run.
+    """Check that mlx-stack setup has been run.
 
     Verifies that a stack definition exists at
     ~/.mlx-stack/stacks/default.yaml.
 
     Raises:
-        PrerequisiteError: If init has not been run.
+        PrerequisiteError: If setup has not been run.
     """
     stack_path = get_stacks_dir() / "default.yaml"
     if not stack_path.exists():
-        msg = "No stack configuration found. Run 'mlx-stack init' first."
+        msg = "No stack configuration found. Run 'mlx-stack setup' first."
         raise PrerequisiteError(msg)
 
 
@@ -433,7 +433,7 @@ def install_agent(mlx_stack_binary: str | None = None) -> tuple[Path, bool]:
 
     Performs:
     1. Platform check (macOS only)
-    2. Prerequisite check (init must have been run)
+    2. Prerequisite check (setup must have been run)
     3. Generate plist
     4. If already installed, bootout old agent
     5. Write new plist (with 0o644 permissions)
@@ -447,7 +447,7 @@ def install_agent(mlx_stack_binary: str | None = None) -> tuple[Path, bool]:
 
     Raises:
         PlatformError: If not on macOS.
-        PrerequisiteError: If init has not been run.
+        PrerequisiteError: If setup has not been run.
         LaunchdError: If any launchd operation fails.
     """
     check_platform()

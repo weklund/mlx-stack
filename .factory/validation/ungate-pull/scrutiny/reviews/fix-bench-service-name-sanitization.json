@@ -1,0 +1,15 @@
+{
+  "featureId": "fix-bench-service-name-sanitization",
+  "reviewedAt": "2026-04-04T19:48:38.758849+00:00",
+  "commitId": "ff593f2f6619ccb913489a197ac5f0257d00d96a",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "This fix directly addresses the prior blocking issue: benchmark temp service names are now sanitized before process startup, replacing '/' with '--' so PID/log filename construction no longer receives path separators for HF repo targets.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": ".factory/validation/ungate-pull/scrutiny/reviews/fix-bench-hf-repo-target-resolution.json",
+  "summary": "Fix review passed. The previous blocking failure in HF repo benchmark startup is resolved by service-name sanitization in _start_temp_instance(), and tests were updated/added to cover the sanitized naming behavior without regressing catalog-id service names."
+}

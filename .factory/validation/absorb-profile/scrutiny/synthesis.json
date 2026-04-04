@@ -1,0 +1,33 @@
+{
+  "milestone": "absorb-profile",
+  "round": 2,
+  "status": "pass",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest --cov=src/mlx_stack -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 1,
+    "failed": 0,
+    "failedFeatures": []
+  },
+  "blockingIssues": [],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [],
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/absorb-profile/scrutiny/synthesis.round1.json"
+}

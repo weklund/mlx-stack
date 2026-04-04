@@ -1,0 +1,52 @@
+{
+  "groupId": "group-c",
+  "surface": "cli",
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-011",
+      "status": "pass",
+      "reason": "Targeted pytest CliRunner check passed for nonexistent HF repo error handling (non-zero exit, clean error path).",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-c/VAL-PULL-011-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-012",
+      "status": "pass",
+      "reason": "Targeted pytest CliRunner check passed for gated repo auth-required messaging path.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-c/VAL-PULL-012-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-013",
+      "status": "pass",
+      "reason": "Targeted pytest CliRunner check passed for network download failure returning clean Download error.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-c/VAL-PULL-013-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-014",
+      "status": "pass",
+      "reason": "Targeted pytest CliRunner check passed for invalid quantization rejection on HF repo pull.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-c/VAL-PULL-014-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-015",
+      "status": "pass",
+      "reason": "Targeted pytest CliRunner check passed for unknown catalog ID with models --catalog guidance.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-c/VAL-PULL-015-pytest.txt"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": [
+    "pytest",
+    "Execute"
+  ]
+}

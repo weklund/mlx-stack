@@ -117,7 +117,7 @@ def load_stack_definition(stack_name: str = "default") -> dict[str, Any]:
     if not stack_path.exists():
         msg = (
             f"No stack definition found at {stack_path}.\n"
-            "Run 'mlx-stack init' to create a stack configuration."
+            "Run 'mlx-stack setup' to create a stack configuration."
         )
         raise UpError(msg)
 
@@ -143,7 +143,7 @@ def load_stack_definition(stack_name: str = "default") -> dict[str, Any]:
         msg = (
             f"Unsupported stack schema_version: {schema_version} "
             f"(expected {STACK_SCHEMA_VERSION}). "
-            "Re-run 'mlx-stack init --force' to regenerate."
+            "Re-run 'mlx-stack setup' to regenerate."
         )
         raise UpError(msg)
 

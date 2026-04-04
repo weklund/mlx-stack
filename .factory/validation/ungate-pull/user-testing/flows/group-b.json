@@ -1,0 +1,53 @@
+{
+  "groupId": "group-b",
+  "surface": "cli",
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-006",
+      "status": "pass",
+      "reason": "Targeted pytest assertion passed, confirming HF repo pull stores model under local directory name 'Phi-5-Mini-4bit'.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-b/VAL-PULL-006-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-007",
+      "status": "pass",
+      "reason": "Targeted pytest assertion passed, confirming HF repo pull writes inventory entry with expected hf_repo metadata.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-b/VAL-PULL-007-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-008",
+      "status": "pass",
+      "reason": "Targeted pytest assertion passed, confirming --quant is stored as metadata for HF repo pull while download target remains the original repo.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-b/VAL-PULL-008-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-009",
+      "status": "pass",
+      "reason": "Targeted pytest assertion passed, confirming an existing HF repo model directory is detected and re-download is skipped without --force.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-b/VAL-PULL-009-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-010",
+      "status": "pass",
+      "reason": "Targeted pytest assertion passed, confirming insufficient disk space blocks HF repo download and returns a disk-space error path.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-b/VAL-PULL-010-pytest.txt"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": [
+    "Execute",
+    "uv",
+    "pytest"
+  ]
+}

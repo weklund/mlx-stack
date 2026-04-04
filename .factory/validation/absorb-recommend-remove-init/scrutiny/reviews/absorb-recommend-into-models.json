@@ -1,0 +1,22 @@
+{
+  "featureId": "absorb-recommend-into-models",
+  "reviewedAt": "2026-04-04T20:58:04Z",
+  "commitId": "728d756abada179a85133ca49273328c0a8f7c6c",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The command absorption into `models --recommend` is implemented and tested, but one explicit feature requirement was not completed: `cli/recommend.py` was not deleted.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/recommend.py",
+        "line": 1,
+        "severity": "blocking",
+        "description": "Feature requirements explicitly include deleting `cli/recommend.py`, but the file remains in the repository and still contains the old `mlx-stack recommend` command implementation. Remove this file (and any residual references) to fully satisfy the feature contract."
+      }
+    ]
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit diff, transcript skeleton, and skill/procedure context. The feature correctly removes command registration and adds `models --recommend` behavior, but it does not fully meet the contract because `src/mlx_stack/cli/recommend.py` was not deleted."
+}

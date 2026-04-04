@@ -5,9 +5,9 @@ working together end-to-end. These assertions were blocked in earlier
 milestones because not all commands were implemented yet.
 
 Validates:
-- VAL-CROSS-001: init -> pull -> up -> models API returns 200 -> down cleans up
-- VAL-CROSS-007: config changes propagate to init, up, pull, recommend
-- VAL-CROSS-012: bench --save overrides catalog data in recommend scoring
+- VAL-CROSS-001: setup (run_init) -> pull -> up -> models API returns 200 -> down cleans up
+- VAL-CROSS-007: config changes propagate to setup (run_init), up, pull, models --recommend
+- VAL-CROSS-012: bench --save overrides catalog data in models --recommend scoring
 - VAL-CROSS-013: Data consistency across profile/models/stack files used by all commands
 """
 
@@ -29,6 +29,7 @@ from mlx_stack.core.catalog import (
 )
 from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.pull import ModelInventoryEntry
+from mlx_stack.core.stack_init import run_init
 from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
@@ -180,9 +181,9 @@ def _read_litellm_yaml(home: Path) -> dict[str, Any]:
 # --------------------------------------------------------------------------- #
 # VAL-CROSS-001: End-to-end first-time user journey
 #
-# init -> pull -> up -> models API returns 200 -> down cleans up
+# setup (run_init) -> pull -> up -> models API returns 200 -> down cleans up
 #
-# Tests the full data flow across init, pull, up, down with mocked
+# Tests the full data flow across setup, pull, up, down with mocked
 # subprocess/network layers.
 # --------------------------------------------------------------------------- #
 
@@ -200,18 +201,16 @@ class TestCrossAreaEndToEnd:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Init generates stack+litellm configs with consistent data."""
+        """run_init generates stack+litellm configs with consistent data."""
         # Arrange
         profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
-        # Act
-        runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
+        # Act — call core run_init directly (CLI init command removed)
+        run_init(intent="balanced")
 
         # Assert
-        assert result.exit_code == 0
         stack = _read_stack_yaml(mlx_stack_home)
         assert stack["schema_version"] == 1
         assert stack["intent"] == "balanced"
@@ -230,9 +229,9 @@ class TestCrossAreaEndToEnd:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Ports from init stack definition match dry-run commands.
+        """Ports from run_init stack definition match dry-run commands.
 
-        This validates that the init -> up data flow is consistent:
+        This validates that the run_init -> up data flow is consistent:
         stack definition ports match LiteLLM config api_base ports and
         the up --dry-run command ports.
         """
@@ -241,9 +240,7 @@ class TestCrossAreaEndToEnd:
         catalog = _make_test_catalog()
         mock_catalog.return_value = catalog
 
-        runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        run_init(intent="balanced")
 
         # Read the generated configs
         stack = _read_stack_yaml(mlx_stack_home)
@@ -264,6 +261,7 @@ class TestCrossAreaEndToEnd:
             )
 
         # Now dry-run up and verify ports match
+        runner = CliRunner()
         with (
             patch("mlx_stack.core.stack_up.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_up.get_value") as mock_get_val,
@@ -311,9 +309,9 @@ class TestCrossAreaEndToEnd:
         mock_up_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """VAL-CROSS-001: Full init -> pull -> up -> models API -> down flow.
+        """VAL-CROSS-001: Full setup -> pull -> up -> models API -> down flow.
 
-        1. Runs init to generate configs.
+        1. Runs setup (run_init) to generate configs.
         2. Mocks pull to create models.json inventory entries.
         3. Runs up (mocked subprocess) to create PID files.
         4. Mocks a GET to /v1/models returning 200 with model list.
@@ -372,12 +370,11 @@ class TestCrossAreaEndToEnd:
 
         runner = CliRunner()
 
-        # ---- Step 1: init ----
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0, f"init failed: {result.output}"
+        # ---- Step 1: generate stack config via core run_init ----
+        run_init(intent="balanced")
 
         stack = _read_stack_yaml(mlx_stack_home)
-        assert len(stack["tiers"]) > 0, "init produced no tiers"
+        assert len(stack["tiers"]) > 0, "run_init produced no tiers"
 
         # ---- Step 2: Mock pull — create models.json inventory entries ----
         inventory_entries: list[dict[str, Any]] = []
@@ -489,7 +486,7 @@ class TestCrossAreaEndToEnd:
 
 
 # --------------------------------------------------------------------------- #
-# VAL-CROSS-007: Config changes propagate to init, up, pull, recommend
+# VAL-CROSS-007: Config changes propagate to setup, up, pull, models --recommend
 #
 # After config set, subsequent commands use the new values.
 # Assertions check concrete values, not just exit codes.
@@ -509,7 +506,7 @@ class TestConfigPropagation:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set litellm-port 5000, init generates litellm.yaml with port 5000.
+        """After config set litellm-port 5000, setup generates litellm.yaml with port 5000.
 
         Verifies the concrete port value appears in the LiteLLM config
         general_settings, not just that the command exits 0.
@@ -520,11 +517,10 @@ class TestConfigPropagation:
         mock_catalog.return_value = _make_test_catalog()
         runner = CliRunner()
 
-        # Act — set config then init
+        # Act — set config then run_init
         result = runner.invoke(cli, ["config", "set", "litellm-port", "5000"])
         assert result.exit_code == 0
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        run_init(intent="balanced")
 
         # The litellm.yaml should NOT have tier ports = 5000 (that's the LiteLLM port)
         # But the tier ports in the stack should NOT be 5000 either
@@ -534,7 +530,7 @@ class TestConfigPropagation:
 
         # Verify the port 5000 is reflected in the stack or litellm config
         # (the actual litellm.yaml doesn't store the port since it's a
-        # CLI flag, but the init output should mention it, and the
+        # CLI flag, but the setup output should mention it, and the
         # dry-run should use it)
         with (
             patch("mlx_stack.core.stack_up.load_catalog", return_value=_make_test_catalog()),
@@ -552,15 +548,15 @@ class TestConfigPropagation:
                 f"Port 5000 not found in up --dry-run output:\n{result.output}"
             )
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_memory_budget_pct_60_propagates_to_recommend(
         self,
         mock_load_profile: MagicMock,
         mock_load_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set memory-budget-pct 60, recommend uses 60% budget.
+        """After config set memory-budget-pct 60, models --recommend uses 60% budget.
 
         With 128 GB memory and 60% budget, the effective budget is 76.8 GB.
         Asserts the concrete value appears in recommend output.
@@ -575,13 +571,13 @@ class TestConfigPropagation:
         result = runner.invoke(cli, ["config", "set", "memory-budget-pct", "60"])
         assert result.exit_code == 0
 
-        # Run recommend
-        result = runner.invoke(cli, ["recommend"])
+        # Run models --recommend
+        result = runner.invoke(cli, ["models", "--recommend"])
         assert result.exit_code == 0
 
         # 60% of 128 GB = 76.8 GB — this concrete value must appear
         assert "76.8 GB" in result.output, (
-            f"Expected '76.8 GB' budget in recommend output, got:\n{result.output}"
+            f"Expected '76.8 GB' budget in models --recommend output, got:\n{result.output}"
         )
 
     @patch("mlx_stack.core.stack_init.load_catalog")
@@ -594,7 +590,7 @@ class TestConfigPropagation:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set memory-budget-pct 60, init uses 60% budget.
+        """After config set memory-budget-pct 60, setup uses 60% budget.
 
         With 128 GB and 60%, budget is 76.8 GB. All selected models must
         fit within 76.8 GB each.
@@ -609,12 +605,11 @@ class TestConfigPropagation:
         result = runner.invoke(cli, ["config", "set", "memory-budget-pct", "60"])
         assert result.exit_code == 0
 
-        # Run init
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        # Run core run_init directly (CLI init command removed)
+        run_init(intent="balanced")
 
         stack = _read_stack_yaml(mlx_stack_home)
-        assert len(stack["tiers"]) > 0, "Init should produce at least one tier"
+        assert len(stack["tiers"]) > 0, "run_init should produce at least one tier"
 
         # Every tier model must have memory_gb <= 76.8 GB
         catalog = _make_test_catalog()
@@ -707,9 +702,8 @@ class TestConfigPropagation:
         result = runner.invoke(cli, ["config", "set", "litellm-port", "5001"])
         assert result.exit_code == 0
 
-        # Init generates configs with default port settings
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        # Generate stack config via core run_init (CLI init command removed)
+        run_init(intent="balanced")
 
         # Up --dry-run should use the configured port
         mock_up_get_value.side_effect = lambda key: {
@@ -732,10 +726,10 @@ class TestConfigPropagation:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Config changes propagate when re-running init --force.
+        """Config changes propagate when re-running run_init with force.
 
-        Sets litellm-port, runs init, changes memory-budget-pct, re-runs
-        init --force, and verifies changes are reflected.
+        Sets litellm-port, runs run_init, changes memory-budget-pct,
+        re-runs run_init with force, and verifies changes are reflected.
         """
         profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
@@ -747,16 +741,14 @@ class TestConfigPropagation:
         runner.invoke(cli, ["config", "set", "litellm-port", "5001"])
         runner.invoke(cli, ["config", "set", "memory-budget-pct", "60"])
 
-        # First init
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        # First run_init
+        run_init(intent="balanced")
 
         # Change config
         runner.invoke(cli, ["config", "set", "memory-budget-pct", "80"])
 
-        # Re-init with --force
-        result = runner.invoke(cli, ["init", "--accept-defaults", "--force"])
-        assert result.exit_code == 0
+        # Re-run run_init with force
+        run_init(intent="balanced", force=True)
 
         # Verify the new budget is reflected: 80% of 128 = 102.4 GB
         # All models in catalog are <= 20 GB memory, so all should fit
@@ -775,8 +767,8 @@ class TestConfigPropagation:
 class TestBenchSaveOverridesCatalog:
     """VAL-CROSS-012: Saved benchmark data overrides catalog in recommendations."""
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_gen_tps_85_overrides_catalog_77(
         self,
         mock_load_profile: MagicMock,
@@ -785,7 +777,7 @@ class TestBenchSaveOverridesCatalog:
     ) -> None:
         """Saved benchmark gen_tps=85 overrides catalog gen_tps=77.
 
-        After bench --save writes gen_tps=85 for medium-8b, recommend
+        After bench --save writes gen_tps=85 for medium-8b, models --recommend
         --show-all must display 85.0, not 77.0.
         """
         profile = make_profile(memory_gb=128)
@@ -806,7 +798,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         runner = CliRunner()
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
 
         # The saved gen_tps (85.0) must appear instead of catalog (77.0)
@@ -817,15 +809,15 @@ class TestBenchSaveOverridesCatalog:
         # Note: 77.0 might appear for other contexts, but 85.0 must be present
         # as the scored value for medium-8b
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_benchmarks_remove_estimated_label(
         self,
         mock_load_profile: MagicMock,
         mock_load_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Saved benchmarks remove 'estimated' label from recommend output.
+        """Saved benchmarks remove 'estimated' label from models --recommend output.
 
         When hardware has no catalog benchmark data, values are labeled
         as 'estimated'. After bench --save, the measured data replaces
@@ -845,7 +837,7 @@ class TestBenchSaveOverridesCatalog:
         runner = CliRunner()
 
         # First recommend without saved benchmarks — should show 'est.'
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
         first_output = result.output
         # With unknown hardware, output should contain estimated markers
@@ -867,7 +859,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         # Second recommend with saved benchmarks
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
         second_output = result.output
 
@@ -879,13 +871,13 @@ class TestBenchSaveOverridesCatalog:
         lines = second_output.split("\n")
         medium_8b_lines = [line for line in lines if "Medium 8B" in line]
         assert len(medium_8b_lines) > 0, (
-            f"'Medium 8B' not found in recommend output:\n{second_output}"
+            f"'Medium 8B' not found in models --recommend output:\n{second_output}"
         )
         for line in medium_8b_lines:
             assert "(est.)" not in line, f"Medium 8B still shows 'est.' after bench --save: {line}"
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_benchmarks_affect_scoring_order(
         self,
         mock_load_profile: MagicMock,
@@ -904,7 +896,7 @@ class TestBenchSaveOverridesCatalog:
         runner = CliRunner()
 
         # Recommend without saved benchmarks
-        result_before = runner.invoke(cli, ["recommend"])
+        result_before = runner.invoke(cli, ["models", "--recommend"])
         assert result_before.exit_code == 0
 
         # Save benchmarks with dramatically different gen_tps for medium model
@@ -921,7 +913,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         # Recommend with saved benchmarks
-        result_after = runner.invoke(cli, ["recommend"])
+        result_after = runner.invoke(cli, ["models", "--recommend"])
         assert result_after.exit_code == 0
 
         # The output should differ because scoring has changed
@@ -936,7 +928,7 @@ class TestBenchSaveOverridesCatalog:
 # --------------------------------------------------------------------------- #
 # VAL-CROSS-013: Data consistency across profile/models/stack files
 #
-# profile.json written by profile is parsed by recommend, init, bench.
+# profile.json written by setup is parsed by models --recommend, setup, bench.
 # models.json updated by pull is consistent with models output.
 # Stack schema_version checked by up. vllm_flags translate to CLI flags.
 # --------------------------------------------------------------------------- #
@@ -949,7 +941,7 @@ class TestDataConsistency:
         self,
         mlx_stack_home: Path,
     ) -> None:
-        """profile.json written by profile is parseable by recommend, init, bench."""
+        """profile.json written by setup is parseable by models --recommend, setup, bench."""
         # Arrange
         profile = make_profile(memory_gb=128)
         _write_profile(mlx_stack_home, profile)
@@ -1113,25 +1105,23 @@ class TestDataConsistency:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """vllm_flags from init-generated stack appear in up --dry-run output.
+        """vllm_flags from run_init-generated stack appear in up --dry-run output.
 
-        Verifies that the init -> up data flow preserves vllm_flags.
+        Verifies that the run_init -> up data flow preserves vllm_flags.
         """
         profile = make_profile(memory_gb=128)
         mock_detect.return_value = profile
         catalog = _make_test_catalog()
         mock_catalog.return_value = catalog
 
-        runner = CliRunner()
-
-        # Init creates stack with vllm_flags
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        # Generate stack config via core run_init (CLI init command removed)
+        run_init(intent="balanced")
 
         # Read stack to find expected flags
         stack = _read_stack_yaml(mlx_stack_home)
 
         # Up --dry-run should show translated vllm_flags
+        runner = CliRunner()
         with (
             patch("mlx_stack.core.stack_up.load_catalog", return_value=catalog),
             patch("mlx_stack.core.stack_up.get_value") as mock_get_val,
@@ -1171,7 +1161,7 @@ class TestDataConsistency:
         mock_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Stack definition from init contains all fields expected by up.
+        """Stack definition from run_init contains all fields expected by up.
 
         Verifies that every tier has: name, model, quant, source, port,
         vllm_flags — and that the stack has schema_version, hardware_profile,
@@ -1181,9 +1171,7 @@ class TestDataConsistency:
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
-        runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        run_init(intent="balanced")
 
         stack = _read_stack_yaml(mlx_stack_home)
 
@@ -1224,9 +1212,7 @@ class TestDataConsistency:
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
-        runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        run_init(intent="balanced")
 
         stack = _read_stack_yaml(mlx_stack_home)
         litellm = _read_litellm_yaml(mlx_stack_home)
@@ -1280,9 +1266,7 @@ class TestDataConsistency:
         mock_detect.return_value = profile
         mock_catalog.return_value = _make_test_catalog()
 
-        runner = CliRunner()
-        result = runner.invoke(cli, ["init", "--accept-defaults"])
-        assert result.exit_code == 0
+        run_init(intent="balanced")
 
         stack = _read_stack_yaml(mlx_stack_home)
         assert stack["hardware_profile"] == profile.profile_id

@@ -7,6 +7,22 @@ Validates:
 - VAL-MODELS-004: --catalog shows full catalog with hardware-specific data
 - VAL-MODELS-005: Output is a formatted table with human-readable names
 - VAL-MODELS-006: Custom model-dir configuration respected
+- VAL-MODELS-004 (new): --recommend shows scored tier recommendations
+- VAL-MODELS-005 (new): --recommend --budget overrides default memory budget
+- VAL-MODELS-006 (new): --recommend --intent selects optimization strategy
+- VAL-MODELS-007 (new): --recommend --show-all shows ranked list
+- VAL-MODELS-008 (new): --recommend is display-only
+- VAL-MODELS-009 (new): --available queries HuggingFace API
+- VAL-MODELS-010 (new): --available network failure handled gracefully
+- VAL-MODELS-011 (new): --recommend and --catalog are mutually exclusive
+- VAL-MODELS-012 (new): --budget requires --recommend
+- VAL-MODELS-013 (new): recommend command removed
+- VAL-MODELS-015 (new): --help shows all new flags
+- VAL-MODELS-016 (new): hardware detection failure produces clean error
+- VAL-MODELS-017 (new): invalid intent produces descriptive error
+- VAL-MODELS-018 (new): invalid budget format produces error
+- VAL-MODELS-019 (new): zero fitting models shows clear message
+- VAL-MODELS-020 (new): --recommend with no saved benchmarks still works
 """
 
 from __future__ import annotations
@@ -15,15 +31,19 @@ import json
 from pathlib import Path
 from unittest.mock import patch
 
+import pytest
 import yaml
 from click.testing import CliRunner
 
 from mlx_stack.cli.main import cli
+from mlx_stack.cli.models import parse_budget
 from mlx_stack.core.catalog import (
     BenchmarkResult,
     CatalogEntry,
+    CatalogError,
     QuantSource,
 )
+from mlx_stack.core.hardware import HardwareError
 from mlx_stack.core.models import (
     format_size,
     get_models_directory,
@@ -486,7 +506,7 @@ class TestModelsCommand:
         assert result.exit_code == 0
         assert "No models found" in result.output
         assert "mlx-stack pull" in result.output
-        assert "mlx-stack init" in result.output
+        assert "mlx-stack setup" in result.output
 
     def test_no_models_dir_not_exist(self, clean_mlx_stack_home: Path) -> None:
         """VAL-MODELS-003: Non-existent model dir shows helpful message."""
@@ -752,7 +772,7 @@ class TestModelsCatalogCommand:
 
         assert result.exit_code == 0
         assert "No hardware profile" in result.output
-        assert "mlx-stack profile" in result.output
+        assert "mlx-stack setup" in result.output
 
     def test_locally_available_indicator(self, mlx_stack_home: Path) -> None:
         """VAL-MODELS-004: Locally available models are indicated."""
@@ -1366,3 +1386,1203 @@ class TestSourceQuantAwareRemoteDetection:
 
         assert len(remote) == 1
         assert remote[0]["model_id"] == "nemotron-8b"
+
+
+# =========================================================================== #
+# Recommend-specific catalog — 5 diverse models needed by recommend tests
+# =========================================================================== #
+
+
+def _make_recommend_catalog() -> list[CatalogEntry]:
+    """Build a diverse test catalog for recommendation tests."""
+    return [
+        # High quality model (standard tier candidate)
+        make_entry(
+            model_id="high-quality-32b",
+            name="High Quality 32B",
+            family="Quality",
+            params_b=32.0,
+            quality_overall=87,
+            quality_coding=85,
+            quality_reasoning=88,
+            quality_instruction=88,
+            tool_calling=True,
+            benchmarks={
+                "m4-pro-32": BenchmarkResult(prompt_tps=26.0, gen_tps=15.0, memory_gb=20.0),
+                "m4-max-128": BenchmarkResult(prompt_tps=40.0, gen_tps=23.0, memory_gb=20.0),
+            },
+            tags=["quality"],
+        ),
+        # Fast small model (fast tier candidate)
+        make_entry(
+            model_id="fast-0.8b",
+            name="Fast 0.8B",
+            family="Fast",
+            params_b=0.8,
+            quality_overall=30,
+            quality_coding=25,
+            quality_reasoning=20,
+            quality_instruction=35,
+            tool_calling=True,
+            benchmarks={
+                "m4-pro-32": BenchmarkResult(prompt_tps=310.0, gen_tps=195.0, memory_gb=0.6),
+                "m4-max-128": BenchmarkResult(prompt_tps=410.0, gen_tps=280.0, memory_gb=0.6),
+            },
+            tags=["fast"],
+        ),
+        # Medium model
+        make_entry(
+            model_id="medium-8b",
+            name="Medium 8B",
+            family="Medium",
+            params_b=8.0,
+            quality_overall=68,
+            quality_coding=65,
+            quality_reasoning=62,
+            quality_instruction=72,
+            tool_calling=True,
+            benchmarks={
+                "m4-pro-32": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
+                "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
+            },
+            tags=["balanced"],
+        ),
+        # Longctx model (mamba2-hybrid architecture)
+        make_entry(
+            model_id="longctx-32b",
+            name="LongCtx 32B",
+            family="LongCtx",
+            params_b=32.0,
+            architecture="mamba2-hybrid",
+            quality_overall=85,
+            quality_coding=86,
+            quality_reasoning=90,
+            quality_instruction=80,
+            tool_calling=False,
+            benchmarks={
+                "m4-pro-32": BenchmarkResult(prompt_tps=26.0, gen_tps=15.0, memory_gb=20.0),
+                "m4-max-128": BenchmarkResult(prompt_tps=40.0, gen_tps=23.0, memory_gb=20.0),
+            },
+            tags=["long-context"],
+        ),
+        # Large model that only fits on big systems
+        make_entry(
+            model_id="huge-72b",
+            name="Huge 72B",
+            family="Huge",
+            params_b=72.0,
+            quality_overall=92,
+            quality_coding=90,
+            quality_reasoning=94,
+            quality_instruction=93,
+            tool_calling=True,
+            benchmarks={
+                "m4-max-128": BenchmarkResult(prompt_tps=12.0, gen_tps=8.0, memory_gb=42.0),
+            },
+            tags=["quality"],
+        ),
+    ]
+
+
+# =========================================================================== #
+# Budget parsing tests (moved from test_cli_recommend.py)
+# =========================================================================== #
+
+
+class TestBudgetParsing:
+    """Tests for the parse_budget helper."""
+
+    def test_parse_number_with_gb(self) -> None:
+        assert parse_budget("30gb") == 30.0
+
+    def test_parse_number_with_GB(self) -> None:
+        assert parse_budget("30GB") == 30.0
+
+    def test_parse_number_without_suffix(self) -> None:
+        assert parse_budget("16") == 16.0
+
+    def test_parse_decimal(self) -> None:
+        assert parse_budget("25.6gb") == 25.6
+
+    def test_parse_with_spaces(self) -> None:
+        assert parse_budget(" 30gb ") == 30.0
+
+    def test_invalid_format_raises(self) -> None:
+        import click
+
+        with pytest.raises(click.BadParameter, match="Invalid budget format"):
+            parse_budget("abc")
+
+    def test_negative_value_raises(self) -> None:
+        import click
+
+        with pytest.raises(click.BadParameter, match="Invalid budget format"):
+            parse_budget("-5gb")
+
+    def test_zero_raises(self) -> None:
+        import click
+
+        with pytest.raises(click.BadParameter, match="positive"):
+            parse_budget("0gb")
+
+    def test_empty_string_raises(self) -> None:
+        import click
+
+        with pytest.raises(click.BadParameter, match="Invalid budget format"):
+            parse_budget("")
+
+
+# =========================================================================== #
+# VAL-MODELS-004: --recommend shows scored tier recommendations
+# =========================================================================== #
+
+
+class TestModelsRecommend:
+    """Tests for `mlx-stack models --recommend`."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_recommend_shows_tier_table(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--recommend shows Recommended Stack with tier names."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "Recommended Stack" in result.output
+        assert "standard" in result.output.lower()
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_recommend_shows_memory_and_tps_columns(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--recommend output includes Gen TPS and Memory columns."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+        assert result.exit_code == 0
+        assert "Gen TPS" in result.output
+        assert "Memory" in result.output
+        assert "tok/s" in result.output
+        assert "GB" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_recommend_three_tiers_on_large_system(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """128 GB system gets up to 3 tiers."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "standard" in result.output.lower()
+        assert "fast" in result.output.lower()
+        assert "longctx" in result.output.lower()
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_recommend_fast_tier_is_highest_tps(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Fast tier gets the highest gen_tps model."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        output_lines = result.output.split("\n")
+        fast_line = [
+            line
+            for line in output_lines
+            if "fast" in line.lower() and "standard" not in line.lower()
+        ]
+        assert len(fast_line) > 0
+        assert "Fast 0.8B" in fast_line[0]
+
+
+# =========================================================================== #
+# VAL-MODELS-005: --recommend --budget overrides default memory budget
+# =========================================================================== #
+
+
+class TestModelsRecommendBudget:
+    """Tests for `models --recommend --budget`."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_budget_override(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--budget 30gb overrides default on 64 GB machine."""
+        mock_load_profile.return_value = make_profile(memory_gb=64)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--budget", "30gb", "--show-all"])
+
+        assert result.exit_code == 0
+        assert "30.0 GB" in result.output
+        assert "High Quality 32B" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_budget_excludes_large_models(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--budget 10gb excludes models >10 GB."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--budget", "10gb"])
+
+        assert result.exit_code == 0
+        assert "Fast 0.8B" in result.output
+        assert "Medium 8B" in result.output
+        assert "High Quality 32B" not in result.output
+        assert "Huge 72B" not in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-006: --recommend --intent selects optimization strategy
+# =========================================================================== #
+
+
+class TestModelsRecommendIntent:
+    """Tests for `models --recommend --intent`."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_balanced_vs_agent_fleet_different(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Different intents produce different outputs."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result_balanced = runner.invoke(cli, ["models", "--recommend", "--intent", "balanced"])
+        result_agent = runner.invoke(cli, ["models", "--recommend", "--intent", "agent-fleet"])
+
+        assert result_balanced.exit_code == 0
+        assert result_agent.exit_code == 0
+        assert "balanced" in result_balanced.output
+        assert "agent-fleet" in result_agent.output
+        assert result_balanced.output != result_agent.output
+
+
+# =========================================================================== #
+# VAL-MODELS-007: --recommend --show-all shows ranked list
+# =========================================================================== #
+
+
+class TestModelsRecommendShowAll:
+    """Tests for `models --recommend --show-all`."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_show_all_lists_all_models(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--show-all shows all budget-fitting models sorted by score."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
+
+        assert result.exit_code == 0
+        assert "All Budget-Fitting Models" in result.output
+        assert "High Quality 32B" in result.output
+        assert "Fast 0.8B" in result.output
+        assert "Medium 8B" in result.output
+        assert "LongCtx 32B" in result.output
+        assert "Huge 72B" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_show_all_contains_score_column(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--show-all output includes Score column."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
+        assert result.exit_code == 0
+        assert "Score" in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-008: --recommend is display-only
+# =========================================================================== #
+
+
+class TestModelsRecommendDisplayOnly:
+    """Tests for display-only nature of --recommend."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_no_stack_files_written(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--recommend does not create stacks/ or litellm.yaml."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+        stacks_dir = mlx_stack_home / "stacks"
+        litellm_file = mlx_stack_home / "litellm.yaml"
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert not stacks_dir.exists()
+        assert not litellm_file.exists()
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_display_only_message(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Output includes display-only notice and setup suggestion."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "no files were written" in result.output.lower()
+        assert "setup" in result.output.lower()
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_display_only_notice_references_setup_not_init(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """VAL-CROSS-014: Display-only notice references 'setup' not 'init'."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        # The display-only notice should mention 'setup' not 'init'
+        lines = result.output.lower().split("\n")
+        notice_lines = [line for line in lines if "no files were written" in line or "generate stack" in line]
+        for line in notice_lines:
+            assert "init" not in line
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_no_files_written_any_flag_combo(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """No files created under any recommend flag combination."""
+        import os
+
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        files_before = set()
+        for root, _dirs, files in os.walk(str(mlx_stack_home)):
+            for f in files:
+                files_before.add(os.path.join(root, f))
+
+        runner = CliRunner()
+        for flags in [
+            ["models", "--recommend"],
+            ["models", "--recommend", "--show-all"],
+            ["models", "--recommend", "--intent", "agent-fleet"],
+            ["models", "--recommend", "--budget", "30gb"],
+        ]:
+            result = runner.invoke(cli, flags)
+            assert result.exit_code == 0
+
+        files_after = set()
+        for root, _dirs, files in os.walk(str(mlx_stack_home)):
+            for f in files:
+                files_after.add(os.path.join(root, f))
+
+        new_files = files_after - files_before
+        assert not new_files, f"recommend must not write files, but created: {new_files}"
+
+
+# =========================================================================== #
+# VAL-MODELS-009: --available queries HuggingFace API
+# =========================================================================== #
+
+
+class TestModelsAvailable:
+    """Tests for `mlx-stack models --available`."""
+
+    @patch("mlx_stack.cli.models.load_profile")
+    @patch("mlx_stack.core.discovery.discover_models")
+    def test_available_shows_discovered_models(
+        self,
+        mock_discover: object,
+        mock_load_profile: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """--available queries HF API and shows models."""
+        from mlx_stack.core.discovery import DiscoveredModel
+
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_discover.return_value = [  # type: ignore[attr-defined]
+            DiscoveredModel(
+                hf_repo="mlx-community/Qwen3.5-9B-4bit",
+                display_name="Qwen3.5-9B",
+                params_b=9.0,
+                quant="int4",
+                downloads=50000,
+                gen_tps=52.0,
+                memory_gb=5.5,
+                has_benchmark=True,
+            ),
+            DiscoveredModel(
+                hf_repo="mlx-community/Phi-4-mini-4bit",
+                display_name="Phi-4-mini",
+                params_b=3.8,
+                quant="int4",
+                downloads=30000,
+                has_benchmark=False,
+            ),
+        ]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--available"])
+
+        assert result.exit_code == 0
+        assert "Available Models" in result.output
+        assert "Qwen3.5-9B" in result.output
+        assert "Phi-4-mini" in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-010: --available network failure handled gracefully
+# =========================================================================== #
+
+
+class TestModelsAvailableNetworkFailure:
+    """Tests for --available handling network failures."""
+
+    @patch("mlx_stack.cli.models.load_profile")
+    @patch("mlx_stack.core.discovery.discover_models")
+    def test_network_failure_clean_error(
+        self,
+        mock_discover: object,
+        mock_load_profile: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Network failure produces clean error, no traceback."""
+        from mlx_stack.core.discovery import DiscoveryError
+
+        mock_load_profile.return_value = None  # type: ignore[attr-defined]
+        mock_discover.side_effect = DiscoveryError("Network unreachable")  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--available"])
+
+        assert result.exit_code != 0
+        assert "Network unreachable" in result.output
+        assert "Traceback" not in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-011: --recommend and --catalog are mutually exclusive
+# =========================================================================== #
+
+
+class TestMutualExclusivity:
+    """Tests for mutual exclusivity of --recommend, --catalog, --available."""
+
+    def test_recommend_and_catalog_conflict(self, mlx_stack_home: Path) -> None:
+        """--recommend --catalog produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--catalog"])
+
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output.lower()
+
+    def test_recommend_and_available_conflict(self, mlx_stack_home: Path) -> None:
+        """--recommend --available produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--available"])
+
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output.lower()
+
+    def test_available_and_catalog_conflict(self, mlx_stack_home: Path) -> None:
+        """--available --catalog produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--available", "--catalog"])
+
+        assert result.exit_code != 0
+        assert "mutually exclusive" in result.output.lower()
+
+
+# =========================================================================== #
+# VAL-MODELS-012: --budget requires --recommend
+# =========================================================================== #
+
+
+class TestFlagDependencies:
+    """Tests for flag dependency enforcement."""
+
+    def test_budget_without_recommend(self, mlx_stack_home: Path) -> None:
+        """--budget without --recommend produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--budget", "30gb"])
+
+        assert result.exit_code != 0
+        assert "--budget" in result.output
+        assert "--recommend" in result.output
+
+    def test_intent_without_recommend(self, mlx_stack_home: Path) -> None:
+        """--intent without --recommend produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--intent", "balanced"])
+
+        assert result.exit_code != 0
+        assert "--intent" in result.output
+        assert "--recommend" in result.output
+
+    def test_show_all_without_recommend(self, mlx_stack_home: Path) -> None:
+        """--show-all without --recommend produces error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--show-all"])
+
+        assert result.exit_code != 0
+        assert "--show-all" in result.output
+        assert "--recommend" in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-013: recommend command removed
+# =========================================================================== #
+
+
+class TestRecommendCommandRemoved:
+    """Tests that the old recommend command is no longer available."""
+
+    def test_recommend_not_a_command(self) -> None:
+        """mlx-stack recommend produces 'No such command' error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["recommend"])
+
+        assert result.exit_code != 0
+        assert "No such command" in result.output
+
+    def test_recommend_not_in_help(self) -> None:
+        """recommend is not listed in --help output."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--help"])
+
+        # Ensure recommend doesn't appear as a command name
+        lines = result.output.splitlines()
+        command_lines = [
+            line.strip().split()[0]
+            for line in lines
+            if line.strip() and not line.strip().startswith(("-", "Usage", "Options", "mlx"))
+        ]
+        assert "recommend" not in command_lines
+
+    def test_recommend_not_in_welcome(self) -> None:
+        """recommend is not in bare CLI welcome screen."""
+        runner = CliRunner()
+        result = runner.invoke(cli, [])
+
+        # Look for 'recommend' as a standalone word (not as part of --recommend)
+        lines = result.output.splitlines()
+        for line in lines:
+            stripped = line.strip()
+            # Skip lines that contain '--recommend' (that's the flag, not the command)
+            if "--recommend" in stripped:
+                continue
+            # Check for 'recommend' as a standalone command entry
+            if stripped.startswith("recommend"):
+                raise AssertionError(f"'recommend' appears as command entry: {stripped}")
+
+
+# =========================================================================== #
+# VAL-MODELS-015: --help shows all new flags
+# =========================================================================== #
+
+
+class TestModelsHelpNewFlags:
+    """Tests for models --help showing new flags."""
+
+    def test_help_shows_recommend(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--recommend" in result.output
+
+    def test_help_shows_available(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--available" in result.output
+
+    def test_help_shows_budget(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--budget" in result.output
+
+    def test_help_shows_intent(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--intent" in result.output
+
+    def test_help_shows_show_all(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--show-all" in result.output
+
+    def test_help_still_shows_existing_flags(self) -> None:
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--help"])
+        assert result.exit_code == 0
+        assert "--catalog" in result.output
+        assert "--family" in result.output
+        assert "--tag" in result.output
+        assert "--tool-calling" in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-016: hardware detection failure produces clean error
+# =========================================================================== #
+
+
+class TestRecommendHardwareFailure:
+    """Tests for hardware detection failure in --recommend."""
+
+    @patch("mlx_stack.cli.models.detect_hardware")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_hardware_detection_failure(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mock_detect: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """If auto-detect fails, exits with error."""
+        mock_load_profile.return_value = None  # type: ignore[attr-defined]
+        mock_detect.side_effect = HardwareError("Not Apple Silicon")  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code != 0
+        assert "Not Apple Silicon" in result.output
+
+    @patch("mlx_stack.cli.models.detect_hardware")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_auto_detects_when_no_profile(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mock_detect: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """When no profile.json, auto-detect in memory (no file write)."""
+        mock_load_profile.return_value = None  # type: ignore[attr-defined]
+        mock_detect.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "detecting hardware" in result.output.lower()
+        mock_detect.assert_called_once()  # type: ignore[attr-defined]
+        # profile.json must NOT be written
+        profile_path = mlx_stack_home / "profile.json"
+        assert not profile_path.exists()
+
+
+# =========================================================================== #
+# VAL-MODELS-017: invalid intent produces descriptive error
+# =========================================================================== #
+
+
+class TestRecommendInvalidIntent:
+    """Tests for invalid --intent values."""
+
+    def test_invalid_intent(self, mlx_stack_home: Path) -> None:
+        """Invalid intent produces descriptive error with valid list."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["models", "--recommend", "--intent", "invalid_intent"]
+        )
+        assert result.exit_code != 0
+        assert "invalid intent" in result.output.lower()
+        assert "balanced" in result.output.lower()
+        assert "agent-fleet" in result.output.lower()
+
+    def test_no_traceback_on_intent_error(self, mlx_stack_home: Path) -> None:
+        """No Python traceback on invalid intent."""
+        runner = CliRunner()
+        result = runner.invoke(
+            cli, ["models", "--recommend", "--intent", "bad"]
+        )
+        assert "Traceback" not in result.output
+
+
+# =========================================================================== #
+# VAL-MODELS-018: invalid budget format produces error
+# =========================================================================== #
+
+
+class TestRecommendInvalidBudget:
+    """Tests for invalid --budget values."""
+
+    def test_invalid_budget_letters(self, mlx_stack_home: Path) -> None:
+        """--budget abc produces descriptive error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--budget", "abc"])
+        assert result.exit_code != 0
+        assert "invalid budget" in result.output.lower()
+
+    def test_invalid_budget_negative(self, mlx_stack_home: Path) -> None:
+        """--budget -5gb produces descriptive error."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--budget", "-5gb"])
+        assert result.exit_code != 0
+        assert "invalid budget" in result.output.lower()
+
+
+# =========================================================================== #
+# VAL-MODELS-019: zero fitting models shows clear message
+# =========================================================================== #
+
+
+class TestRecommendZeroModels:
+    """Tests for zero fitting models."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_zero_models_fitting_budget(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Budget too small for any model produces clear error."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--budget", "0.1gb"])
+
+        assert result.exit_code != 0
+        assert "no models fit" in result.output.lower()
+
+
+# =========================================================================== #
+# VAL-MODELS-020: --recommend with no saved benchmarks still works
+# =========================================================================== #
+
+
+class TestRecommendNoSavedBenchmarks:
+    """Tests for --recommend with no saved benchmarks."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_works_without_saved_benchmarks(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Recommendation works without saved benchmarks."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "Recommended Stack" in result.output
+
+
+# =========================================================================== #
+# Profile resolution tests
+# =========================================================================== #
+
+
+class TestRecommendProfileResolution:
+    """Tests for profile resolution within --recommend."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_uses_existing_profile(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """When profile.json exists, it is used."""
+        profile = make_profile(memory_gb=64)
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "64 GB" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_default_budget_is_40pct(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Default budget is 40% of unified memory."""
+        mock_load_profile.return_value = make_profile(memory_gb=64)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "25.6 GB" in result.output
+
+
+# =========================================================================== #
+# Estimated performance tests
+# =========================================================================== #
+
+
+class TestRecommendEstimatedPerformance:
+    """Tests for estimated values in --recommend."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_estimated_label_shown(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Unknown hardware shows estimated labels and bench suggestion."""
+        profile = make_profile(
+            chip="Apple M6 Ultra",
+            memory_gb=256,
+            bandwidth_gbps=800.0,
+            is_estimate=True,
+        )
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "est." in result.output.lower()
+        assert "bench --save" in result.output
+
+
+# =========================================================================== #
+# Cloud fallback tests
+# =========================================================================== #
+
+
+class TestRecommendCloudFallback:
+    """Tests for cloud fallback conditional display."""
+
+    @patch("mlx_stack.cli.models.get_value")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_cloud_fallback_with_key(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mock_get_value: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Cloud fallback shown when OpenRouter key is set."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        def side_effect(key: str) -> object:
+            if key == "openrouter-key":
+                return "sk-or-test-key-123"
+            if key == "memory-budget-pct":
+                return 40
+            return ""
+
+        mock_get_value.side_effect = side_effect  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "Cloud Fallback" in result.output
+        assert "OpenRouter" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_no_cloud_fallback_without_key(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Cloud fallback NOT shown when no OpenRouter key."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "Cloud Fallback" not in result.output
+
+
+# =========================================================================== #
+# Saved benchmarks tests
+# =========================================================================== #
+
+
+class TestRecommendSavedBenchmarks:
+    """Tests for saved benchmark data integration."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_saved_benchmarks_used(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Saved benchmark data overrides catalog data in scoring."""
+        profile = make_profile(memory_gb=128)
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        benchmarks_dir = mlx_stack_home / "benchmarks"
+        benchmarks_dir.mkdir(parents=True)
+        saved_data = {
+            "medium-8b": {
+                "gen_tps": 100.0,
+                "prompt_tps": 200.0,
+                "memory_gb": 5.5,
+            }
+        }
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
+
+        assert result.exit_code == 0
+        assert "100.0" in result.output
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_malformed_benchmark_json_warning(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Malformed saved benchmarks fall through gracefully."""
+        profile = make_profile(memory_gb=128)
+        mock_load_profile.return_value = profile  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        benchmarks_dir = mlx_stack_home / "benchmarks"
+        benchmarks_dir.mkdir(parents=True)
+        saved_data = {
+            "medium-8b": {
+                "gen_tps": "not_a_number",
+                "prompt_tps": 200.0,
+                "memory_gb": 5.5,
+            }
+        }
+        (benchmarks_dir / f"{profile.profile_id}.json").write_text(json.dumps(saved_data))
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
+
+        assert result.exit_code == 0
+        assert "Traceback" not in result.output
+        assert "Medium 8B" in result.output
+
+
+# =========================================================================== #
+# Config integration tests
+# =========================================================================== #
+
+
+class TestRecommendConfigIntegration:
+    """Tests for config values flowing into recommendations."""
+
+    @patch("mlx_stack.cli.models.get_value")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_config_budget_pct_used(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mock_get_value: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """memory-budget-pct from config is used when no --budget flag."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.return_value = _make_recommend_catalog()  # type: ignore[attr-defined]
+
+        def side_effect(key: str) -> object:
+            if key == "memory-budget-pct":
+                return 60
+            if key == "openrouter-key":
+                return ""
+            return ""
+
+        mock_get_value.side_effect = side_effect  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code == 0
+        assert "76.8 GB" in result.output
+
+
+# =========================================================================== #
+# Catalog error in recommend
+# =========================================================================== #
+
+
+class TestRecommendCatalogError:
+    """Tests for catalog error handling in --recommend."""
+
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
+    def test_catalog_load_failure(
+        self,
+        mock_load_profile: object,
+        mock_load_catalog: object,
+        mlx_stack_home: Path,
+    ) -> None:
+        """Catalog load failure shows clear error."""
+        mock_load_profile.return_value = make_profile(memory_gb=128)  # type: ignore[attr-defined]
+        mock_load_catalog.side_effect = CatalogError("Corrupt catalog")  # type: ignore[attr-defined]
+
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models", "--recommend"])
+
+        assert result.exit_code != 0
+        assert "Corrupt catalog" in result.output
+        assert "Traceback" not in result.output
+
+
+# =========================================================================== #
+# Default invocation still works
+# =========================================================================== #
+
+
+class TestModelsDefaultStillWorks:
+    """Ensure default invocation (no flags) still works."""
+
+    def test_default_shows_no_models_or_local(self, mlx_stack_home: Path) -> None:
+        """Default models invocation shows local models or no-models message."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["models"])
+
+        assert result.exit_code == 0
+        # Should show either "Local Models" or "No models found"
+        assert "Local Models" in result.output or "No models found" in result.output
+
+
+# =========================================================================== #
+# Existing filters still work
+# =========================================================================== #
+
+
+class TestFiltersStillWork:
+    """Ensure --family, --tag, --tool-calling filters still work."""
+
+    def test_family_filter_works(self, mlx_stack_home: Path) -> None:
+        """--family filter still works."""
+        catalog = [
+            make_entry(model_id="q1", name="Qwen Model", family="Qwen 3.5"),
+        ]
+        runner = CliRunner()
+        with (
+            patch("mlx_stack.cli.models.load_catalog", return_value=catalog),
+            patch("mlx_stack.cli.models.load_profile", return_value=None),
+        ):
+            result = runner.invoke(cli, ["models", "--family", "qwen 3.5"])
+        assert result.exit_code == 0
+        assert "Qwen Model" in result.output
+
+    def test_catalog_still_works(self, mlx_stack_home: Path) -> None:
+        """--catalog flag still works."""
+        runner = CliRunner()
+        with patch("mlx_stack.cli.models.load_profile", return_value=None):
+            result = runner.invoke(cli, ["models", "--catalog"])
+        assert result.exit_code == 0
+        assert "Model Catalog" in result.output

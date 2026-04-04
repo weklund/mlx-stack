@@ -531,11 +531,12 @@ def pull_model(
     force: bool = False,
     console: Console | None = None,
     catalog: list[CatalogEntry] | None = None,
+    hf_repo_override: str | None = None,
 ) -> PullResult:
-    """Pull (download) a model from the catalog.
+    """Pull (download) a model from the catalog or an arbitrary HF repo.
 
     Orchestrates the full pull workflow:
-    1. Resolve model from catalog
+    1. Resolve model from catalog (or use HF repo override)
     2. Determine quant (from flag or config default)
     3. Resolve source (mlx-community or convert_from)
     4. Check disk space
@@ -544,11 +545,17 @@ def pull_model(
     7. Update inventory
 
     Args:
-        model_id: The catalog model ID (e.g., "qwen3.5-8b").
+        model_id: The catalog model ID (e.g., "qwen3.5-8b") or HF repo
+            string (e.g., "mlx-community/Phi-5-Mini-4bit").
         quant: Quantization override (None uses config default).
+            For HF repo pulls, stored as metadata only — does NOT
+            change the download target.
         force: If True, re-download even if model exists.
         console: Rich console for output (creates one if None).
         catalog: Pre-loaded catalog (loads from package if None).
+        hf_repo_override: If set, bypasses catalog lookup and downloads
+            directly from this HF repo. The model_id is used for display
+            and inventory purposes.
 
     Returns:
         PullResult with details of the completed pull.
@@ -562,6 +569,17 @@ def pull_model(
     """
     if console is None:
         console = Console()
+
+    # --- HF repo override path (arbitrary HuggingFace repo) ---
+    if hf_repo_override is not None:
+        return _pull_hf_repo(
+            hf_repo=hf_repo_override,
+            quant=quant,
+            force=force,
+            console=console,
+        )
+
+    # --- Catalog path (existing behaviour) ---
 
     # 1. Load catalog and resolve model
     if catalog is None:
@@ -683,4 +701,114 @@ def pull_model(
         local_path=local_path,
         already_existed=False,
         disk_size_gb=source.disk_size_gb,
+    )
+
+
+# --------------------------------------------------------------------------- #
+# HF repo direct pull (no catalog)
+# --------------------------------------------------------------------------- #
+
+# Default estimated size for HF repo pulls (no catalog metadata available).
+_HF_REPO_DEFAULT_SIZE_GB = 5.0
+
+
+def _pull_hf_repo(
+    hf_repo: str,
+    quant: str | None,
+    force: bool,
+    console: Console,
+) -> PullResult:
+    """Pull a model directly from a HuggingFace repo, bypassing catalog.
+
+    Args:
+        hf_repo: Full HF repo string (e.g., "mlx-community/Phi-5-Mini-4bit").
+        quant: Quantization stored as metadata only (does NOT change download).
+            None defaults to "int4".
+        force: If True, re-download even if model exists.
+        console: Rich console for output.
+
+    Returns:
+        PullResult with details of the completed pull.
+    """
+    # Validate quant if provided
+    if quant is not None:
+        validate_quant(quant)
+    else:
+        quant = "int4"
+
+    # Derive names from the HF repo string
+    repo_name = hf_repo.rsplit("/", 1)[-1]
+    source_type = hf_repo.rsplit("/", 1)[0] if "/" in hf_repo else "unknown"
+
+    # Resolve local path
+    models_dir = get_models_directory()
+    local_path = get_model_local_path(models_dir, hf_repo)
+
+    # Check for existing download (duplicate detection)
+    if not force and is_model_downloaded(local_path):
+        console.print(
+            f"[yellow]Model '{repo_name}' already exists at "
+            f"{local_path}.[/yellow]\n"
+            "Use --force to re-download."
+        )
+        return PullResult(
+            model_id=hf_repo,
+            name=repo_name,
+            quant=quant,
+            source_type=source_type,
+            local_path=local_path,
+            already_existed=True,
+            disk_size_gb=0.0,
+        )
+
+    # Check disk space (use default estimate since we have no catalog metadata)
+    has_space, available_gb = check_disk_space(models_dir, _HF_REPO_DEFAULT_SIZE_GB)
+    if not has_space:
+        msg = (
+            f"Insufficient disk space for {repo_name}.\n"
+            f"Required: {_HF_REPO_DEFAULT_SIZE_GB:.1f} GB (estimated, + 20% buffer)\n"
+            f"Available: {available_gb:.1f} GB"
+        )
+        raise DiskSpaceError(msg)
+
+    # Display info
+    console.print()
+    console.print(f"[bold cyan]Pulling {hf_repo}[/bold cyan]")
+    console.print(f"  Source: {hf_repo} (HuggingFace repo)")
+    console.print(f"  Destination: {local_path}")
+    console.print()
+
+    # Remove existing if --force
+    if force and local_path.exists():
+        console.print("[yellow]Removing existing download (--force)...[/yellow]")
+        _cleanup_partial(local_path)
+
+    # Download
+    download_model(hf_repo, local_path, console)
+
+    # Update inventory
+    inv = ModelInventoryEntry(
+        model_id=hf_repo,
+        name=repo_name,
+        quant=quant,
+        source_type=source_type,
+        hf_repo=hf_repo,
+        local_path=str(local_path),
+        disk_size_gb=0.0,
+        downloaded_at=datetime.now(UTC).isoformat(),
+    )
+    add_to_inventory(inv)
+
+    console.print()
+    console.print(f"[bold green]✓ {repo_name} is ready.[/bold green]")
+    console.print(f"  Location: {local_path}")
+
+    return PullResult(
+        model_id=hf_repo,
+        name=repo_name,
+        quant=quant,
+        source_type=source_type,
+        local_path=local_path,
+        already_existed=False,
+        disk_size_gb=0.0,
     )

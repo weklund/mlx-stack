@@ -1,0 +1,141 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "cross-integrity",
+  "surface": "CLI",
+  "testedAt": "2026-04-04T21:17:42.192404+00:00",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-009",
+      "status": "pass",
+      "reason": "Targeted pytest assertion for bench --save messaging passed; output contract excludes removed command references.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-009-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-010",
+      "status": "pass",
+      "reason": "Running install without stack configuration returned prerequisite guidance that references setup and not init.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-010-install-prereq.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-011",
+      "status": "pass",
+      "reason": "All 12 post-rework subcommands returned exit code 0 for --help.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-011-subcommand-help.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-012",
+      "status": "pass",
+      "reason": "Setup accept-defaults flow tests passed, covering successful non-interactive onboarding outputs (hardware/model/tier/API/no prompt).",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-012-setup-accept-defaults-tests.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-013",
+      "status": "pass",
+      "reason": "Full suite command equivalent to required assertion completed successfully with zero failures.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-013-pytest-full-suite.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-014",
+      "status": "pass",
+      "reason": "Targeted models --recommend display-only messaging tests passed, validating setup guidance and absence of init reference.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-014-pytest.txt",
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-014-setup-reference.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-015",
+      "status": "pass",
+      "reason": "Direct import check confirmed mlx_stack.core.stack_init imports and module file exists on disk.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-015-stack-init-import.txt"
+      ]
+    },
+    {
+      "id": "VAL-CROSS-016",
+      "status": "pass",
+      "reason": "Install help references setup requirement, and install prerequisite error uses setup guidance with no init references.",
+      "evidence": [
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-016-install-help.txt",
+        "absorb-recommend-remove-init/cross-integrity/VAL-CROSS-010-install-prereq.txt"
+      ]
+    }
+  ],
+  "passedAssertions": [
+    "VAL-CROSS-009",
+    "VAL-CROSS-010",
+    "VAL-CROSS-011",
+    "VAL-CROSS-012",
+    "VAL-CROSS-013",
+    "VAL-CROSS-014",
+    "VAL-CROSS-015",
+    "VAL-CROSS-016"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/unit/test_cli_bench.py::TestBenchSaveOutputReferences::test_save_output_no_recommend_or_init -q --tb=short",
+      "exitCode": 0,
+      "observation": "Targeted VAL-CROSS-009 test passed."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack install",
+      "exitCode": 1,
+      "observation": "Expected prerequisite error: 'No stack configuration found. Run 'mlx-stack setup' first.'"
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack <cmd> --help for setup, config, models, pull, up, down, status, watch, install, uninstall, bench, logs",
+      "exitCode": 0,
+      "observation": "All 12 subcommand help invocations exited 0."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/unit/test_cli_setup.py::TestSetupAcceptDefaults -vv --tb=short",
+      "exitCode": 0,
+      "observation": "6 tests passed for setup --accept-defaults flow outputs."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/ -x --tb=short",
+      "exitCode": 0,
+      "observation": "1472 passed, 168 deselected."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/unit/test_cli_models.py::TestModelsRecommendDisplayOnly::test_display_only_notice_references_setup_not_init -q --tb=short",
+      "exitCode": 0,
+      "observation": "Targeted no-init display-only notice test passed."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/unit/test_cli_models.py::TestModelsRecommendDisplayOnly::test_display_only_message -q --tb=short",
+      "exitCode": 0,
+      "observation": "Targeted setup guidance display-only message test passed."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack python -c 'from mlx_stack.core.stack_init import run_init, InitError; import mlx_stack.core.stack_init as m; print(m.__file__)'",
+      "exitCode": 0,
+      "observation": "Import succeeded and module file exists."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-integrity uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack install --help",
+      "exitCode": 0,
+      "observation": "Help text references setup prerequisite and contains no init reference."
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "Grep"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 8 assigned cross-integrity assertions on CLI surface: 8 passed, 0 failed, 0 blocked."
+}

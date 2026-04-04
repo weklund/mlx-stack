@@ -137,7 +137,7 @@ def _load_stack_for_watchdog(stack_name: str = "default") -> dict[str, Any]:
     try:
         return load_stack_definition(stack_name)
     except Exception as exc:
-        msg = f"No stack configuration found. Run 'mlx-stack init' first.\n{exc}"
+        msg = f"No stack configuration found. Run 'mlx-stack setup' first.\n{exc}"
         raise WatchdogError(msg) from None
 
 

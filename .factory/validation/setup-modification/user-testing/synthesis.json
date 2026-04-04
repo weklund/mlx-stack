@@ -1,0 +1,75 @@
+{
+  "milestone": "setup-modification",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 28,
+    "passed": 28,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-SETUP-001",
+    "VAL-SETUP-002",
+    "VAL-SETUP-003",
+    "VAL-SETUP-004",
+    "VAL-SETUP-005",
+    "VAL-SETUP-006",
+    "VAL-SETUP-007",
+    "VAL-SETUP-008",
+    "VAL-SETUP-009",
+    "VAL-SETUP-010",
+    "VAL-SETUP-011",
+    "VAL-SETUP-012",
+    "VAL-SETUP-013",
+    "VAL-SETUP-014",
+    "VAL-SETUP-015",
+    "VAL-SETUP-016",
+    "VAL-SETUP-017",
+    "VAL-SETUP-018",
+    "VAL-SETUP-019",
+    "VAL-SETUP-020",
+    "VAL-SETUP-021",
+    "VAL-SETUP-022",
+    "VAL-SETUP-023",
+    "VAL-SETUP-024",
+    "VAL-SETUP-025",
+    "VAL-SETUP-026",
+    "VAL-SETUP-027",
+    "VAL-SETUP-028"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [],
+  "flowReports": [
+    ".factory/validation/setup-modification/user-testing/flows/setup-combined-edge.json",
+    ".factory/validation/setup-modification/user-testing/flows/setup-mod-core.json",
+    ".factory/validation/setup-modification/user-testing/flows/setup-model-controls.json",
+    ".factory/validation/setup-modification/user-testing/flows/setup-output-guidance.json"
+  ],
+  "toolsUsed": [
+    "Task:user-testing-flow-validator",
+    "pytest",
+    "shell",
+    "uv"
+  ],
+  "frictions": [
+    {
+      "description": "Initial per-assertion pytest runs used -q output, which only showed dot progress and reduced traceability of exact test IDs.",
+      "resolved": true,
+      "resolution": "Re-ran all assigned tests in one verbose (-vv) command and saved the full named test output as consolidated evidence.",
+      "affectedAssertions": [
+        "VAL-SETUP-006",
+        "VAL-SETUP-007",
+        "VAL-SETUP-008",
+        "VAL-SETUP-009",
+        "VAL-SETUP-010",
+        "VAL-SETUP-021",
+        "VAL-SETUP-024"
+      ]
+    }
+  ],
+  "dedupedBlockers": [],
+  "generatedAt": "2026-04-04T22:12:09.767662+00:00",
+  "previousRound": null
+}

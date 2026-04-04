@@ -68,6 +68,7 @@ class HardwareProfile:
             "gpu_cores": self.gpu_cores,
             "memory_gb": self.memory_gb,
             "bandwidth_gbps": self.bandwidth_gbps,
+            "is_estimate": self.is_estimate,
             "profile_id": self.profile_id,
         }
 
@@ -298,7 +299,7 @@ def load_profile() -> HardwareProfile | None:
             gpu_cores=data["gpu_cores"],
             memory_gb=data["memory_gb"],
             bandwidth_gbps=data["bandwidth_gbps"],
-            is_estimate=False,  # saved profiles are considered authoritative
+            is_estimate=bool(data.get("is_estimate", False)),
         )
     except (json.JSONDecodeError, KeyError, TypeError):
         return None

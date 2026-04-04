@@ -154,7 +154,7 @@ def run_status(stack_name: str = "default") -> StatusResult:
     if stack is None:
         result.no_stack = True
         result.message = (
-            "No stack configured — run 'mlx-stack init' to create a stack configuration."
+            "No stack configured — run 'mlx-stack setup' to create a stack configuration."
         )
         return result
 
@@ -162,7 +162,7 @@ def run_status(stack_name: str = "default") -> StatusResult:
     if not tiers:
         result.no_stack = True
         result.message = (
-            "No stack configured — run 'mlx-stack init' to create a stack configuration."
+            "No stack configured — run 'mlx-stack setup' to create a stack configuration."
         )
         return result
 

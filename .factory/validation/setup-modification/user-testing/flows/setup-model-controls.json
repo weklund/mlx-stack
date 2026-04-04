@@ -1,0 +1,181 @@
+{
+  "groupId": "setup-model-controls",
+  "testedAt": "2026-04-04T22:08:35Z",
+  "isolation": {
+    "home": "/tmp/mlx-utv-setup-model-controls",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "evidenceDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/setup-modification/setup-model-controls"
+  },
+  "toolsUsed": [
+    "shell",
+    "pytest"
+  ],
+  "commandsRun": [
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_creates_single_tier_stack -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_skips_wizard -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_catalog_id_resolves -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupWizardNoPull::test_wizard_no_pull_skips_download_and_start -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupWizardNoStart::test_wizard_no_start_pulls_but_does_not_start -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupNoPullImpliesNoStart::test_no_pull_implies_no_start_wizard -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelNoPull::test_model_no_pull_skips_download_and_start -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_invalid_catalog_id_shows_error -q --tb=short",
+    "HOME=/tmp/mlx-utv-setup-model-controls uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_creates_single_tier_stack tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_skips_wizard tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_catalog_id_resolves tests/unit/test_cli_setup.py::TestSetupWizardNoPull::test_wizard_no_pull_skips_download_and_start tests/unit/test_cli_setup.py::TestSetupWizardNoStart::test_wizard_no_start_pulls_but_does_not_start tests/unit/test_cli_setup.py::TestSetupNoPullImpliesNoStart::test_no_pull_implies_no_start_wizard tests/unit/test_cli_setup.py::TestSetupModelNoPull::test_model_no_pull_skips_download_and_start tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_invalid_catalog_id_shows_error -vv --tb=short"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-SETUP-006",
+      "title": "--model single-model quick setup with HF repo",
+      "status": "pass",
+      "reason": "Both targeted tests passed, confirming single-tier standard stack creation with HF repo source and wizard bypass.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_creates_single_tier_stack",
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_skips_wizard"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-006-single-tier.txt",
+          "setup-modification/setup-model-controls/VAL-SETUP-006-no-wizard.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupModelHfRepo::test_model_hf_repo_creates_single_tier_stack",
+          "TestSetupModelHfRepo::test_model_hf_repo_skips_wizard"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-007",
+      "title": "--model single-model quick setup with catalog ID",
+      "status": "pass",
+      "reason": "Targeted test passed, confirming catalog ID resolution to HF source with single standard tier output.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_catalog_id_resolves"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-007-catalog-resolve.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupModelCatalogId::test_model_catalog_id_resolves"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-008",
+      "title": "--no-pull skips model download",
+      "status": "pass",
+      "reason": "Targeted wizard-flow no-pull test passed and verified pull/start are both skipped under --accept-defaults --no-pull.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupWizardNoPull::test_wizard_no_pull_skips_download_and_start"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-008-no-pull.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupWizardNoPull::test_wizard_no_pull_skips_download_and_start"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-009",
+      "title": "--no-start skips stack startup",
+      "status": "pass",
+      "reason": "Targeted wizard-flow no-start test passed and verified pull executes while start is not called.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupWizardNoStart::test_wizard_no_start_pulls_but_does_not_start"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-009-no-start.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupWizardNoStart::test_wizard_no_start_pulls_but_does_not_start"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-010",
+      "title": "--no-pull implies --no-start",
+      "status": "pass",
+      "reason": "Targeted implication test passed and verified both pull and start are skipped when only --no-pull is provided.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupNoPullImpliesNoStart::test_no_pull_implies_no_start_wizard"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-010-no-pull-implies-no-start.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupNoPullImpliesNoStart::test_no_pull_implies_no_start_wizard"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-021",
+      "title": "--model with --no-pull creates config without download",
+      "status": "pass",
+      "reason": "Targeted --model --no-pull test passed and verified single-tier config path with no pull and no start calls.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelNoPull::test_model_no_pull_skips_download_and_start"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-021-model-no-pull.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupModelNoPull::test_model_no_pull_skips_download_and_start"
+        ]
+      },
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-024",
+      "title": "--model with invalid identifier produces clear error",
+      "status": "pass",
+      "reason": "Targeted invalid-model test passed and verified non-zero exit with clear error and no traceback.",
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelCatalogId::test_model_invalid_catalog_id_shows_error"
+      ],
+      "evidence": {
+        "rawOutputFiles": [
+          "setup-modification/setup-model-controls/VAL-SETUP-024-invalid-model.txt",
+          "setup-modification/setup-model-controls/pytest-selected-setup-model-controls.txt"
+        ],
+        "pytestTests": [
+          "TestSetupModelCatalogId::test_model_invalid_catalog_id_shows_error"
+        ]
+      },
+      "issues": null
+    }
+  ],
+  "frictions": [
+    {
+      "description": "Initial per-assertion pytest runs used -q output, which only showed dot progress and reduced traceability of exact test IDs.",
+      "resolved": true,
+      "resolution": "Re-ran all assigned tests in one verbose (-vv) command and saved the full named test output as consolidated evidence.",
+      "affectedAssertions": [
+        "VAL-SETUP-006",
+        "VAL-SETUP-007",
+        "VAL-SETUP-008",
+        "VAL-SETUP-009",
+        "VAL-SETUP-010",
+        "VAL-SETUP-021",
+        "VAL-SETUP-024"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 7 assigned assertions for setup model controls; all 7 passed via targeted CLI pytest validation in isolated HOME." 
+}

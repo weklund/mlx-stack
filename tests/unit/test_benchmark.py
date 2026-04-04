@@ -1138,6 +1138,175 @@ class TestResolveTarget:
         assert target.is_running_tier is True
         assert target.temp_service_name is None
 
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-mlx-community--Model-4bit")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_resolves_hf_repo_string(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo string (containing '/') is resolved via the HF repo path."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Model-4bit"
+
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_id == "mlx-community/Model-4bit"
+        assert target.port == 8100
+        assert target.is_running_tier is False
+        assert target.temp_service_name == "bench-temp-mlx-community--Model-4bit"
+        assert target.quant == "int4"
+        assert target.entry.id == "mlx-community/Model-4bit"
+        assert target.entry.name == "Model-4bit"
+        mock_hf_source.assert_called_once_with("mlx-community/Model-4bit")
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_uses_local_path_when_downloaded(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo resolution uses local path when model is already downloaded."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "/home/user/.mlx-stack/models/Model-4bit"
+
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_name == "/home/user/.mlx-stack/models/Model-4bit"
+        mock_start.assert_called_once()
+        # Verify the local path was passed to _start_temp_instance
+        call_args = mock_start.call_args
+        assert call_args[0][0] == "/home/user/.mlx-stack/models/Model-4bit"
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_creates_synthetic_entry(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo resolution creates a synthetic CatalogEntry for benchmarking."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/DeepSeek-R1-4bit"
+
+        target = resolve_target("mlx-community/DeepSeek-R1-4bit")
+        # Verify synthetic entry has safe defaults
+        assert target.entry.family == "unknown"
+        assert target.entry.params_b == 0.0
+        assert target.entry.capabilities.tool_calling is False
+        assert target.entry.benchmarks == {}
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance", return_value="bench-temp-hf")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_takes_precedence_over_catalog(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """HF repo path is checked before catalog lookup for strings with '/'."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Model-4bit"
+
+        # Even if load_catalog would match, the '/' check should resolve first
+        target = resolve_target("mlx-community/Model-4bit")
+        assert target.model_id == "mlx-community/Model-4bit"
+        assert target.is_running_tier is False
+
+
+# --------------------------------------------------------------------------- #
+# Test: _make_synthetic_entry
+# --------------------------------------------------------------------------- #
+
+
+class TestMakeSyntheticEntry:
+    """Tests for _make_synthetic_entry."""
+
+    def test_creates_entry_with_repo_name(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("mlx-community/Phi-5-Mini-4bit")
+        assert entry.id == "mlx-community/Phi-5-Mini-4bit"
+        assert entry.name == "Phi-5-Mini-4bit"
+        assert entry.family == "unknown"
+        assert entry.params_b == 0.0
+
+    def test_creates_entry_without_slash(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("some-model")
+        assert entry.id == "some-model"
+        assert entry.name == "some-model"
+
+    def test_entry_has_safe_defaults(self) -> None:
+        from mlx_stack.core.benchmark import _make_synthetic_entry
+
+        entry = _make_synthetic_entry("org/model")
+        assert entry.capabilities.tool_calling is False
+        assert entry.capabilities.thinking is False
+        assert entry.benchmarks == {}
+        assert entry.tags == []
+        assert entry.sources == {}
+
+
+# --------------------------------------------------------------------------- #
+# Test: _resolve_hf_repo_model_source
+# --------------------------------------------------------------------------- #
+
+
+class TestResolveHfRepoModelSource:
+    """Tests for _resolve_hf_repo_model_source."""
+
+    def test_returns_local_path_when_downloaded(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        # Create the local model directory
+        models_dir = mlx_stack_home / "models"
+        model_path = models_dir / "Model-4bit"
+        model_path.mkdir(parents=True)
+        (model_path / "config.json").write_text("{}")
+
+        result = _resolve_hf_repo_model_source("mlx-community/Model-4bit")
+        assert result == str(model_path)
+
+    def test_returns_hf_repo_when_not_downloaded(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        result = _resolve_hf_repo_model_source("mlx-community/Model-4bit")
+        assert result == "mlx-community/Model-4bit"
+
+    def test_handles_no_slash_in_repo(self, mlx_stack_home: Path) -> None:
+        from mlx_stack.core.benchmark import _resolve_hf_repo_model_source
+
+        result = _resolve_hf_repo_model_source("some-model")
+        assert result == "some-model"
+
 
 # --------------------------------------------------------------------------- #
 # Test: run_benchmark (integration-level with mocks)
@@ -1358,3 +1527,129 @@ class TestRunBenchmark:
 
         run_benchmark("test", save=True)
         mock_save.assert_called_once()
+
+
+# --------------------------------------------------------------------------- #
+# Test: Service name sanitization for HF repo benchmarks
+# --------------------------------------------------------------------------- #
+
+
+class TestServiceNameSanitization:
+    """Tests that service names for HF repo benchmarks are filesystem-safe.
+
+    HF repo IDs contain '/' (e.g., ``mlx-community/Model-4bit``) which is
+    invalid in filesystem paths. Since service_name is used by process.py
+    for PID files (``<service_name>.pid``) and log files
+    (``<service_name>.log``), the name must be sanitized.
+    """
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_service_name_has_no_slash(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """Service name passed to _start_temp_instance must not contain '/'."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Model-4bit"
+        mock_start.return_value = "bench-temp-mlx-community--Model-4bit"
+
+        target = resolve_target("mlx-community/Model-4bit")
+
+        # The resulting temp_service_name must be filesystem-safe
+        mock_start.assert_called_once()
+        assert target.temp_service_name is not None
+        assert "/" not in target.temp_service_name
+
+    @patch("mlx_stack.core.benchmark._find_running_tier", return_value=None)
+    @patch("mlx_stack.core.benchmark._get_used_ports", return_value={4000})
+    @patch("mlx_stack.core.benchmark._find_temp_port", return_value=8100)
+    @patch("mlx_stack.core.benchmark._start_temp_instance")
+    @patch("mlx_stack.core.benchmark._resolve_hf_repo_model_source")
+    def test_hf_repo_service_name_no_path_unsafe_chars(
+        self,
+        mock_hf_source: MagicMock,
+        mock_start: MagicMock,
+        mock_port: MagicMock,
+        mock_used: MagicMock,
+        mock_tier: MagicMock,
+    ) -> None:
+        """Service name must not contain characters unsafe for filesystem paths."""
+        from mlx_stack.core.benchmark import resolve_target
+
+        mock_hf_source.return_value = "mlx-community/Phi-5-Mini-4bit"
+        mock_start.return_value = "bench-temp-mlx-community--Phi-5-Mini-4bit"
+
+        target = resolve_target("mlx-community/Phi-5-Mini-4bit")
+
+        # Check for common path-unsafe characters
+        assert target.temp_service_name is not None
+        unsafe_chars = "/\x00"
+        for char in unsafe_chars:
+            assert char not in target.temp_service_name, (
+                f"Service name contains unsafe character {char!r}: "
+                f"{target.temp_service_name!r}"
+            )
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_start_temp_instance_service_name_is_filesystem_safe(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+    ) -> None:
+        """_start_temp_instance returns a service_name without '/' characters."""
+        from mlx_stack.core.benchmark import _make_synthetic_entry, _start_temp_instance
+
+        entry = _make_synthetic_entry("mlx-community/DeepSeek-R1-4bit")
+        service_name = _start_temp_instance(
+            "mlx-community/DeepSeek-R1-4bit", 8100, entry, "int4"
+        )
+
+        assert "/" not in service_name
+        # Verify the service_name is usable as a filename
+        assert service_name.startswith("bench-temp-")
+        # Also verify that start_service received the safe name
+        mock_start.assert_called_once()
+        call_kwargs = mock_start.call_args
+        svc_name_arg = (
+            call_kwargs[1]["service_name"]
+            if "service_name" in call_kwargs[1]
+            else call_kwargs[0][0]
+        )
+        assert "/" not in svc_name_arg
+
+    @patch("mlx_stack.core.benchmark.wait_for_healthy")
+    @patch("mlx_stack.core.benchmark.start_service")
+    @patch("mlx_stack.core.benchmark.ensure_dependency")
+    @patch("mlx_stack.core.benchmark.shutil.which", return_value="/usr/local/bin/vllm-mlx")
+    def test_catalog_model_service_name_unchanged(
+        self,
+        mock_which: MagicMock,
+        mock_deps: MagicMock,
+        mock_start: MagicMock,
+        mock_health: MagicMock,
+        sample_entry: CatalogEntry,
+    ) -> None:
+        """Catalog model IDs (no '/') produce unchanged service names."""
+        from mlx_stack.core.benchmark import _start_temp_instance
+
+        service_name = _start_temp_instance(
+            "mlx-community/Qwen3.5-8B-4bit", 8100, sample_entry, "int4"
+        )
+
+        # Catalog entry id is "qwen3.5-8b" (no slash), so name should be as-is
+        assert service_name == "bench-temp-qwen3.5-8b"
+        assert "/" not in service_name

@@ -1,0 +1,53 @@
+{
+  "groupId": "group-d",
+  "surface": "cli",
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-016",
+      "status": "pass",
+      "reason": "CliRunner invocation of `pull` without MODEL returned non-zero exit and printed Click usage plus 'Missing argument \"MODEL\"'.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-d/VAL-PULL-016-cli.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-017",
+      "status": "pass",
+      "reason": "Targeted unit assertion `TestPullHfRepo::test_hf_repo_and_catalog_separate_inventory` passed, validating separate inventory entries for catalog ID and HF repo pulls.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-d/VAL-PULL-017-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-018",
+      "status": "pass",
+      "reason": "`pull --help` output explicitly documents catalog ID or HuggingFace repo (`org/model`) input formats.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-d/VAL-PULL-018-help.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-019",
+      "status": "pass",
+      "reason": "Targeted unit assertion `TestPullHfRepo::test_hf_repo_bench_runs_benchmark` passed, confirming benchmark flow after HF repo pull.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-d/VAL-PULL-019-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-020",
+      "status": "pass",
+      "reason": "Targeted unit assertion `TestPullHfRepo::test_hf_repo_force_redownloads` passed, confirming `--force` re-download behavior for existing HF repo models.",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-d/VAL-PULL-020-pytest.txt"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": [
+    "execute",
+    "uv run python (CliRunner)",
+    "uv run pytest"
+  ]
+}

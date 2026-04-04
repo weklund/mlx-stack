@@ -1,0 +1,15 @@
+{
+  "featureId": "fix-status-estimate-indicator",
+  "reviewedAt": "2026-04-04T20:24:27Z",
+  "commitId": "a477711",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The fix directly resolves the prior VAL-STATUS-008 failure by preserving `is_estimate` through profile serialization/deserialization and exposing that metadata in `status --json`. Compared with the original failing commit (`f684034`), which hardcoded `is_estimate=False` in `load_profile()`, commit `a477711` now reads `is_estimate` from profile JSON (with a backward-compatible default), so table output can correctly show `(estimate)` for estimated bandwidth.",
+    "issues": []
+  },
+  "sharedStateObservations": [],
+  "addressesFailureFrom": "/Users/weae1504/Projects/mlx-stack/.factory/validation/absorb-profile/scrutiny/reviews/absorb-profile-into-status.json",
+  "summary": "Review result: PASS. The fix adequately addresses the original failure by preserving estimate metadata end-to-end and leaving no blocking issues for estimate indication behavior."
+}

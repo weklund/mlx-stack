@@ -1,0 +1,238 @@
+{
+  "groupId": "setup-mod-core",
+  "testedAt": "2026-04-04T22:09:11.695149+00:00",
+  "isolation": {
+    "home": "/tmp/mlx-utv-setup-mod-core",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv",
+    "pytest"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-SETUP-001",
+      "title": "--add with HF repo adds model to existing stack",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Seed existing default stack with two tiers",
+          "expected": "Stack exists before modification",
+          "observed": "Created stack.yaml and litellm.yaml in isolated MLX_STACK_HOME"
+        },
+        {
+          "action": "Run `mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit`",
+          "expected": "Exit 0 and append new tier without wizard",
+          "observed": "Exit 0; tier count=3; wizard_steps_present=False"
+        },
+        {
+          "action": "Inspect updated config files",
+          "expected": "stack and litellm both reflect added tier and guidance printed",
+          "observed": "newTierSource=mlx-community/Phi-4-mini-instruct-4bit; litellmModelCount=3; mlx-stack up mentioned=True"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-001-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-001-stack.yaml",
+          "setup-modification/setup-mod-core/VAL-SETUP-001-litellm.yaml"
+        ]
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --add mlx-community/Phi-4-mini-instruct-4bit"
+      ],
+      "issues": null,
+      "reason": "Pass: command exited 0, added HF repo tier to stack and litellm, printed mlx-stack up guidance, and did not enter wizard flow."
+    },
+    {
+      "id": "VAL-SETUP-002",
+      "title": "--add with catalog ID adds model to existing stack",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Seed existing default stack with two tiers",
+          "expected": "Stack exists before modification",
+          "observed": "Created stack.yaml and litellm.yaml in isolated MLX_STACK_HOME"
+        },
+        {
+          "action": "Run `mlx-stack setup --add qwen3.5-8b`",
+          "expected": "Catalog id resolves to HF source and tier is added",
+          "observed": "Exit 0; tier count=3"
+        },
+        {
+          "action": "Inspect added tier fields",
+          "expected": "model=qwen3.5-8b and source resolves to catalog HF repo for qwen3.5-8b",
+          "observed": "model=qwen3.5-8b; source=mlx-community/Qwen3.5-8B-4bit"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-002-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-002-stack.yaml",
+          "setup-modification/setup-mod-core/VAL-SETUP-002-litellm.yaml"
+        ]
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --add qwen3.5-8b"
+      ],
+      "issues": null,
+      "reason": "Pass: catalog ID resolved to its configured HF repo and new tier was added with expected model id."
+    },
+    {
+      "id": "VAL-SETUP-003",
+      "title": "--add --as assigns custom tier name",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Seed existing default stack with two tiers",
+          "expected": "Stack exists before modification",
+          "observed": "Created stack.yaml and litellm.yaml in isolated MLX_STACK_HOME"
+        },
+        {
+          "action": "Run `mlx-stack setup --add mlx-community/SomeModel-4bit --as reasoning`",
+          "expected": "Exit 0 and new tier is named reasoning",
+          "observed": "Exit 0; tier names=['standard', 'fast', 'reasoning']"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-003-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-003-stack.yaml",
+          "setup-modification/setup-mod-core/VAL-SETUP-003-litellm.yaml"
+        ]
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --add mlx-community/SomeModel-4bit --as reasoning"
+      ],
+      "issues": null,
+      "reason": "Pass: command exited 0 and resulting stack contains tier name reasoning."
+    },
+    {
+      "id": "VAL-SETUP-004",
+      "title": "--remove removes existing tier",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Seed existing default stack with [standard, fast]",
+          "expected": "Target tier fast exists",
+          "observed": "Created stack.yaml and litellm.yaml in isolated MLX_STACK_HOME"
+        },
+        {
+          "action": "Run `mlx-stack setup --remove fast`",
+          "expected": "Exit 0 and remove fast tier from stack and litellm",
+          "observed": "Exit 0; stack tiers=['standard']; litellm model_names=['standard']"
+        },
+        {
+          "action": "Review output guidance",
+          "expected": "Output confirms removal and says to run mlx-stack up",
+          "observed": "mentionsRemoved=True; mentionsMlxStackUp=True"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-004-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-004-stack.yaml",
+          "setup-modification/setup-mod-core/VAL-SETUP-004-litellm.yaml"
+        ]
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --remove fast"
+      ],
+      "issues": null,
+      "reason": "Pass: fast tier removed from both stack.yaml and litellm.yaml, and output confirmed removal plus mlx-stack up guidance."
+    },
+    {
+      "id": "VAL-SETUP-005",
+      "title": "--remove nonexistent tier produces error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Seed existing default stack with [standard, fast]",
+          "expected": "Valid tier list is available for validation message",
+          "observed": "Created stack.yaml and litellm.yaml in isolated MLX_STACK_HOME"
+        },
+        {
+          "action": "Run `mlx-stack setup --remove nonexistent`",
+          "expected": "Non-zero exit and output includes invalid tier + valid options",
+          "observed": "Exit 1; contains_nonexistent=True; contains_valid_names=True"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-005-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-005-stack.yaml",
+          "setup-modification/setup-mod-core/VAL-SETUP-005-litellm.yaml"
+        ]
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --remove nonexistent"
+      ],
+      "issues": null,
+      "reason": "Pass: command failed as expected and error output included invalid tier plus valid tier names."
+    },
+    {
+      "id": "VAL-SETUP-011",
+      "title": "--add on nonexistent stack produces error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run add command without seeding existing stack",
+          "expected": "Modification path rejects missing stack and guides to setup",
+          "observed": "Exit 1; no_existing_stack_msg=True; setup_guidance=True"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-011-command.txt"
+        ],
+        "files": []
+      },
+      "commandsRun": [
+        "uv run mlx-stack setup --add mlx-community/Model-4bit"
+      ],
+      "issues": null,
+      "reason": "Pass: command failed as expected when no existing stack was present and output guided running setup first."
+    },
+    {
+      "id": "VAL-SETUP-012",
+      "title": "Wizard flow unchanged with no modification flags",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for wizard unchanged behavior",
+          "expected": "Test passes and confirms Hardware/Model Selection/Tier Assignment/Starting Stack output",
+          "observed": "Exit 0; see pytest output evidence"
+        }
+      ],
+      "evidence": {
+        "terminalSnapshots": [
+          "setup-modification/setup-mod-core/VAL-SETUP-012-command.txt"
+        ],
+        "files": [
+          "setup-modification/setup-mod-core/VAL-SETUP-012-wizard-output.txt"
+        ]
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupWizardUnchanged::test_wizard_flow_runs_normally -q",
+        "uv run python (invoke tests.unit.test_cli_setup._run_setup([\"--accept-defaults\"]) to capture wizard output)"
+      ],
+      "issues": null,
+      "reason": "Pass: targeted pytest passed and captured mocked setup CLI output includes Hardware, Model Selection, Tier Assignment, and Starting Stack sections."
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 7 assertions: 7 passed, 0 failed, 0 blocked."
+}

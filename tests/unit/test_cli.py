@@ -21,11 +21,8 @@ class TestCLIHelp:
     def test_help_shows_command_names(self) -> None:
         runner = CliRunner()
         result = runner.invoke(cli, ["--help"])
-        # All planned commands should appear in help output
+        # All registered commands should appear in help output
         for cmd in [
-            "profile",
-            "recommend",
-            "init",
             "pull",
             "models",
             "up",
@@ -35,6 +32,21 @@ class TestCLIHelp:
             "config",
         ]:
             assert cmd in result.output, f"Command '{cmd}' not found in --help output"
+
+    def test_help_does_not_show_removed_commands(self) -> None:
+        """VAL-STATUS-002 / VAL-MODELS-014: Removed commands not in --help."""
+        runner = CliRunner()
+        result = runner.invoke(cli, ["--help"])
+        # profile, init, recommend should NOT appear as command listings
+        lines = result.output.splitlines()
+        command_lines = [
+            line.strip().split()[0]
+            for line in lines
+            if line.strip() and not line.strip().startswith(("-", "Usage", "Options", "mlx"))
+        ]
+        assert "profile" not in command_lines
+        assert "init" not in command_lines
+        assert "recommend" not in command_lines
 
     def test_help_shows_categories(self) -> None:
         runner = CliRunner()
@@ -119,14 +131,15 @@ class TestUnknownCommand:
 
     def test_typo_suggests_close_match(self) -> None:
         runner = CliRunner()
-        result = runner.invoke(cli, ["proflie"])
-        assert "profile" in result.output
+        result = runner.invoke(cli, ["statu"])
+        assert "status" in result.output
         assert "Did you mean" in result.output
 
-    def test_typo_suggest_init(self) -> None:
+    def test_typo_does_not_suggest_init(self) -> None:
+        """VAL-CROSS-003: Typo suggestions exclude deleted commands."""
         runner = CliRunner()
         result = runner.invoke(cli, ["inti"])
-        assert "init" in result.output
+        assert "init" not in result.output
 
     def test_typo_suggest_status(self) -> None:
         runner = CliRunner()

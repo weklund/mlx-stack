@@ -1,0 +1,165 @@
+{
+  "groupId": "setup-combined-edge",
+  "testedAt": "2026-04-04T22:09:24.013380+00:00",
+  "isolation": {
+    "home": "/tmp/mlx-utv-setup-combined-edge",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53"
+  },
+  "toolsUsed": [
+    "shell",
+    "pytest"
+  ],
+  "commandsRun": [
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAndRemoveCombined::test_add_and_remove_in_same_invocation -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupModelMutualExclusivity::test_model_with_add_errors tests/unit/test_cli_setup.py::TestSetupModelMutualExclusivity::test_model_with_remove_errors -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAsFlag::test_as_without_add_errors -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAsFlag::test_add_with_duplicate_as_errors -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_overwrites_existing_stack -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_all_tiers_errors -vv -rA --tb=short",
+    "HOME=/tmp/mlx-utv-setup-combined-edge MLX_STACK_HOME=/tmp/mlx-utv-setup-combined-edge/.mlx-stack uv run pytest tests/unit/test_cli_setup.py::TestSetupAddMultiple::test_add_two_models -vv -rA --tb=short"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-SETUP-013",
+      "title": "--add + --remove in same invocation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for combined --add and --remove behavior",
+          "expected": "Test passes, proving fast tier removed and new tier added atomically",
+          "observed": "PASSED: TestSetupAddAndRemoveCombined::test_add_and_remove_in_same_invocation"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-013-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAndRemoveCombined::test_add_and_remove_in_same_invocation -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-014",
+      "title": "--model conflicts with --add/--remove",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for --model + --add conflict",
+          "expected": "Command errors due to mutual exclusivity",
+          "observed": "PASSED: TestSetupModelMutualExclusivity::test_model_with_add_errors"
+        },
+        {
+          "action": "Run targeted pytest for --model + --remove conflict",
+          "expected": "Command errors due to mutual exclusivity",
+          "observed": "PASSED: TestSetupModelMutualExclusivity::test_model_with_remove_errors"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-014-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelMutualExclusivity::test_model_with_add_errors tests/unit/test_cli_setup.py::TestSetupModelMutualExclusivity::test_model_with_remove_errors -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-015",
+      "title": "--as without --add produces error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for --as dependency on --add",
+          "expected": "Command fails and indicates --as requires --add",
+          "observed": "PASSED: TestSetupAddAsFlag::test_as_without_add_errors"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-015-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAsFlag::test_as_without_add_errors -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-016",
+      "title": "--add with duplicate tier name errors",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for duplicate tier name via --as",
+          "expected": "Command fails and reports duplicate tier name",
+          "observed": "PASSED: TestSetupAddAsFlag::test_add_with_duplicate_as_errors"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-016-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddAsFlag::test_add_with_duplicate_as_errors -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-017",
+      "title": "--model overwrites existing stack",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for --model overwrite behavior",
+          "expected": "Existing multi-tier stack replaced with a single standard tier",
+          "observed": "PASSED: TestSetupModelHfRepo::test_model_hf_repo_overwrites_existing_stack"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-017-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupModelHfRepo::test_model_hf_repo_overwrites_existing_stack -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-018",
+      "title": "--remove all tiers produces error",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for removing the only tier",
+          "expected": "Command fails and keeps stack non-empty",
+          "observed": "PASSED: TestSetupRemove::test_remove_all_tiers_errors"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-018-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupRemove::test_remove_all_tiers_errors -vv -rA --tb=short"
+      ],
+      "issues": null
+    },
+    {
+      "id": "VAL-SETUP-019",
+      "title": "Multiple --add flags in one invocation",
+      "status": "pass",
+      "steps": [
+        {
+          "action": "Run targeted pytest for repeated --add flags",
+          "expected": "Two models are added in one command",
+          "observed": "PASSED: TestSetupAddMultiple::test_add_two_models"
+        }
+      ],
+      "evidence": {
+        "commandOutput": "setup-modification/setup-combined-edge/VAL-SETUP-019-pytest.txt"
+      },
+      "commandsRun": [
+        "uv run pytest tests/unit/test_cli_setup.py::TestSetupAddMultiple::test_add_two_models -vv -rA --tb=short"
+      ],
+      "issues": null
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 7 assertions (VAL-SETUP-013..019): 7 passed, 0 failed, 0 blocked."
+}

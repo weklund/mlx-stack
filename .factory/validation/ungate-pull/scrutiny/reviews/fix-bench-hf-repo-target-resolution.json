@@ -1,0 +1,39 @@
+{
+  "featureId": "fix-bench-hf-repo-target-resolution",
+  "reviewedAt": "2026-04-04T19:39:35.949294000Z",
+  "commitId": "5c0808914246fea12c822d13880d5e789761ffb9",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "The fix adds HF repo target detection in benchmark resolution and improves the prior mocked pull --bench test, but a new blocking runtime bug prevents HF repo benchmarks from starting temporary instances reliably.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/core/benchmark.py",
+        "line": 795,
+        "severity": "blocking",
+        "description": "HF repo targets keep '/' in entry.id (resolve_target builds entry from the raw target at lines 1054-1057), and _start_temp_instance derives service_name directly from entry.id. That produces names like 'bench-temp-mlx-community/Model-4bit'. The process layer uses service_name in file paths (src/mlx_stack/core/process.py:575 for logs and :160 for PID files) without creating intermediate directories, so startup can fail with file path errors before the temp benchmark server is healthy. This means 'mlx-stack bench <hf-repo>' is still not reliably functional in real execution."
+      },
+      {
+        "file": "tests/unit/test_benchmark.py",
+        "line": 1144,
+        "severity": "non_blocking",
+        "description": "New HF repo resolve_target tests patch _start_temp_instance, and CLI bench HF repo tests patch run_benchmark (tests/unit/test_cli_bench.py:710). These mocks validate control flow but not filesystem-safe service-name behavior, so the runtime failure path above is untested."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Shared guidance does not explicitly state that dynamically generated service names must be filesystem-safe, even though service_name is used as a filename stem for PID/log files.",
+      "evidence": "AGENTS.md and .factory/library/architecture.md do not mention this constraint; code path uses benchmark.py:795 -> process.py:575 and process.py:160."
+    },
+    {
+      "area": "skills",
+      "observation": "cli-worker skill mandates test-first (TDD), but the fix transcript skeleton shows implementation edits before adding/adjusting tests; procedure adherence feedback may be too permissive.",
+      "evidence": "cli-worker SKILL.md Step 3 says write failing tests first; transcript skeleton shows edits to src/mlx_stack/core/benchmark.py and CLI files before test additions/updates."
+    }
+  ],
+  "addressesFailureFrom": ".factory/validation/ungate-pull/scrutiny/reviews/ungate-pull-command.json",
+  "summary": "Fix review failed: while HF repo target resolution was added and prior test strategy improved, a blocking service-name/path bug means HF repo benchmarks can still fail at temp instance startup. The original failure is only partially addressed."
+}
