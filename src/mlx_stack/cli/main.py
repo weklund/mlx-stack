@@ -32,6 +32,144 @@ from mlx_stack.cli.watch import watch as watch_command
 
 console = Console(stderr=True)
 
+# ASCII banner — block-character logo, each row is (color, text) pairs
+# Visual width: ~78 columns, fits 80-col terminals
+_BANNER_LINES = [
+    ("cyan", "  ███╗   ███╗ ██╗     ██╗  ██╗"),
+    ("white", "  ███████╗████████╗ █████╗  ██████╗██╗  ██╗"),
+    ("cyan", "  ████╗ ████║ ██║     ╚██╗██╔╝"),
+    ("white", "  ██╔════╝╚══██╔══╝██╔══██╗██╔════╝██║ ██╔╝"),
+    ("cyan", "  ██╔████╔██║ ██║      ╚███╔╝ "),
+    ("white", "  ███████╗   ██║   ███████║██║     █████╔╝ "),
+    ("cyan", "  ██║╚██╔╝██║ ██║      ██╔██╗ "),
+    ("white", "  ╚════██║   ██║   ██╔══██║██║     ██╔═██╗ "),
+    ("cyan", "  ██║ ╚═╝ ██║ ███████╗██╔╝ ██╗"),
+    ("white", " ███████║   ██║   ██║  ██║╚██████╗██║  ██╗"),
+    ("cyan", "  ╚═╝     ╚═╝ ╚══════╝╚═╝  ╚═╝"),
+    ("white", " ╚══════╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝"),
+]
+
+# Command categories and their members
+_COMMAND_CATEGORIES: dict[str, list[str]] = {
+    "Setup & Configuration": ["setup", "profile", "config", "init"],
+    "Model Management": ["recommend", "models", "pull"],
+    "Stack Lifecycle": ["up", "down", "status", "watch", "install", "uninstall"],
+    "Diagnostics": ["bench", "logs"],
+}
+
+
+def _get_quick_status() -> list[tuple[str, str]]:
+    """Gather lightweight, read-only status info.
+
+    Only reads files that already exist — never creates directories.
+    Returns a list of (label, value) pairs for display.
+    """
+    items: list[tuple[str, str]] = []
+
+    # Chip — read profile.json if it exists
+    try:
+        from mlx_stack.core.paths import get_profile_path
+
+        profile_path = get_profile_path()
+        if profile_path.exists():
+            from mlx_stack.core.hardware import load_profile
+
+            profile = load_profile()
+            if profile:
+                mem = f"{profile.memory_gb}GB"
+                items.append(("Chip", f"{profile.chip}  {mem} unified"))
+    except Exception:
+        pass
+
+    # Stack — check if a stack definition exists
+    try:
+        from mlx_stack.core.paths import get_stacks_dir
+
+        stack_dir = get_stacks_dir()
+        if stack_dir.exists() and (stack_dir / "default.yaml").exists():
+            items.append(("Stack", "configured"))
+        else:
+            items.append(("Stack", "not configured"))
+    except Exception:
+        pass
+
+    return items
+
+
+def _render_welcome(ctx: click.Context, group: RichGroup) -> None:
+    """Render the branded welcome screen for bare `mlx-stack` invocation."""
+    out = Console()
+
+    # Banner
+    out.print()
+    for i in range(0, len(_BANNER_LINES), 2):
+        left_color, left_text = _BANNER_LINES[i]
+        right_color, right_text = _BANNER_LINES[i + 1]
+        line = Text(left_text, style=f"bold {left_color}")
+        line.append(right_text, style=f"bold {right_color}")
+        out.print(line, highlight=False)
+    out.print()
+
+    # Version line
+    ver_line = Text("  v" + __version__, style="dim")
+    ver_line.append("  ")
+    ver_line.append("Local LLM infrastructure on Apple Silicon", style="italic")
+    out.print(ver_line)
+    out.print()
+
+    # Quick status (read-only, best-effort)
+    status_items = _get_quick_status()
+    if status_items:
+        for label, value in status_items:
+            line = Text(f"  {label}: ", style="bold")
+            style = "green" if value != "not configured" else "yellow"
+            line.append(value, style=style)
+            out.print(line)
+        out.print()
+
+    # Grouped commands
+    commands = group.list_commands(ctx)
+    if commands:
+        for category_name, cmd_names in _COMMAND_CATEGORIES.items():
+            cmds_in_cat = []
+            for cmd_name in cmd_names:
+                if cmd_name in commands:
+                    cmd = group.get_command(ctx, cmd_name)
+                    if cmd:
+                        cmds_in_cat.append(
+                            (cmd_name, cmd.get_short_help_str(limit=60))
+                        )
+            if not cmds_in_cat:
+                continue
+
+            out.print(Text(f"  {category_name}", style="bold yellow"))
+            cmd_table = Table(
+                show_header=False,
+                box=None,
+                padding=(0, 2),
+                pad_edge=False,
+            )
+            cmd_table.add_column(style="green", min_width=14)
+            cmd_table.add_column(style="dim")
+            for name, help_text in cmds_in_cat:
+                cmd_table.add_row(f"    {name}", help_text)
+            out.print(cmd_table)
+            out.print()
+
+    # Get started nudge
+    if not status_items or all(v == "not configured" for _, v in status_items):
+        out.print(
+            Text("  Get started: ", style="bold")
+            + Text("mlx-stack setup", style="bold cyan")
+        )
+    else:
+        out.print(
+            Text("  Run ", style="dim")
+            + Text("mlx-stack <command> --help", style="dim bold")
+            + Text(" for details on any command.", style="dim")
+        )
+    out.print()
+
 
 class RichGroup(click.Group):
     """Custom Click Group with Rich-formatted help and typo suggestions."""
@@ -65,52 +203,24 @@ class RichGroup(click.Group):
         # Commands grouped by category
         commands = self.list_commands(ctx)
         if commands:
-            # Group commands by category
-            categories: dict[str, list[tuple[str, str]]] = {
-                "Setup & Configuration": [],
-                "Model Management": [],
-                "Stack Lifecycle": [],
-                "Diagnostics": [],
-            }
-
-            command_categories = {
-                "setup": "Setup & Configuration",
-                "profile": "Setup & Configuration",
-                "config": "Setup & Configuration",
-                "init": "Setup & Configuration",
-                "recommend": "Model Management",
-                "models": "Model Management",
-                "pull": "Model Management",
-                "up": "Stack Lifecycle",
-                "down": "Stack Lifecycle",
-                "status": "Stack Lifecycle",
-                "watch": "Stack Lifecycle",
-                "install": "Stack Lifecycle",
-                "uninstall": "Stack Lifecycle",
-                "bench": "Diagnostics",
-                "logs": "Diagnostics",
-            }
-
-            for cmd_name in commands:
-                cmd = self.get_command(ctx, cmd_name)
-                if cmd is None:
+            for category_name, cmd_names in _COMMAND_CATEGORIES.items():
+                cmds_in_cat = []
+                for cmd_name in cmd_names:
+                    if cmd_name in commands:
+                        cmd = self.get_command(ctx, cmd_name)
+                        if cmd:
+                            cmds_in_cat.append(
+                                (cmd_name, cmd.get_short_help_str(limit=80))
+                            )
+                if not cmds_in_cat:
                     continue
-                help_text = cmd.get_short_help_str(limit=80)
-                category = command_categories.get(cmd_name, "Other")
-                if category in categories:
-                    categories[category].append((cmd_name, help_text))
-                else:
-                    categories.setdefault("Other", []).append((cmd_name, help_text))
 
-            for category_name, cmds in categories.items():
-                if not cmds:
-                    continue
                 console_out.print(Text(f"{category_name}:", style="bold yellow"))
                 cmd_table = Table(show_header=False, box=None, padding=(0, 2))
                 cmd_table.add_column(style="green", min_width=20)
                 cmd_table.add_column()
-                for cmd_name, help_text in cmds:
-                    cmd_table.add_row(cmd_name, help_text)
+                for name, help_text in cmds_in_cat:
+                    cmd_table.add_row(name, help_text)
                 console_out.print(cmd_table)
                 console_out.print()
 
@@ -160,7 +270,7 @@ def version_callback(ctx: click.Context, _param: click.Parameter, value: bool) -
 def cli(ctx: click.Context) -> None:
     """CLI control plane for local LLM infrastructure on Apple Silicon."""
     if ctx.invoked_subcommand is None:
-        click.echo(ctx.get_help())
+        _render_welcome(ctx, ctx.command)  # type: ignore[arg-type]
 
 
 # --- Placeholder commands for planned features ---
