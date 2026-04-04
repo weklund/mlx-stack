@@ -44,6 +44,14 @@ Data Layer (src/mlx_stack/data/)
 5. **Config generation** → `stack.yaml` (tier definitions) + `litellm.yaml` (proxy config)
 6. **Process management** → vllm-mlx subprocesses + LiteLLM proxy process
 
+## Stack Tier Field Semantics
+
+- `stack.yaml` tier objects use:
+  - `name`: tier identifier (e.g., `standard`, `fast`, `reasoning`)
+  - `model`: canonical model identifier used by mlx-stack logic
+  - `source`: concrete model source for runtime/download
+- For catalog-backed tiers, keep `model` as the catalog model ID (for example `qwen3.5-8b`) rather than a display label, and keep the resolved Hugging Face repo in `source`.
+
 ## Key Files for This Mission
 
 - `cli/main.py` — Command registration, `_COMMAND_CATEGORIES`, welcome screen, help formatting

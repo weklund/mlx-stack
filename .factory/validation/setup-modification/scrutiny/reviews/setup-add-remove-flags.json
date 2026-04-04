@@ -1,0 +1,39 @@
+{
+  "featureId": "setup-add-remove-flags",
+  "reviewedAt": "2026-04-04T21:51:04.255774+00:00",
+  "commitId": "5289f164f7a2ee9101cc85895e1d5c9fbc80a116",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation is close, but catalog-ID adds persist a display label instead of the model ID in stack tiers, which can break downstream model identifier usage and fails VAL-SETUP-002's 'correct model' requirement.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/setup.py",
+        "line": 313,
+        "severity": "blocking",
+        "description": "For catalog IDs, _resolve_model_source() returns entry.name rather than entry.id (return source.hf_repo, entry.name). _modify_stack() then writes this value into tiers[].model (line ~433), so setup --add qwen3.5-8b stores a human label (e.g., 'Qwen 3.5 8B') instead of the canonical model ID. This violates existing stack_init semantics (core/stack_init.py uses entry.id for tiers[].model), does not satisfy VAL-SETUP-002's 'correct model' field expectation, and can produce invalid/unstable model identifiers in downstream configs and messages."
+      },
+      {
+        "file": "tests/unit/test_cli_setup.py",
+        "line": 381,
+        "severity": "non_blocking",
+        "description": "test_add_catalog_id_resolves_and_adds verifies source resolution but does not assert the new tier's model field. This allowed the catalog-ID model regression above to pass tests despite VAL-SETUP-002 requiring correct model fields."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission docs don't explicitly state the semantic contract for tiers[].model (canonical model ID vs display label), which makes it easy to drift from existing behavior during setup-path modifications.",
+      "evidence": "core/stack_init.py:191 sets tiers[].model = entry.id, while this feature's setup add path uses entry.name (src/mlx_stack/cli/setup.py:313,433). AGENTS.md only says not to change schema structure, not the model-field semantic invariant."
+    },
+    {
+      "area": "skills",
+      "observation": "The cli-worker skill procedure emphasizes behavior-level tests but not explicit validation-contract field assertions, which can miss contract-specific data-shape requirements.",
+      "evidence": "validation-contract VAL-SETUP-002 requires a new tier with correct model and source fields; committed test test_add_catalog_id_resolves_and_adds (tests/unit/test_cli_setup.py around lines 381-398) checks source only."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, transcript skeleton, skill guidance, and commit 5289f164. Found a blocking correctness issue in catalog-ID add handling: stack tiers store display names instead of canonical model IDs. Report marked fail pending fix."
+}

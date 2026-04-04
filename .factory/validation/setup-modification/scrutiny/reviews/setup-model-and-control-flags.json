@@ -1,0 +1,34 @@
+{
+  "featureId": "setup-model-and-control-flags",
+  "reviewedAt": "2026-04-04T21:51:11Z",
+  "commitId": "df7a5533998fd6fc56021a9001ad02f5f63d1258",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "Implementation covers most flag mechanics (`--model`, `--no-pull`, `--no-start`, catalog/HF resolution, and exclusivity), but plain `setup --model` still auto-starts services and only prints `mlx-stack up` guidance when startup is skipped. This conflicts with the feature's expected guidance behavior for `--model` and the mission convention for setup modification flows.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/setup.py",
+        "line": 630,
+        "severity": "blocking",
+        "description": "`_single_model_setup()` starts the stack by default (`if not no_start: ... start_stack()`), and guidance to run `mlx-stack up` is gated behind `if no_pull or no_start` (line 665). Expected behavior specifies next-step guidance for `--model`, and mission guidance states setup modification flows (`--add/--remove/--model`) should not auto-restart services."
+      },
+      {
+        "file": "tests/unit/test_cli_setup.py",
+        "line": 826,
+        "severity": "non_blocking",
+        "description": "Tests enforce auto-start for plain `--model` (`test_model_hf_repo_calls_pull_and_start`) and only assert `mlx-stack up` messaging for `--model --no-pull` / `--model --no-start` (lines 935 and 972). There is no coverage for required default `--model` guidance behavior."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission guidance and feature implementation expectations are inconsistent for `setup --model` startup behavior, which can cause workers/tests to optimize for contradictory outcomes.",
+      "evidence": "AGENTS.md line 32 says: \"No auto-restart... after setup --add/--remove/--model... Do not start or restart services.\" But `src/mlx_stack/cli/setup.py` lines 630-637 auto-start in `_single_model_setup`, and tests at `tests/unit/test_cli_setup.py:826-841` assert this auto-start behavior."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Reviewed handoff, commit df7a553, and transcript skeleton for worker session dc319aa3-ddd9-45ae-bda8-aeaf1cc2d722. The feature is close, but plain `--model` behavior conflicts with expected/model-flow guidance and mission convention around startup control, so this review is marked fail pending alignment."
+}
