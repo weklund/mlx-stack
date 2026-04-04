@@ -14,8 +14,7 @@ Most local LLM tools serve **one model at a time** and leave you to figure out w
 
 ```bash
 uv tool install mlx-stack
-mlx-stack init --accept-defaults   # detects hardware, picks models, generates configs
-mlx-stack up                       # 3 model servers + API gateway, one command
+mlx-stack setup                    # detects hardware, picks models, pulls, starts — one command
 # → OpenAI-compatible API at http://localhost:4000/v1
 ```
 
@@ -141,6 +140,33 @@ uvx mlx-stack profile
 
 ## Quick Start
 
+The fastest way to get running is the interactive setup command:
+
+```bash
+mlx-stack setup
+```
+
+This walks you through hardware detection, model selection, downloading, and starting all services in one guided flow. For CI or scripting, pass `--accept-defaults` to skip all prompts:
+
+```bash
+mlx-stack setup --accept-defaults
+```
+
+The OpenAI-compatible API is now available at `http://localhost:4000/v1`.
+
+```bash
+# Check service health
+mlx-stack status
+
+# Stop everything when done
+mlx-stack down
+```
+
+<details>
+<summary>Manual step-by-step setup</summary>
+
+If you prefer full control over each step:
+
 ```bash
 # 1. Detect your hardware
 mlx-stack profile
@@ -158,16 +184,19 @@ mlx-stack up
 mlx-stack status
 ```
 
-The OpenAI-compatible API is now available at `http://localhost:4000/v1`.
-
-```bash
-# Stop everything when done
-mlx-stack down
-```
+</details>
 
 ## CLI Reference
 
 ### Setup & Configuration
+
+**`mlx-stack setup`** — Interactive guided setup: detects hardware, selects models, pulls weights, and starts the stack in one command.
+
+| Option | Description |
+|--------|-------------|
+| `--accept-defaults` | Skip all prompts and use recommended defaults |
+| `--intent <balanced\|agent-fleet>` | Use case intent (prompted if not provided) |
+| `--budget-pct <10-90>` | Memory budget as percentage of unified memory (default: 40) |
 
 | Command | Description |
 |---------|-------------|
@@ -294,7 +323,7 @@ mlx-stack is designed to run unattended on always-on hardware like a Mac Mini.
 ### Quick setup
 
 ```bash
-mlx-stack init --accept-defaults
+mlx-stack setup --accept-defaults
 mlx-stack install
 ```
 
@@ -407,14 +436,12 @@ See [DEVELOPING.md](DEVELOPING.md) for the full developer guide, including proje
 # Install dev dependencies
 uv sync
 
-# Run tests
-uv run pytest
+# Run all checks (lint + typecheck + tests) — same as CI
+make check
 
-# Type checking
-uv run python -m pyright
-
-# Linting
-uv run ruff check src/ tests/
+# Or individually
+make lint    # ruff + pyright
+make test    # pytest with coverage
 ```
 
 ## Contributing
