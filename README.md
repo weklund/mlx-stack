@@ -59,7 +59,7 @@ The watchdog monitors every service, auto-restarts crashed processes with expone
 Instead of googling "what model should I run on M4 Max with 128GB," mlx-stack profiles your chip, measures bandwidth, and scores every model in its catalog against your exact hardware:
 
 ```bash
-mlx-stack recommend --intent agent-fleet
+mlx-stack models --recommend --intent agent-fleet
 ```
 
 The recommendation engine filters models to your memory budget, scores them across speed, quality, tool-calling capability, and memory efficiency, then assigns the optimal model to each tier. Saved benchmarks from `mlx-stack bench --save` override catalog estimates for even more precise scoring.
@@ -133,7 +133,7 @@ pipx install mlx-stack
 Or try it without installing:
 
 ```bash
-uvx mlx-stack profile
+uvx mlx-stack status
 ```
 
 > **Note:** `uvx` runs in an ephemeral environment, which works great for one-off commands. For the watchdog and LaunchAgent features (`mlx-stack watch`, `mlx-stack install`), use `uv tool install` so the binary has a stable path.
@@ -168,14 +168,16 @@ mlx-stack down
 If you prefer full control over each step:
 
 ```bash
-# 1. Detect your hardware
-mlx-stack profile
+# 1. See your hardware and recommended models
+mlx-stack status
+mlx-stack models --recommend
 
-# 2. Generate stack configuration
-mlx-stack init --accept-defaults
-
-# 3. Download required models
+# 2. Download required models (catalog ID or HuggingFace repo)
 mlx-stack pull qwen3.5-8b
+mlx-stack pull mlx-community/Phi-5-Mini-4bit
+
+# 3. Configure and start the stack without auto-start
+mlx-stack setup --no-start
 
 # 4. Start all services
 mlx-stack up
@@ -190,17 +192,22 @@ mlx-stack status
 
 ### Setup & Configuration
 
-**`mlx-stack setup`** — Interactive guided setup: detects hardware, selects models, pulls weights, and starts the stack in one command.
+**`mlx-stack setup`** — Interactive guided setup: detects hardware, selects models, pulls weights, and starts the stack in one command. Also supports direct stack modification via `--add`/`--remove` and single-model quick setup via `--model`.
 
 | Option | Description |
 |--------|-------------|
 | `--accept-defaults` | Skip all prompts and use recommended defaults |
 | `--intent <balanced\|agent-fleet>` | Use case intent (prompted if not provided) |
 | `--budget-pct <10-90>` | Memory budget as percentage of unified memory (default: 40) |
+| `--add <model>` | Add a model to the existing stack (HF repo or catalog ID, repeatable) |
+| `--as <tier>` | Tier name to use for the model added via `--add` |
+| `--remove <tier>` | Remove a tier from the existing stack by name (repeatable) |
+| `--model <model>` | Single-model quick setup (HF repo or catalog ID, skips wizard) |
+| `--no-pull` | Skip model download |
+| `--no-start` | Skip stack startup after configuration |
 
 | Command | Description |
 |---------|-------------|
-| `mlx-stack profile` | Detect Apple Silicon hardware and save profile to `~/.mlx-stack/profile.json` |
 | `mlx-stack config set <key> <value>` | Set a configuration value |
 | `mlx-stack config get <key>` | Get a configuration value |
 | `mlx-stack config list` | List all configuration values with defaults and sources |
@@ -208,40 +215,29 @@ mlx-stack status
 
 ### Model Management
 
-**`mlx-stack recommend`** — Recommend an optimal model stack based on your hardware profile.
-
-| Option | Description |
-|--------|-------------|
-| `--budget <value>` | Memory budget override (e.g., `30gb`). Defaults to 40% of unified memory |
-| `--intent <balanced\|agent-fleet>` | Optimization strategy |
-| `--show-all` | Show all budget-fitting models ranked by score |
-
-**`mlx-stack models`** — List locally downloaded models with disk size, quantization, and active stack status.
+**`mlx-stack models`** — List local models or browse the catalog. Without flags, shows locally downloaded models with disk size, quantization, and source type.
 
 | Option | Description |
 |--------|-------------|
 | `--catalog` | Show all catalog models with hardware-specific benchmark data |
-| `--family <name>` | Filter by model family (e.g., `qwen3.5`) |
-| `--tag <name>` | Filter by tag (e.g., `agent-ready`) |
-| `--tool-calling` | Filter to tool-calling-capable models only |
+| `--recommend` | Show scored tier recommendations for your hardware |
+| `--available` | Query the HuggingFace API and browse available models |
+| `--budget <value>` | Memory budget override (e.g., `30gb`). Requires `--recommend` |
+| `--intent <balanced\|agent-fleet>` | Optimization strategy. Requires `--recommend` |
+| `--show-all` | Show all budget-fitting models ranked by score. Requires `--recommend` |
+| `--family <name>` | Filter by model family (e.g., `qwen3.5`). Requires `--catalog` |
+| `--tag <name>` | Filter by tag (e.g., `agent-ready`). Requires `--catalog` |
+| `--tool-calling` | Filter to tool-calling-capable models only. Requires `--catalog` |
 
-**`mlx-stack pull <model>`** — Download a model from the catalog.
+**`mlx-stack pull <model>`** — Download a model by catalog ID or HuggingFace repo.
 
 | Option | Description |
 |--------|-------------|
-| `--quant <int4\|int8\|bf16>` | Quantization level (default: `int4`) |
+| `--quant <int4\|int8\|bf16>` | Quantization level (default: `int4`). For HF repos, stored as metadata only |
 | `--bench` | Run a quick benchmark after download |
 | `--force` | Re-download even if the model already exists |
 
-**`mlx-stack init`** — Generate stack definition and LiteLLM proxy configuration.
-
-| Option | Description |
-|--------|-------------|
-| `--accept-defaults` | Use defaults without prompting |
-| `--intent <balanced\|agent-fleet>` | Optimization strategy |
-| `--add <model>` | Add a model to the stack (repeatable) |
-| `--remove <tier>` | Remove a tier from the stack (repeatable) |
-| `--force` | Overwrite existing stack configuration |
+Accepts catalog IDs (e.g., `qwen3.5-8b`) or HuggingFace repo strings (e.g., `mlx-community/Phi-5-Mini-4bit`).
 
 ### Stack Lifecycle
 
@@ -258,7 +254,7 @@ mlx-stack status
 |--------|-------------|
 | `--tier <name>` | Stop only the specified tier |
 
-**`mlx-stack status`** — Show health and status of all services (healthy, degraded, down, crashed, stopped).
+**`mlx-stack status`** — Show hardware info and service health. Displays the detected Apple Silicon hardware profile (chip, GPU cores, memory, bandwidth) followed by service states (healthy, degraded, down, crashed, stopped).
 
 | Option | Description |
 |--------|-------------|
@@ -373,7 +369,7 @@ The built-in catalog includes 15 models across 5 families:
 
 Each entry includes benchmark data for common Apple Silicon configurations, quality scores, and capability metadata (tool calling, thinking/reasoning, vision).
 
-Some models (Gemma 3, Llama 3.3) are **gated** on HuggingFace and require accepting a license before download. `mlx-stack init --accept-defaults` automatically selects non-gated models so the zero-config path works without authentication. To use gated models:
+Some models (Gemma 3, Llama 3.3) are **gated** on HuggingFace and require accepting a license before download. `mlx-stack setup --accept-defaults` automatically selects non-gated models so the zero-config path works without authentication. To use gated models:
 
 ```bash
 # 1. Accept the model license on huggingface.co
@@ -412,9 +408,9 @@ With an OpenRouter API key configured, a `premium` cloud tier is available as a 
 
 ### Recommendation Engine
 
-The recommendation engine scores all catalog models against your hardware profile:
+The recommendation engine scores all catalog models against your hardware profile. Access it via `mlx-stack models --recommend`:
 
-1. **Hardware profiling** — Detects chip variant, GPU cores, unified memory, and memory bandwidth.
+1. **Hardware detection** — Detects chip variant, GPU cores, unified memory, and memory bandwidth (also shown by `mlx-stack status`).
 2. **Memory budgeting** — Filters models to those fitting within your configured memory budget (default: 40% of unified memory).
 3. **Composite scoring** — Weights speed, quality, tool-calling capability, and memory efficiency based on your chosen intent (`balanced` or `agent-fleet`).
 4. **Tier assignment** — Assigns top-scoring models to `standard`, `fast`, and `longctx` tiers.
