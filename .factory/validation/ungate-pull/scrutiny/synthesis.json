@@ -1,0 +1,48 @@
+{
+  "milestone": "ungate-pull",
+  "round": 1,
+  "status": "fail",
+  "validatorsRun": {
+    "test": {
+      "passed": true,
+      "command": "uv run pytest --cov=src/mlx_stack -x -q --tb=short",
+      "exitCode": 0
+    },
+    "typecheck": {
+      "passed": true,
+      "command": "uv run python -m pyright",
+      "exitCode": 0
+    },
+    "lint": {
+      "passed": true,
+      "command": "uv run ruff check src/ tests/",
+      "exitCode": 0
+    }
+  },
+  "reviewsSummary": {
+    "total": 1,
+    "passed": 0,
+    "failed": 1,
+    "failedFeatures": [
+      "ungate-pull-command"
+    ]
+  },
+  "blockingIssues": [
+    {
+      "featureId": "ungate-pull-command",
+      "severity": "blocking",
+      "description": "HF repo pulls with --bench pass a raw HF repo string into benchmark target resolution, but benchmark resolution accepts running tiers or catalog IDs, so arbitrary HF repo benchmarking fails."
+    }
+  ],
+  "appliedUpdates": [],
+  "suggestedGuidanceUpdates": [
+    {
+      "target": ".factory/skills/cli-worker/SKILL.md",
+      "suggestion": "Clarify how strictly TDD-first ordering is enforced in review, or explicitly allow small implementation scaffolding before test additions when documenting required evidence.",
+      "evidence": "Review for ungate-pull-command observed code edits in pull paths preceding the new HF repo tests, while the skill text says to write failing tests first.",
+      "isSystemic": false
+    }
+  ],
+  "rejectedObservations": [],
+  "previousRound": null
+}

@@ -1,0 +1,34 @@
+{
+  "featureId": "ungate-pull-command",
+  "reviewedAt": "2026-04-04T19:26:25.298893+00:00",
+  "commitId": "42434722c1fdf299901034775fc3926f1304e06b",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "fail",
+  "codeReview": {
+    "summary": "HF repo routing/help/tests were implemented, but arbitrary HF repo pulls with --bench do not actually run a benchmark successfully because benchmark target resolution only supports running tiers or catalog IDs.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/pull.py",
+        "line": 96,
+        "severity": "blocking",
+        "description": "For HF repo inputs, pull() forwards the raw repo string into _run_post_download_bench(). That path calls run_benchmark(target=model_id), but benchmark target resolution rejects arbitrary HF repos (only running tiers or catalog IDs resolve), so '--bench works with HF repos' is not satisfied in real execution."
+      },
+      {
+        "file": "tests/unit/test_cli_pull.py",
+        "line": 1822,
+        "severity": "non_blocking",
+        "description": "The HF repo bench test patches run_benchmark and validates only the mocked-success path, so it does not detect the real target-resolution failure for arbitrary HF repo strings."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "skills",
+      "observation": "The cli-worker skill prescribes TDD (write failing tests first), but this worker implemented code changes before adding the new tests; procedure-adherence criteria appear unclear.",
+      "evidence": "cli-worker SKILL.md Step 3 requires writing failing tests first; transcript skeleton shows edits to src/mlx_stack/core/pull.py and src/mlx_stack/cli/pull.py before adding the large HF repo test block in tests/unit/test_cli_pull.py."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review failed due to one blocking behavior gap: '--bench' does not truly work for arbitrary HF repo pulls because benchmark target resolution rejects non-catalog targets. Other requested HF-repo pull routing/help/test coverage is present."
+}
