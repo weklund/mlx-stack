@@ -208,7 +208,7 @@ def _display_tier_table(result: RecommendationResult) -> None:
 
     out.print()
     out.print("[dim]This is a recommendation only — no files were written.[/dim]")
-    out.print("[dim]Run [bold]mlx-stack init[/bold] to generate stack configuration.[/dim]")
+    out.print("[dim]Run [bold]mlx-stack setup[/bold] to generate stack configuration.[/dim]")
 
 
 def _display_all_models(result: RecommendationResult) -> None:

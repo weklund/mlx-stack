@@ -818,14 +818,14 @@ class TestUpErrors:
     """Tests for error handling in the up command."""
 
     def test_missing_stack_error(self, mlx_stack_home: Path) -> None:
-        """VAL-UP-011: Missing stack definition suggests init."""
+        """VAL-UP-011: Missing stack definition suggests setup."""
         # Act
         runner = CliRunner()
         result = runner.invoke(cli, ["up"])
 
         # Assert
         assert result.exit_code != 0
-        assert "init" in result.output.lower()
+        assert "setup" in result.output.lower()
 
     @patch("mlx_stack.core.stack_up.get_value")
     def test_invalid_tier_error(

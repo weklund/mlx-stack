@@ -126,7 +126,7 @@ class TestWatchNoStack:
     def test_no_stack_exits_with_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         result = runner.invoke(cli, ["watch"])
         assert result.exit_code != 0
-        assert "init" in result.output.lower() or "stack" in result.output.lower()
+        assert "setup" in result.output.lower() or "stack" in result.output.lower()
 
 
 # --------------------------------------------------------------------------- #
