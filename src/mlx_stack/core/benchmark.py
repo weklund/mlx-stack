@@ -792,7 +792,12 @@ def _start_temp_instance(
     Raises:
         BenchmarkError: If the instance cannot be started.
     """
-    service_name = f"{TEMP_SERVICE_PREFIX}-{entry.id}"
+    # Sanitize the service name: HF repo IDs contain '/' (e.g.,
+    # "mlx-community/Model-4bit") which is invalid in filesystem paths.
+    # process.py uses service_name for PID files and log files, so
+    # replace '/' with '--' to make it path-safe.
+    safe_id = entry.id.replace("/", "--")
+    service_name = f"{TEMP_SERVICE_PREFIX}-{safe_id}"
 
     # Ensure vllm-mlx is installed
     ensure_dependency("vllm-mlx")
