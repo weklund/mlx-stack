@@ -1,7 +1,7 @@
 {
   "milestone": "absorb-recommend-remove-init",
-  "round": 1,
-  "status": "fail",
+  "round": 2,
+  "status": "pass",
   "validatorsRun": {
     "test": {
       "passed": true,
@@ -20,27 +20,14 @@
     }
   },
   "reviewsSummary": {
-    "total": 2,
+    "total": 1,
     "passed": 1,
-    "failed": 1,
-    "failedFeatures": [
-      "absorb-recommend-into-models"
-    ]
+    "failed": 0,
+    "failedFeatures": []
   },
-  "blockingIssues": [
-    {
-      "featureId": "absorb-recommend-into-models",
-      "severity": "blocking",
-      "description": "Feature contract explicitly required deleting src/mlx_stack/cli/recommend.py, but the file remains and still contains the old recommend command implementation."
-    }
-  ],
+  "blockingIssues": [],
   "appliedUpdates": [],
   "suggestedGuidanceUpdates": [],
-  "rejectedObservations": [
-    {
-      "observation": "Mission guidance does not explicitly require updating stale non-runtime comments/docstrings when commands are removed.",
-      "reason": "non-systemic and already-covered-by-existing-guidance"
-    }
-  ],
-  "previousRound": null
+  "rejectedObservations": [],
+  "previousRound": ".factory/validation/absorb-recommend-remove-init/scrutiny/synthesis.round1.json"
 }
