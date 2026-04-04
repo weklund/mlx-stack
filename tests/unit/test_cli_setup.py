@@ -357,6 +357,24 @@ class TestSetupAddHfRepo:
         model_names = [m["model_name"] for m in litellm["model_list"]]
         assert len(model_names) == 3
 
+    def test_add_hf_repo_sets_model_field(self, mlx_stack_home: Path) -> None:
+        """--add with HF repo sets tiers[].model to the repo's basename."""
+        _setup_existing_stack(mlx_stack_home, _TWO_TIER_STACK)
+        runner = CliRunner()
+
+        result = runner.invoke(
+            setup,
+            ["--add", "mlx-community/Phi-4-mini-instruct-4bit"],
+        )
+
+        assert result.exit_code == 0
+        stack = yaml.safe_load(
+            (mlx_stack_home / "stacks" / "default.yaml").read_text()
+        )
+        new_tier = stack["tiers"][2]
+        assert new_tier["model"] == "Phi-4-mini-instruct-4bit"
+        assert new_tier["source"] == "mlx-community/Phi-4-mini-instruct-4bit"
+
     def test_add_hf_repo_auto_assigns_tier_name(self, mlx_stack_home: Path) -> None:
         """--add without --as auto-generates a non-empty tier name."""
         _setup_existing_stack(mlx_stack_home, _TWO_TIER_STACK)
@@ -379,7 +397,7 @@ class TestSetupAddCatalogId:
     """--add with catalog ID resolves and adds model."""
 
     def test_add_catalog_id_resolves_and_adds(self, mlx_stack_home: Path) -> None:
-        """--add qwen3.5-8b resolves catalog ID to HF repo and adds tier."""
+        """--add qwen3.5-8b resolves catalog ID to HF repo, writes entry.id to model and HF repo to source."""
         _setup_existing_stack(mlx_stack_home, _TWO_TIER_STACK)
         runner = CliRunner()
 
@@ -395,7 +413,9 @@ class TestSetupAddCatalogId:
         )
         assert len(stack["tiers"]) == 3
         new_tier = stack["tiers"][2]
-        assert "mlx-community" in new_tier["source"]
+        # model field should be catalog entry.id, not entry.name
+        assert new_tier["model"] == "qwen3.5-8b"
+        assert new_tier["source"] == "mlx-community/qwen3.5-8b-4bit"
 
     def test_add_invalid_catalog_id_shows_error(self, mlx_stack_home: Path) -> None:
         """--add with invalid catalog ID produces model-not-found error."""
@@ -769,7 +789,7 @@ class TestSetupModelHfRepo:
 
         with (
             patch("mlx_stack.cli.setup.pull_setup_models"),
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
+            patch("mlx_stack.cli.setup.start_stack") as mock_start,
         ):
             result = runner.invoke(
                 setup,
@@ -777,12 +797,14 @@ class TestSetupModelHfRepo:
             )
 
         assert result.exit_code == 0, f"Exit {result.exit_code}:\n{result.output}"
+        mock_start.assert_not_called()
         stack = yaml.safe_load(
             (mlx_stack_home / "stacks" / "default.yaml").read_text()
         )
         assert len(stack["tiers"]) == 1
         tier = stack["tiers"][0]
         assert tier["name"] == "standard"
+        assert tier["model"] == "Qwen3-8B-4bit"
         assert tier["source"] == "mlx-community/Qwen3-8B-4bit"
 
     def test_model_hf_repo_generates_litellm_yaml(self, mlx_stack_home: Path) -> None:
@@ -791,7 +813,7 @@ class TestSetupModelHfRepo:
 
         with (
             patch("mlx_stack.cli.setup.pull_setup_models"),
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
+            patch("mlx_stack.cli.setup.start_stack"),
         ):
             result = runner.invoke(
                 setup,
@@ -811,7 +833,7 @@ class TestSetupModelHfRepo:
 
         with (
             patch("mlx_stack.cli.setup.pull_setup_models"),
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
+            patch("mlx_stack.cli.setup.start_stack"),
         ):
             result = runner.invoke(
                 setup,
@@ -823,13 +845,13 @@ class TestSetupModelHfRepo:
         assert "Model Selection" not in result.output
         assert "Tier Assignment" not in result.output
 
-    def test_model_hf_repo_calls_pull_and_start(self, mlx_stack_home: Path) -> None:
-        """--model without --no-pull/--no-start calls pull and start."""
+    def test_model_hf_repo_calls_pull_but_not_start(self, mlx_stack_home: Path) -> None:
+        """--model pulls model but never auto-starts services."""
         runner = CliRunner()
 
         with (
             patch("mlx_stack.cli.setup.pull_setup_models") as mock_pull,
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT) as mock_start,
+            patch("mlx_stack.cli.setup.start_stack") as mock_start,
         ):
             result = runner.invoke(
                 setup,
@@ -838,7 +860,24 @@ class TestSetupModelHfRepo:
 
         assert result.exit_code == 0
         mock_pull.assert_called_once()
-        mock_start.assert_called_once()
+        mock_start.assert_not_called()
+
+    def test_model_hf_repo_always_prints_up_guidance(self, mlx_stack_home: Path) -> None:
+        """--model always tells user to run 'mlx-stack up', even without --no-start."""
+        runner = CliRunner()
+
+        with (
+            patch("mlx_stack.cli.setup.pull_setup_models"),
+            patch("mlx_stack.cli.setup.start_stack") as mock_start,
+        ):
+            result = runner.invoke(
+                setup,
+                ["--model", "mlx-community/Qwen3-8B-4bit"],
+            )
+
+        assert result.exit_code == 0
+        mock_start.assert_not_called()
+        assert "mlx-stack up" in result.output
 
     def test_model_hf_repo_overwrites_existing_stack(self, mlx_stack_home: Path) -> None:
         """--model replaces existing multi-tier stack with single-tier."""
@@ -847,7 +886,7 @@ class TestSetupModelHfRepo:
 
         with (
             patch("mlx_stack.cli.setup.pull_setup_models"),
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
+            patch("mlx_stack.cli.setup.start_stack"),
         ):
             result = runner.invoke(
                 setup,
@@ -866,7 +905,7 @@ class TestSetupModelCatalogId:
     """--model with catalog ID resolves and creates single-tier stack."""
 
     def test_model_catalog_id_resolves(self, mlx_stack_home: Path) -> None:
-        """--model qwen3.5-8b resolves catalog ID to HF repo."""
+        """--model qwen3.5-8b resolves catalog ID to HF repo, stores entry.id in model field."""
         runner = CliRunner()
 
         with (
@@ -876,17 +915,40 @@ class TestSetupModelCatalogId:
             ),
             patch("mlx_stack.cli.setup.load_catalog", return_value=[_MOCK_CATALOG_ENTRY]),
             patch("mlx_stack.cli.setup.pull_setup_models"),
-            patch("mlx_stack.cli.setup.start_stack", return_value=MOCK_UP_RESULT),
+            patch("mlx_stack.cli.setup.start_stack") as mock_start,
         ):
             result = runner.invoke(setup, ["--model", "qwen3.5-8b"])
 
         assert result.exit_code == 0, f"Exit {result.exit_code}:\n{result.output}"
+        mock_start.assert_not_called()
         stack = yaml.safe_load(
             (mlx_stack_home / "stacks" / "default.yaml").read_text()
         )
         assert len(stack["tiers"]) == 1
-        assert stack["tiers"][0]["name"] == "standard"
-        assert "mlx-community" in stack["tiers"][0]["source"]
+        tier = stack["tiers"][0]
+        assert tier["name"] == "standard"
+        # model field should be catalog entry.id, not entry.name
+        assert tier["model"] == "qwen3.5-8b"
+        assert tier["source"] == "mlx-community/qwen3.5-8b-4bit"
+
+    def test_model_catalog_id_always_prints_up_guidance(self, mlx_stack_home: Path) -> None:
+        """--model with catalog ID always prints 'mlx-stack up' guidance."""
+        runner = CliRunner()
+
+        with (
+            patch(
+                "mlx_stack.cli.setup.get_entry_by_id",
+                return_value=_MOCK_CATALOG_ENTRY,
+            ),
+            patch("mlx_stack.cli.setup.load_catalog", return_value=[_MOCK_CATALOG_ENTRY]),
+            patch("mlx_stack.cli.setup.pull_setup_models"),
+            patch("mlx_stack.cli.setup.start_stack") as mock_start,
+        ):
+            result = runner.invoke(setup, ["--model", "qwen3.5-8b"])
+
+        assert result.exit_code == 0
+        mock_start.assert_not_called()
+        assert "mlx-stack up" in result.output
 
     def test_model_invalid_catalog_id_shows_error(self, mlx_stack_home: Path) -> None:
         """--model with invalid catalog ID produces clear error, no traceback."""

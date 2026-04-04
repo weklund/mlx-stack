@@ -310,7 +310,7 @@ def _resolve_model_source(model_arg: str) -> tuple[str, str]:
     if source is None:
         # Fall back to first available quant
         source = next(iter(entry.sources.values()))
-    return source.hf_repo, entry.name
+    return source.hf_repo, entry.id
 
 
 def _auto_tier_name(existing_names: set[str], index: int) -> str:
@@ -504,21 +504,19 @@ def _single_model_setup(
     """Create a single-tier stack from a model argument.
 
     Skips the interactive wizard entirely. Creates stack.yaml with one
-    'standard' tier, generates litellm.yaml, optionally pulls the model
-    and starts the stack.
+    'standard' tier, generates litellm.yaml, and optionally pulls the
+    model. Never auto-starts services — always prints ``mlx-stack up``
+    guidance.
 
     Args:
         model_arg: HF repo string or catalog ID.
-        no_pull: If True, skip model download (implies no_start).
-        no_start: If True, skip stack startup.
+        no_pull: If True, skip model download.
+        no_start: Accepted for API compatibility but ignored —
+            services are never started by this function.
     """
     import yaml
 
     from mlx_stack.core.paths import ensure_data_home, get_stacks_dir
-
-    # --no-pull implies --no-start (can't start without models)
-    if no_pull:
-        no_start = True
 
     # Resolve model
     hf_repo, display = _resolve_model_source(model_arg)
@@ -626,46 +624,10 @@ def _single_model_setup(
                 "[yellow]  Download failed. Run 'mlx-stack pull' to retry.[/yellow]"
             )
 
-    # Start stack
-    if not no_start:
-        out.print()
-        out.print(Text("  Starting Stack", style="bold cyan"))
-        out.print("  " + "─" * 40)
-
-        try:
-            up_result = start_stack()
-
-            for t in up_result.tiers:
-                icon = (
-                    "[bold green]✓[/bold green]"
-                    if t.status == "healthy"
-                    else "[bold red]✗[/bold red]"
-                )
-                out.print(f"  {icon} {t.name} ({t.model}) on port {t.port}")
-
-            if up_result.litellm:
-                icon = (
-                    "[bold green]✓[/bold green]"
-                    if up_result.litellm.status == "healthy"
-                    else "[bold red]✗[/bold red]"
-                )
-                out.print(
-                    f"  {icon} LiteLLM proxy on port {up_result.litellm.port}"
-                )
-
-        except Exception as exc:
-            console.print(f"[bold red]Startup error:[/bold red] {exc}")
-            out.print(
-                "[yellow]  Stack may be partially started. "
-                "Check 'mlx-stack status'.[/yellow]"
-            )
-            raise SystemExit(1) from None
-
-    # If we skipped pull or start, tell user next step
-    if no_pull or no_start:
-        out.print()
-        out.print("  Run [bold]mlx-stack up[/bold] to start your stack.")
-
+    # Per convention: setup --model never auto-starts services.
+    # Always tell user to run 'mlx-stack up'.
+    out.print()
+    out.print("  Run [bold]mlx-stack up[/bold] to start your stack.")
     out.print()
 
 
