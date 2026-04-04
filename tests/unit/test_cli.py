@@ -23,7 +23,6 @@ class TestCLIHelp:
         result = runner.invoke(cli, ["--help"])
         # All registered commands should appear in help output
         for cmd in [
-            "recommend",
             "init",
             "pull",
             "models",

@@ -204,7 +204,7 @@ class TestCheckInitPrerequisite:
             check_init_prerequisite()
 
     def test_error_suggests_init(self, mlx_stack_home: Path) -> None:
-        with pytest.raises(PrerequisiteError, match="mlx-stack init"):
+        with pytest.raises(PrerequisiteError, match="mlx-stack setup"):
             check_init_prerequisite()
 
 

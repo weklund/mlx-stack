@@ -108,7 +108,7 @@ def check_platform() -> None:
 
 
 def check_init_prerequisite() -> None:
-    """Check that mlx-stack init has been run.
+    """Check that mlx-stack setup has been run.
 
     Verifies that a stack definition exists at
     ~/.mlx-stack/stacks/default.yaml.
@@ -118,7 +118,7 @@ def check_init_prerequisite() -> None:
     """
     stack_path = get_stacks_dir() / "default.yaml"
     if not stack_path.exists():
-        msg = "No stack configuration found. Run 'mlx-stack init' first."
+        msg = "No stack configuration found. Run 'mlx-stack setup' first."
         raise PrerequisiteError(msg)
 
 

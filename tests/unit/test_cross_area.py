@@ -552,15 +552,15 @@ class TestConfigPropagation:
                 f"Port 5000 not found in up --dry-run output:\n{result.output}"
             )
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_memory_budget_pct_60_propagates_to_recommend(
         self,
         mock_load_profile: MagicMock,
         mock_load_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """After config set memory-budget-pct 60, recommend uses 60% budget.
+        """After config set memory-budget-pct 60, models --recommend uses 60% budget.
 
         With 128 GB memory and 60% budget, the effective budget is 76.8 GB.
         Asserts the concrete value appears in recommend output.
@@ -575,13 +575,13 @@ class TestConfigPropagation:
         result = runner.invoke(cli, ["config", "set", "memory-budget-pct", "60"])
         assert result.exit_code == 0
 
-        # Run recommend
-        result = runner.invoke(cli, ["recommend"])
+        # Run models --recommend
+        result = runner.invoke(cli, ["models", "--recommend"])
         assert result.exit_code == 0
 
         # 60% of 128 GB = 76.8 GB — this concrete value must appear
         assert "76.8 GB" in result.output, (
-            f"Expected '76.8 GB' budget in recommend output, got:\n{result.output}"
+            f"Expected '76.8 GB' budget in models --recommend output, got:\n{result.output}"
         )
 
     @patch("mlx_stack.core.stack_init.load_catalog")
@@ -775,8 +775,8 @@ class TestConfigPropagation:
 class TestBenchSaveOverridesCatalog:
     """VAL-CROSS-012: Saved benchmark data overrides catalog in recommendations."""
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_gen_tps_85_overrides_catalog_77(
         self,
         mock_load_profile: MagicMock,
@@ -785,7 +785,7 @@ class TestBenchSaveOverridesCatalog:
     ) -> None:
         """Saved benchmark gen_tps=85 overrides catalog gen_tps=77.
 
-        After bench --save writes gen_tps=85 for medium-8b, recommend
+        After bench --save writes gen_tps=85 for medium-8b, models --recommend
         --show-all must display 85.0, not 77.0.
         """
         profile = make_profile(memory_gb=128)
@@ -806,7 +806,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         runner = CliRunner()
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
 
         # The saved gen_tps (85.0) must appear instead of catalog (77.0)
@@ -817,15 +817,15 @@ class TestBenchSaveOverridesCatalog:
         # Note: 77.0 might appear for other contexts, but 85.0 must be present
         # as the scored value for medium-8b
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_benchmarks_remove_estimated_label(
         self,
         mock_load_profile: MagicMock,
         mock_load_catalog: MagicMock,
         mlx_stack_home: Path,
     ) -> None:
-        """Saved benchmarks remove 'estimated' label from recommend output.
+        """Saved benchmarks remove 'estimated' label from models --recommend output.
 
         When hardware has no catalog benchmark data, values are labeled
         as 'estimated'. After bench --save, the measured data replaces
@@ -845,7 +845,7 @@ class TestBenchSaveOverridesCatalog:
         runner = CliRunner()
 
         # First recommend without saved benchmarks — should show 'est.'
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
         first_output = result.output
         # With unknown hardware, output should contain estimated markers
@@ -867,7 +867,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         # Second recommend with saved benchmarks
-        result = runner.invoke(cli, ["recommend", "--show-all"])
+        result = runner.invoke(cli, ["models", "--recommend", "--show-all"])
         assert result.exit_code == 0
         second_output = result.output
 
@@ -879,13 +879,13 @@ class TestBenchSaveOverridesCatalog:
         lines = second_output.split("\n")
         medium_8b_lines = [line for line in lines if "Medium 8B" in line]
         assert len(medium_8b_lines) > 0, (
-            f"'Medium 8B' not found in recommend output:\n{second_output}"
+            f"'Medium 8B' not found in models --recommend output:\n{second_output}"
         )
         for line in medium_8b_lines:
             assert "(est.)" not in line, f"Medium 8B still shows 'est.' after bench --save: {line}"
 
-    @patch("mlx_stack.cli.recommend.load_catalog")
-    @patch("mlx_stack.cli.recommend.load_profile")
+    @patch("mlx_stack.cli.models.load_catalog")
+    @patch("mlx_stack.cli.models.load_profile")
     def test_saved_benchmarks_affect_scoring_order(
         self,
         mock_load_profile: MagicMock,
@@ -904,7 +904,7 @@ class TestBenchSaveOverridesCatalog:
         runner = CliRunner()
 
         # Recommend without saved benchmarks
-        result_before = runner.invoke(cli, ["recommend"])
+        result_before = runner.invoke(cli, ["models", "--recommend"])
         assert result_before.exit_code == 0
 
         # Save benchmarks with dramatically different gen_tps for medium model
@@ -921,7 +921,7 @@ class TestBenchSaveOverridesCatalog:
         )
 
         # Recommend with saved benchmarks
-        result_after = runner.invoke(cli, ["recommend"])
+        result_after = runner.invoke(cli, ["models", "--recommend"])
         assert result_after.exit_code == 0
 
         # The output should differ because scoring has changed

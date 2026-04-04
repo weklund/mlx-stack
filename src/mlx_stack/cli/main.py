@@ -23,7 +23,6 @@ from mlx_stack.cli.install import uninstall as uninstall_command
 from mlx_stack.cli.logs import logs as logs_command
 from mlx_stack.cli.models import models as models_command
 from mlx_stack.cli.pull import pull as pull_command
-from mlx_stack.cli.recommend import recommend as recommend_command
 from mlx_stack.cli.setup import setup as setup_command
 from mlx_stack.cli.status import status as status_command
 from mlx_stack.cli.up import up as up_command
@@ -51,7 +50,7 @@ _BANNER_LINES = [
 # Command categories and their members
 _COMMAND_CATEGORIES: dict[str, list[str]] = {
     "Setup & Configuration": ["setup", "config", "init"],
-    "Model Management": ["recommend", "models", "pull"],
+    "Model Management": ["models", "pull"],
     "Stack Lifecycle": ["up", "down", "status", "watch", "install", "uninstall"],
     "Diagnostics": ["bench", "logs"],
 }
@@ -277,7 +276,6 @@ def cli(ctx: click.Context) -> None:
 
 
 cli.add_command(setup_command, "setup")
-cli.add_command(recommend_command, "recommend")
 cli.add_command(init_command, "init")
 
 

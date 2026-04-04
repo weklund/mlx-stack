@@ -70,7 +70,7 @@ def install(show_status: bool) -> None:
     \b
     Requires:
       • macOS (launchd is macOS-only)
-      • mlx-stack init (stack must be configured first)
+      • mlx-stack setup (stack must be configured first)
 
     \b
     Behavior:

@@ -234,14 +234,14 @@ class TestInstallErrors:
         with patch(
             "mlx_stack.cli.install.install_agent",
             side_effect=PrerequisiteError(
-                "No stack configuration found. Run 'mlx-stack init' first."
+                "No stack configuration found. Run 'mlx-stack setup' first."
             ),
         ):
             result = runner.invoke(cli, ["install"])
 
         assert result.exit_code != 0
         assert "Error" in result.output
-        assert "init" in result.output.lower()
+        assert "setup" in result.output.lower()
 
     def test_launchd_error(self, runner: CliRunner, mlx_stack_home: Path) -> None:
         with patch(

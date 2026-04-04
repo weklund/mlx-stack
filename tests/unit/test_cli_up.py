@@ -80,7 +80,7 @@ class TestLoadStackDefinition:
     def test_missing_stack_suggests_init(self, mlx_stack_home: Path) -> None:
         """VAL-UP-011: Missing stack definition error."""
         # Act / Assert
-        with pytest.raises(UpError, match="mlx-stack init"):
+        with pytest.raises(UpError, match="mlx-stack setup"):
             load_stack_definition()
 
     def test_invalid_yaml_produces_clear_error(self, mlx_stack_home: Path) -> None:
