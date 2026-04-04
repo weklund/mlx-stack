@@ -1,0 +1,54 @@
+{
+  "groupId": "group-a",
+  "surface": "cli",
+  "assertionResults": [
+    {
+      "id": "VAL-PULL-001",
+      "status": "pass",
+      "reason": "exit_code=0, success output present, and download used catalog-mapped int4 HF repo",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-a/VAL-PULL-001-cli-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-002",
+      "status": "pass",
+      "reason": "--quant int8 selected int8 HF repo for download",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-a/VAL-PULL-002-cli-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-003",
+      "status": "pass",
+      "reason": "--bench invoked benchmark once with save=True and displayed TPS output",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-a/VAL-PULL-003-cli-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-004",
+      "status": "pass",
+      "reason": "--force re-downloaded existing model (no 'already exists' skip message)",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-a/VAL-PULL-004-cli-check.txt"
+      ]
+    },
+    {
+      "id": "VAL-PULL-005",
+      "status": "pass",
+      "reason": "HF repo input bypassed catalog lookup and downloaded literal repo string",
+      "evidence": [
+        "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/group-a/VAL-PULL-005-cli-check.txt"
+      ]
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "toolsUsed": [
+    "Execute",
+    "uv",
+    "click.testing.CliRunner",
+    "unittest.mock.patch"
+  ]
+}

@@ -1,0 +1,43 @@
+{
+  "milestone": "ungate-pull",
+  "round": 1,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 20,
+    "passed": 20,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-PULL-001",
+    "VAL-PULL-002",
+    "VAL-PULL-003",
+    "VAL-PULL-004",
+    "VAL-PULL-005",
+    "VAL-PULL-006",
+    "VAL-PULL-007",
+    "VAL-PULL-008",
+    "VAL-PULL-009",
+    "VAL-PULL-010",
+    "VAL-PULL-011",
+    "VAL-PULL-012",
+    "VAL-PULL-013",
+    "VAL-PULL-014",
+    "VAL-PULL-015",
+    "VAL-PULL-016",
+    "VAL-PULL-017",
+    "VAL-PULL-018",
+    "VAL-PULL-019",
+    "VAL-PULL-020"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Added Flow Validator Guidance: CLI with isolation boundaries, evidence paths, and no-source-edit rule for concurrent CLI validation runs.",
+      "source": "setup"
+    }
+  ],
+  "previousRound": null
+}

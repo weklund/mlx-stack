@@ -37,3 +37,13 @@ Rationale: CLI tests are lightweight (no browser, no services). Each pytest invo
 - Side effects verified via mock assertions (`mock_download.assert_called_once()`, etc.)
 - File system effects checked via `tmp_path` fixtures
 - Test factories in `tests/factories.py` for creating test data consistently
+
+## Flow Validator Guidance: CLI
+
+- Surface is CLI-only; do not use browser automation.
+- Stay within repository-local and mission-local paths only:
+  - Repo: `/Users/weae1504/Projects/mlx-stack`
+  - Mission evidence: `/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/ungate-pull/<group-id>/`
+- Prefer assertion-targeted checks first (specific pytest tests and direct CLI invocations), then add broader checks only when needed to disambiguate failures.
+- Do not edit source code while validating; only create report/evidence artifacts requested for user-testing flows.
+- If any assertion is blocked by environment/tooling, capture exact blocking command output and mark as blocked rather than guessing.
