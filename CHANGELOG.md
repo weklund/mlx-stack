@@ -14,9 +14,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 ## [0.3.6](https://github.com/weklund/mlx-stack/compare/v0.3.5...v0.3.6) (2026-04-04)
 
 
+### Security
+
+* add explicit `permissions: contents: read` to CI, nightly, and pre-release workflows to enforce least-privilege on GITHUB_TOKEN ([#34](https://github.com/weklund/mlx-stack/issues/34)) ([0f8bfb0](https://github.com/weklund/mlx-stack/commit/0f8bfb0a17df82142261284f8d6405918ae6b759))
+
+
 ### Bug Fixes
 
-* add explicit permissions to CI and integration workflows ([#34](https://github.com/weklund/mlx-stack/issues/34)) ([0f8bfb0](https://github.com/weklund/mlx-stack/commit/0f8bfb0a17df82142261284f8d6405918ae6b759))
+* replace sleep-based sync with polling in flaky follow test ([#34](https://github.com/weklund/mlx-stack/issues/34))
 
 ## [0.3.5](https://github.com/weklund/mlx-stack/compare/v0.3.4...v0.3.5) (2026-04-04)
 
