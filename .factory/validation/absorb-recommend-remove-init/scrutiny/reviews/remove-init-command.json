@@ -1,0 +1,34 @@
+{
+  "featureId": "remove-init-command",
+  "reviewedAt": "2026-04-04T20:58:22Z",
+  "commitId": "08385791db9617c3ab3a62a0fb30678833b74bc2",
+  "transcriptSkeletonReviewed": true,
+  "diffReviewed": true,
+  "status": "pass",
+  "codeReview": {
+    "summary": "The feature correctly removes the `init` CLI command from registration/help output, deletes `cli/init.py` and its dedicated tests, preserves `core/stack_init.py`, and updates key user-facing guidance in command output/tests. No functional regressions or blocking issues were found in the reviewed diff.",
+    "issues": [
+      {
+        "file": "src/mlx_stack/cli/setup.py",
+        "line": 4,
+        "severity": "non_blocking",
+        "description": "Module docstring still describes the old `profile -> recommend -> init -> pull -> up` flow. This is non-runtime text, but it is stale relative to the removed `init` command and could confuse maintainers."
+      },
+      {
+        "file": "tests/unit/test_cross_area.py",
+        "line": 184,
+        "severity": "non_blocking",
+        "description": "Several comments/docstrings still refer to the removed CLI `init` command (e.g., section headers and step descriptions), even though test logic now calls `run_init()`. Consider aligning wording to avoid stale terminology."
+      }
+    ]
+  },
+  "sharedStateObservations": [
+    {
+      "area": "conventions",
+      "observation": "Mission guidance states deleted commands should be fully removed, but it does not explicitly require updating non-runtime references (comments/docstrings). This may explain why stale `init` wording remains in some files after command removal.",
+      "evidence": "AGENTS.md design decision #5 says deleted commands are fully removed; remaining stale references include src/mlx_stack/cli/setup.py:4 and tests/unit/test_cross_area.py:184."
+    }
+  ],
+  "addressesFailureFrom": null,
+  "summary": "Review of `remove-init-command` passed. The command removal and behavioral expectations are implemented correctly, with only minor non-blocking stale wording left in comments/docstrings."
+}
