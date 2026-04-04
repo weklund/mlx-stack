@@ -4,6 +4,13 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.8](https://github.com/weklund/mlx-stack/compare/v0.3.7...v0.3.8) (2026-04-04)
+
+
+### Features
+
+* CLI rework — ungate catalog, eliminate redundancies, add stack modification ([#40](https://github.com/weklund/mlx-stack/issues/40)) ([#41](https://github.com/weklund/mlx-stack/issues/41)) ([3bee7d9](https://github.com/weklund/mlx-stack/commit/3bee7d9d7bce8e14f8ca2be1332247b97264ec78))
+
 ## [0.3.7](https://github.com/weklund/mlx-stack/compare/v0.3.6...v0.3.7) (2026-04-04)
 
 
