@@ -1,0 +1,106 @@
+{
+  "groupId": "status-core-cli",
+  "testedAt": "2026-04-04T20:29:01.801098+00:00",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "mlxStackHome": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-core-cli-home"
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack"
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-STATUS-001",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-001-profile-command.txt"
+        ],
+        "observed": "exit=2; contains_no_such_command=True; deprecated_present=False"
+      }
+    },
+    {
+      "id": "VAL-STATUS-002",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-002-main-help.txt"
+        ],
+        "observed": "profile_listed=False; status_listed=True"
+      }
+    },
+    {
+      "id": "VAL-STATUS-003",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-003-status-with-profile.txt"
+        ],
+        "observed": "exit=0; has_chip=True; has_gpu=True; has_memory=True; has_bandwidth=True; has_service_table=True"
+      }
+    },
+    {
+      "id": "VAL-STATUS-004",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-004-status-without-profile.txt"
+        ],
+        "observed": "exit=0; traceback_present=False; has_service_table=True; hardware_section_present=False"
+      }
+    },
+    {
+      "id": "VAL-STATUS-007",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-003-status-with-profile.txt"
+        ],
+        "observed": "missing_columns=[]"
+      }
+    },
+    {
+      "id": "VAL-STATUS-009",
+      "status": "pass",
+      "evidence": {
+        "files": [
+          "absorb-profile/status-core-cli/VAL-STATUS-009-status-help.txt"
+        ],
+        "observed": "exit=0; mentions_hardware_or_chip=True; has_json_flag=True"
+      }
+    }
+  ],
+  "commandsRun": [
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack profile",
+      "exitCode": 2,
+      "keyObservation": "Error: No such command 'profile'."
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack --help",
+      "exitCode": 0,
+      "keyObservation": "mlx-stack \u2014 CLI control plane for local LLM infrastructure on Apple Silicon"
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "Hardware          "
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "Service Status                              "
+    },
+    {
+      "command": "uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack status --help",
+      "exitCode": 0,
+      "keyObservation": "Usage: mlx-stack status [OPTIONS]"
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Tested 6 assertions: 6 passed, 0 failed, 0 blocked."
+}

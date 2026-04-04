@@ -1,0 +1,122 @@
+{
+  "groupId": "status-json-edge",
+  "testedAt": "2026-04-04T20:29:21.162198+00:00",
+  "milestone": "absorb-profile",
+  "isolation": {
+    "surface": "CLI",
+    "repoRoot": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "servicesStarted": false
+  },
+  "toolsUsed": [
+    "shell",
+    "uv run mlx-stack",
+    "uv run python"
+  ],
+  "assertionResults": [
+    {
+      "id": "VAL-STATUS-005",
+      "status": "pass",
+      "evidence": {
+        "commandOutput": "absorb-profile/status-json-edge/VAL-STATUS-005-status-json.txt",
+        "hardwareKeys": [
+          "chip",
+          "gpu_cores",
+          "memory_gb",
+          "bandwidth_gbps",
+          "profile_id"
+        ]
+      }
+    },
+    {
+      "id": "VAL-STATUS-006",
+      "status": "pass",
+      "evidence": {
+        "commandOutput": "absorb-profile/status-json-edge/VAL-STATUS-006-status-json-no-profile.txt",
+        "hardwareValue": null
+      }
+    },
+    {
+      "id": "VAL-STATUS-008",
+      "status": "pass",
+      "evidence": {
+        "commandOutput": "absorb-profile/status-json-edge/VAL-STATUS-008-estimate-json.txt",
+        "isEstimateExpected": true
+      }
+    },
+    {
+      "id": "VAL-STATUS-010",
+      "status": "pass",
+      "evidence": {
+        "invalidJsonOutput": "absorb-profile/status-json-edge/VAL-STATUS-010-corrupt-invalid-json.txt",
+        "missingFieldsOutput": "absorb-profile/status-json-edge/VAL-STATUS-010-corrupt-missing-fields.txt"
+      }
+    },
+    {
+      "id": "VAL-STATUS-011",
+      "status": "pass",
+      "evidence": {
+        "withProfileOutput": "absorb-profile/status-json-edge/VAL-STATUS-011-no-stack-with-profile.txt",
+        "noProfileOutput": "absorb-profile/status-json-edge/VAL-STATUS-011-no-stack-no-profile.txt"
+      }
+    },
+    {
+      "id": "VAL-STATUS-012",
+      "status": "pass",
+      "evidence": {
+        "fileExistsOutput": "absorb-profile/status-json-edge/VAL-STATUS-012-file-exists.txt",
+        "importOutput": "absorb-profile/status-json-edge/VAL-STATUS-012-import-check.txt"
+      }
+    }
+  ],
+  "frictions": [],
+  "blockers": [],
+  "commandsRun": [
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-005 uv run mlx-stack status --json",
+      "exitCode": 0,
+      "keyObservation": "{"
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-006 uv run mlx-stack status --json",
+      "exitCode": 0,
+      "keyObservation": "{"
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-008 uv run mlx-stack status --json",
+      "exitCode": 0,
+      "keyObservation": "{"
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-010 uv run mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "Service Status                              "
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-010 uv run mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "Service Status                              "
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-011-with-profile uv run mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "Hardware          "
+    },
+    {
+      "command": "MLX_STACK_HOME=/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-profile/status-json-edge/scenarios/val-status-011-no-profile uv run mlx-stack status",
+      "exitCode": 0,
+      "keyObservation": "No stack configured \u2014 run 'mlx-stack setup' to create a stack configuration."
+    },
+    {
+      "command": "test -f \"/Users/weae1504/Projects/mlx-stack/src/mlx_stack/core/hardware.py\"",
+      "exitCode": 0,
+      "keyObservation": "no output"
+    },
+    {
+      "command": "uv run python -c from mlx_stack.core.hardware import detect_hardware, load_profile, HardwareProfile, HardwareError; print(\"IMPORT_OK\")",
+      "exitCode": 0,
+      "keyObservation": "IMPORT_OK"
+    }
+  ],
+  "summary": "Tested 6 assertions: 6 passed, 0 failed, 0 blocked."
+}
