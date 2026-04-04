@@ -21,10 +21,7 @@ import pytest
 
 from mlx_stack.core.catalog import (
     BenchmarkResult,
-    Capabilities,
     CatalogEntry,
-    QualityScores,
-    QuantSource,
 )
 from mlx_stack.core.hardware import HardwareProfile
 from mlx_stack.core.scoring import (
@@ -48,93 +45,31 @@ from mlx_stack.core.scoring import (
     score_and_filter,
     score_model,
 )
+from tests.factories import make_entry, make_profile
 
 # --------------------------------------------------------------------------- #
 # Fixtures — reusable test data
 # --------------------------------------------------------------------------- #
 
-
-def _make_entry(
-    model_id: str = "test-model",
-    name: str = "Test Model",
-    family: str = "Test",
-    params_b: float = 8.0,
-    architecture: str = "transformer",
-    quality_overall: int = 70,
-    quality_coding: int = 65,
-    quality_reasoning: int = 60,
-    quality_instruction: int = 72,
-    tool_calling: bool = True,
-    tool_call_parser: str | None = "hermes",
-    thinking: bool = False,
-    benchmarks: dict[str, BenchmarkResult] | None = None,
-    tags: list[str] | None = None,
-    gated: bool = False,
-) -> CatalogEntry:
-    """Helper to create a CatalogEntry for testing."""
-    if benchmarks is None:
-        benchmarks = {
-            "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
-            "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
-            "m5-max-128": BenchmarkResult(prompt_tps=155.0, gen_tps=85.0, memory_gb=5.5),
-        }
-    return CatalogEntry(
-        id=model_id,
-        name=name,
-        family=family,
-        params_b=params_b,
-        architecture=architecture,
-        min_mlx_lm_version="0.22.0",
-        sources={
-            "int4": QuantSource(hf_repo="test/repo-4bit", disk_size_gb=4.5),
-            "int8": QuantSource(hf_repo="test/repo-8bit", disk_size_gb=8.5),
-        },
-        capabilities=Capabilities(
-            tool_calling=tool_calling,
-            tool_call_parser=tool_call_parser if tool_calling else None,
-            thinking=thinking,
-            reasoning_parser=None,
-            vision=False,
-        ),
-        quality=QualityScores(
-            overall=quality_overall,
-            coding=quality_coding,
-            reasoning=quality_reasoning,
-            instruction_following=quality_instruction,
-        ),
-        benchmarks=benchmarks,
-        tags=tags or ["balanced"],
-        gated=gated,
-    )
-
-
-def _make_profile(
-    chip: str = "Apple M4 Max",
-    gpu_cores: int = 40,
-    memory_gb: int = 128,
-    bandwidth_gbps: float = 546.0,
-    is_estimate: bool = False,
-) -> HardwareProfile:
-    """Helper to create a HardwareProfile for testing."""
-    return HardwareProfile(
-        chip=chip,
-        gpu_cores=gpu_cores,
-        memory_gb=memory_gb,
-        bandwidth_gbps=bandwidth_gbps,
-        is_estimate=is_estimate,
-    )
+# Default benchmarks for this test module's basic_entry and most calls that
+# rely on the 3-profile convention (m4-pro-48, m4-max-128, m5-max-128).
+_SCORING_BENCHMARKS: dict[str, BenchmarkResult] = {
+    "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
+    "m4-max-128": BenchmarkResult(prompt_tps=140.0, gen_tps=77.0, memory_gb=5.5),
+    "m5-max-128": BenchmarkResult(prompt_tps=155.0, gen_tps=85.0, memory_gb=5.5),
+}
 
 
 @pytest.fixture
 def m4_max_128_profile() -> HardwareProfile:
     """M4 Max 128 GB profile — matches catalog benchmark key 'm4-max-128'."""
-    return _make_profile()
+    return make_profile()
 
 
 @pytest.fixture
 def m4_pro_48_profile() -> HardwareProfile:
     """M4 Pro 48 GB profile — matches catalog benchmark key 'm4-pro-48'."""
-    return _make_profile(
+    return make_profile(
         chip="Apple M4 Pro",
         gpu_cores=18,
         memory_gb=48,
@@ -145,7 +80,7 @@ def m4_pro_48_profile() -> HardwareProfile:
 @pytest.fixture
 def unknown_profile() -> HardwareProfile:
     """Unknown hardware profile — no catalog benchmark match."""
-    return _make_profile(
+    return make_profile(
         chip="Apple M6",
         gpu_cores=60,
         memory_gb=256,
@@ -157,7 +92,7 @@ def unknown_profile() -> HardwareProfile:
 @pytest.fixture
 def small_memory_profile() -> HardwareProfile:
     """Small memory profile (32 GB) for tier count tests."""
-    return _make_profile(
+    return make_profile(
         chip="Apple M4 Pro",
         gpu_cores=18,
         memory_gb=32,
@@ -168,7 +103,7 @@ def small_memory_profile() -> HardwareProfile:
 @pytest.fixture
 def basic_entry() -> CatalogEntry:
     """A basic catalog entry with standard benchmarks."""
-    return _make_entry()
+    return make_entry(benchmarks=_SCORING_BENCHMARKS, tags=["balanced"])
 
 
 @pytest.fixture
@@ -176,7 +111,7 @@ def sample_catalog() -> list[CatalogEntry]:
     """A representative catalog for testing scoring and tier assignment."""
     return [
         # High quality model
-        _make_entry(
+        make_entry(
             model_id="premium-72b",
             name="Premium 72B",
             params_b=72.0,
@@ -192,7 +127,7 @@ def sample_catalog() -> list[CatalogEntry]:
             tags=["premium", "quality"],
         ),
         # Fast small model
-        _make_entry(
+        make_entry(
             model_id="fast-0.8b",
             name="Fast 0.8B",
             params_b=0.8,
@@ -209,7 +144,7 @@ def sample_catalog() -> list[CatalogEntry]:
             tags=["fast-inference"],
         ),
         # Mid-tier model
-        _make_entry(
+        make_entry(
             model_id="mid-8b",
             name="Mid 8B",
             params_b=8.0,
@@ -226,7 +161,7 @@ def sample_catalog() -> list[CatalogEntry]:
             tags=["balanced", "agent-ready"],
         ),
         # Longctx model with mamba2-hybrid architecture
-        _make_entry(
+        make_entry(
             model_id="longctx-32b",
             name="LongCtx 32B",
             params_b=32.0,
@@ -244,7 +179,7 @@ def sample_catalog() -> list[CatalogEntry]:
             tags=["reasoning", "long-context"],
         ),
         # Model without tool calling
-        _make_entry(
+        make_entry(
             model_id="no-tools-27b",
             name="No Tools 27B",
             params_b=27.0,
@@ -261,7 +196,7 @@ def sample_catalog() -> list[CatalogEntry]:
             tags=["vision", "quality"],
         ),
         # Very large model that exceeds most budgets
-        _make_entry(
+        make_entry(
             model_id="huge-100b",
             name="Huge 100B",
             params_b=100.0,
@@ -455,7 +390,10 @@ class TestBenchmarkResolution:
     def test_direct_match(
         self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
     ) -> None:
+        # Act
         gen_tps, memory_gb, is_estimated = _resolve_benchmark(basic_entry, m4_max_128_profile)
+
+        # Assert
         assert gen_tps == 77.0
         assert memory_gb == 5.5
         assert is_estimated is False
@@ -463,7 +401,10 @@ class TestBenchmarkResolution:
     def test_direct_match_different_profile(
         self, basic_entry: CatalogEntry, m4_pro_48_profile: HardwareProfile
     ) -> None:
+        # Act
         gen_tps, memory_gb, is_estimated = _resolve_benchmark(basic_entry, m4_pro_48_profile)
+
+        # Assert
         assert gen_tps == 52.0
         assert memory_gb == 5.5
         assert is_estimated is False
@@ -471,12 +412,17 @@ class TestBenchmarkResolution:
     def test_saved_benchmarks_override(
         self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
     ) -> None:
+        # Arrange
         saved = {
             "test-model": {"gen_tps": 90.0, "memory_gb": 5.8},
         }
+
+        # Act
         gen_tps, memory_gb, is_estimated = _resolve_benchmark(
             basic_entry, m4_max_128_profile, saved_benchmarks=saved
         )
+
+        # Assert
         assert gen_tps == 90.0
         assert memory_gb == 5.8
         assert is_estimated is False
@@ -493,13 +439,13 @@ class TestBenchmarkResolution:
 
     def test_bandwidth_ratio_scales_correctly(self) -> None:
         """Bandwidth-ratio estimation should scale gen_tps proportionally."""
-        entry = _make_entry(
+        entry = make_entry(
             benchmarks={
                 "m4-max-128": BenchmarkResult(prompt_tps=100.0, gen_tps=50.0, memory_gb=5.0),
             },
         )
         # Profile with double the bandwidth of reference
-        profile_2x = _make_profile(
+        profile_2x = make_profile(
             chip="Apple M99",
             bandwidth_gbps=1092.0,  # 2x m4-max-128's 546
         )
@@ -543,7 +489,7 @@ class TestBenchmarkResolution:
         assert is_estimated is False
 
     def test_model_without_benchmarks_raises(self, unknown_profile: HardwareProfile) -> None:
-        entry = _make_entry(benchmarks={})
+        entry = make_entry(benchmarks={})
         with pytest.raises(ScoringError, match="no benchmark data"):
             _resolve_benchmark(entry, unknown_profile)
 
@@ -559,10 +505,14 @@ class TestScoreModel:
     def test_basic_scoring(
         self, basic_entry: CatalogEntry, m4_max_128_profile: HardwareProfile
     ) -> None:
+        # Arrange
         weights = INTENT_WEIGHTS["balanced"]
         budget_gb = 51.2
+
+        # Act
         scored = score_model(basic_entry, m4_max_128_profile, weights, budget_gb)
 
+        # Assert
         assert isinstance(scored, ScoredModel)
         assert scored.entry.id == "test-model"
         assert 0 < scored.composite_score <= 1.0
@@ -603,14 +553,14 @@ class TestScoreModel:
         estimated gen_tps can exceed 200 (the normalization reference).
         The speed_score must still be clamped to [0, 1].
         """
-        entry = _make_entry(
+        entry = make_entry(
             model_id="fast-model",
             benchmarks={
                 "m4-max-128": BenchmarkResult(prompt_tps=480.0, gen_tps=185.0, memory_gb=0.8),
             },
         )
         # Very high bandwidth hardware — 4x the reference m4-max-128 (546 GB/s)
-        high_bw_profile = _make_profile(
+        high_bw_profile = make_profile(
             chip="Apple M99 Ultra",
             gpu_cores=128,
             memory_gb=512,
@@ -632,8 +582,8 @@ class TestScoreModel:
         self, m4_max_128_profile: HardwareProfile
     ) -> None:
         """Models with tool_calling should score higher under agent-fleet intent."""
-        with_tools = _make_entry(model_id="with-tools", tool_calling=True)
-        without_tools = _make_entry(
+        with_tools = make_entry(model_id="with-tools", tool_calling=True)
+        without_tools = make_entry(
             model_id="no-tools",
             tool_calling=False,
             tool_call_parser=None,
@@ -732,7 +682,7 @@ class TestScoreAndFilter:
         self,
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        entry = _make_entry()
+        entry = make_entry()
         saved = {"test-model": {"gen_tps": 200.0, "memory_gb": 5.5}}
         scored = score_and_filter(
             [entry],
@@ -807,7 +757,7 @@ class TestAssignTiers:
         """Small memory systems (budget < 16 GB) should get 1-2 tiers."""
         # 32 GB * 40% = 12.8 GB budget — below 16 GB threshold
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="small-3b",
                 params_b=3.0,
                 quality_overall=55,
@@ -815,7 +765,7 @@ class TestAssignTiers:
                     "m4-pro-48": BenchmarkResult(prompt_tps=180.0, gen_tps=88.0, memory_gb=2.5),
                 },
             ),
-            _make_entry(
+            make_entry(
                 model_id="mid-8b",
                 params_b=8.0,
                 quality_overall=68,
@@ -823,7 +773,7 @@ class TestAssignTiers:
                     "m4-pro-48": BenchmarkResult(prompt_tps=95.0, gen_tps=52.0, memory_gb=5.5),
                 },
             ),
-            _make_entry(
+            make_entry(
                 model_id="longctx-8b",
                 architecture="mamba2-hybrid",
                 params_b=8.0,
@@ -862,8 +812,8 @@ class TestAssignTiers:
         assert tiers == []
 
     def test_single_model(self) -> None:
-        entry = _make_entry()
-        profile = _make_profile()
+        entry = make_entry()
+        profile = make_profile()
         weights = INTENT_WEIGHTS["balanced"]
         scored = [score_model(entry, profile, weights, 51.2)]
         tiers = assign_tiers(scored, 51.2)
@@ -876,8 +826,8 @@ class TestAssignTiers:
     ) -> None:
         """If no mamba2-hybrid models exist, only 2 tiers are assigned."""
         catalog = [
-            _make_entry(model_id="high-q", quality_overall=91),
-            _make_entry(
+            make_entry(model_id="high-q", quality_overall=91),
+            make_entry(
                 model_id="fast-model",
                 quality_overall=42,
                 benchmarks={
@@ -1018,7 +968,7 @@ class TestRecommend:
         self,
         m4_max_128_profile: HardwareProfile,
     ) -> None:
-        entry = _make_entry()
+        entry = make_entry()
         saved = {"test-model": {"gen_tps": 200.0, "memory_gb": 5.5}}
         result = recommend([entry], m4_max_128_profile, saved_benchmarks=saved)
         assert len(result.all_scored) == 1
@@ -1048,14 +998,14 @@ class TestRecommend:
     def test_small_budget_gives_fewer_tiers(self, small_memory_profile: HardwareProfile) -> None:
         """On small memory, recommendation produces fewer tiers."""
         catalog = [
-            _make_entry(
+            make_entry(
                 model_id="small-model",
                 quality_overall=65,
                 benchmarks={
                     "m4-pro-48": BenchmarkResult(prompt_tps=180.0, gen_tps=88.0, memory_gb=2.5),
                 },
             ),
-            _make_entry(
+            make_entry(
                 model_id="mid-model",
                 quality_overall=70,
                 benchmarks={
@@ -1100,7 +1050,7 @@ class TestWithRealCatalog:
         catalog = load_catalog()
         assert len(catalog) == 15
 
-        profile = _make_profile()  # M4 Max 128 GB
+        profile = make_profile()  # M4 Max 128 GB
         result = recommend(catalog, profile)
 
         # Should have some models and tiers
@@ -1116,7 +1066,7 @@ class TestWithRealCatalog:
         from mlx_stack.core.catalog import load_catalog
 
         catalog = load_catalog()
-        profile = _make_profile()
+        profile = make_profile()
 
         balanced = recommend(catalog, profile, intent="balanced")
         fleet = recommend(catalog, profile, intent="agent-fleet")
@@ -1135,7 +1085,7 @@ class TestWithRealCatalog:
         from mlx_stack.core.catalog import load_catalog
 
         catalog = load_catalog()
-        profile = _make_profile(
+        profile = make_profile(
             chip="Apple M4 Pro",
             gpu_cores=18,
             memory_gb=48,
@@ -1158,7 +1108,7 @@ class TestWithRealCatalog:
         from mlx_stack.core.catalog import load_catalog
 
         catalog = load_catalog()
-        profile = _make_profile(
+        profile = make_profile(
             chip="Apple M6",
             memory_gb=256,
             bandwidth_gbps=1000.0,
@@ -1175,7 +1125,7 @@ class TestWithRealCatalog:
         from mlx_stack.core.catalog import load_catalog
 
         catalog = load_catalog()
-        profile = _make_profile()
+        profile = make_profile()
 
         r1 = recommend(catalog, profile)
         r2 = recommend(catalog, profile)
@@ -1197,7 +1147,7 @@ class TestWithRealCatalog:
         from mlx_stack.core.catalog import load_catalog
 
         catalog = load_catalog()
-        profile = _make_profile()  # M4 Max 128 GB
+        profile = make_profile()  # M4 Max 128 GB
 
         balanced = recommend(catalog, profile, intent="balanced")
         fleet = recommend(catalog, profile, intent="agent-fleet")
@@ -1247,7 +1197,7 @@ class TestIntentDifferentiation:
         are similar, making the quality vs. tool_calling weight difference
         the decisive factor.
         """
-        model_a = _make_entry(
+        model_a = make_entry(
             model_id="quality-leader",
             name="Quality Leader",
             quality_overall=95,
@@ -1260,7 +1210,7 @@ class TestIntentDifferentiation:
                 "m4-max-128": BenchmarkResult(prompt_tps=40.0, gen_tps=25.0, memory_gb=20.0),
             },
         )
-        model_b = _make_entry(
+        model_b = make_entry(
             model_id="tool-caller",
             name="Tool Caller",
             quality_overall=50,
@@ -1300,7 +1250,7 @@ class TestIntentDifferentiation:
     ) -> None:
         """Standard tier should pick the highest composite score, not raw quality."""
         # Model with highest quality but terrible speed and efficiency
-        high_q = _make_entry(
+        high_q = make_entry(
             model_id="slow-quality",
             quality_overall=95,
             benchmarks={
@@ -1308,7 +1258,7 @@ class TestIntentDifferentiation:
             },
         )
         # Model with moderate quality but good speed and efficiency
-        balanced_model = _make_entry(
+        balanced_model = make_entry(
             model_id="balanced-model",
             quality_overall=70,
             benchmarks={
@@ -1335,8 +1285,8 @@ class TestExcludeGated:
 
     def test_exclude_gated_filters_gated_models(self, m4_max_128_profile: HardwareProfile) -> None:
         """Gated models are excluded when exclude_gated=True."""
-        open_model = _make_entry(model_id="open-model", name="Open Model")
-        gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
+        open_model = make_entry(model_id="open-model", name="Open Model")
+        gated_model = make_entry(model_id="gated-model", name="Gated Model", gated=True)
 
         scored = score_and_filter(
             [open_model, gated_model],
@@ -1351,8 +1301,8 @@ class TestExcludeGated:
 
     def test_exclude_gated_false_includes_all(self, m4_max_128_profile: HardwareProfile) -> None:
         """All models included when exclude_gated=False (default)."""
-        open_model = _make_entry(model_id="open-model", name="Open Model")
-        gated_model = _make_entry(model_id="gated-model", name="Gated Model", gated=True)
+        open_model = make_entry(model_id="open-model", name="Open Model")
+        gated_model = make_entry(model_id="gated-model", name="Gated Model", gated=True)
 
         scored = score_and_filter(
             [open_model, gated_model],
@@ -1367,8 +1317,8 @@ class TestExcludeGated:
 
     def test_recommend_exclude_gated(self, m4_max_128_profile: HardwareProfile) -> None:
         """Gated models excluded from tier assignments via recommend()."""
-        open_model = _make_entry(model_id="open-model", name="Open Model")
-        gated_model = _make_entry(
+        open_model = make_entry(model_id="open-model", name="Open Model")
+        gated_model = make_entry(
             model_id="gated-model",
             name="Gated Model",
             quality_overall=99,

@@ -17,7 +17,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
 
 from mlx_stack.core.process import (
     ProcessError,
@@ -30,59 +29,19 @@ from mlx_stack.core.process import (
 from mlx_stack.core.stack_up import (
     run_up,
 )
+from tests.factories import create_pid_file, make_stack_yaml, write_stack_yaml
 
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
-
-
-def _make_stack_yaml(
-    tiers: list[dict[str, Any]] | None = None,
-) -> dict[str, Any]:
-    """Create a stack definition dict for testing."""
-    if tiers is None:
-        tiers = [
-            {
-                "name": "fast",
-                "model": "fast-model",
-                "quant": "int4",
-                "source": "mlx-community/fast-model-4bit",
-                "port": 8001,
-                "vllm_flags": {"continuous_batching": True},
-            },
-        ]
-    return {
-        "schema_version": 1,
-        "name": "default",
-        "hardware_profile": "m4-max-128",
-        "intent": "balanced",
-        "created": "2026-03-24T00:00:00+00:00",
-        "tiers": tiers,
-    }
-
-
-def _write_stack_yaml(mlx_stack_home: Path, stack: dict[str, Any] | None = None) -> Path:
-    """Write a stack YAML file and return its path."""
-    if stack is None:
-        stack = _make_stack_yaml()
-    stacks_dir = mlx_stack_home / "stacks"
-    stacks_dir.mkdir(parents=True, exist_ok=True)
-    stack_path = stacks_dir / "default.yaml"
-    stack_path.write_text(yaml.dump(stack, default_flow_style=False))
-    return stack_path
-
-
-def _create_pid_file(
-    mlx_stack_home: Path,
-    service_name: str,
-    pid: int | str = 12345,
-) -> Path:
-    """Create a PID file in the pids directory."""
-    pids_dir = mlx_stack_home / "pids"
-    pids_dir.mkdir(parents=True, exist_ok=True)
-    pid_path = pids_dir / f"{service_name}.pid"
-    pid_path.write_text(str(pid))
-    return pid_path
+# Single-tier stack used by all robustness tests.
+_FAST_TIER_ONLY: list[dict[str, Any]] = [
+    {
+        "name": "fast",
+        "model": "fast-model",
+        "quant": "int4",
+        "source": "mlx-community/fast-model-4bit",
+        "port": 8001,
+        "vllm_flags": {"continuous_batching": True},
+    },
+]
 
 
 # =========================================================================== #
@@ -103,14 +62,15 @@ class TestStartServicePidWriteFailure:
         mlx_stack_home: Path,
     ) -> None:
         """Process is terminated when PID file cannot be written."""
+        # Arrange
         mock_proc = MagicMock()
         mock_proc.pid = 54321
         mock_popen.return_value = mock_proc
 
+        # Act / Assert
         with pytest.raises(ProcessError, match="Could not write PID file"):
             start_service("fast", cmd=["vllm-mlx", "--port", "8001"], port=8001)
 
-        # The spawned process must have been terminated
         mock_proc.terminate.assert_called_once()
 
     @patch("mlx_stack.core.process.subprocess.Popen")
@@ -122,15 +82,16 @@ class TestStartServicePidWriteFailure:
         mlx_stack_home: Path,
     ) -> None:
         """Process is force-killed if terminate() fails."""
+        # Arrange
         mock_proc = MagicMock()
         mock_proc.pid = 54321
         mock_proc.terminate.side_effect = OSError("already dead")
         mock_popen.return_value = mock_proc
 
+        # Act / Assert
         with pytest.raises(ProcessError, match="Could not write PID file"):
             start_service("fast", cmd=["vllm-mlx", "--port", "8001"], port=8001)
 
-        # Should fall through to kill()
         mock_proc.kill.assert_called_once()
 
     @patch("mlx_stack.core.process.subprocess.Popen")
@@ -142,10 +103,12 @@ class TestStartServicePidWriteFailure:
         mlx_stack_home: Path,
     ) -> None:
         """Error message includes the orphaned process PID."""
+        # Arrange
         mock_proc = MagicMock()
         mock_proc.pid = 54321
         mock_popen.return_value = mock_proc
 
+        # Act / Assert
         with pytest.raises(ProcessError) as exc_info:
             start_service("fast", cmd=["vllm-mlx"], port=8001)
 
@@ -161,15 +124,16 @@ class TestStartServicePidWriteFailure:
         mlx_stack_home: Path,
     ) -> None:
         """Log file handle is properly closed on PID write failure."""
+        # Arrange
         mock_proc = MagicMock()
         mock_proc.pid = 12345
         mock_popen.return_value = mock_proc
 
+        # Act
         with pytest.raises(ProcessError):
             start_service("fast", cmd=["vllm-mlx"], port=8001)
 
-        # Verify no leaked file descriptors — the log file should exist
-        # (was opened for writing) but the handle should have been closed
+        # Assert -- log file exists (was opened) but handle was closed
         log_path = mlx_stack_home / "logs" / "fast.log"
         assert log_path.exists()
 
@@ -185,14 +149,13 @@ class TestStackUpCorruptPidHandling:
 
     def test_corrupt_tier_pid_cleaned_up_gracefully(self, mlx_stack_home: Path) -> None:
         """Corrupt tier PID file is cleaned up without traceback."""
-        _write_stack_yaml(mlx_stack_home)
-        # Create a corrupt PID file
-        _create_pid_file(mlx_stack_home, "fast", "not-a-number")
-
-        # Write litellm config so LiteLLM can be started
+        # Arrange
+        write_stack_yaml(mlx_stack_home, make_stack_yaml(tiers=_FAST_TIER_ONLY))
+        create_pid_file(mlx_stack_home, "fast", "not-a-number")
         litellm_config = mlx_stack_home / "litellm.yaml"
         litellm_config.write_text("model_list: []\n")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_up.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_up.ensure_dependency"),
@@ -205,31 +168,26 @@ class TestStackUpCorruptPidHandling:
         ):
             mock_lock.return_value.__enter__ = MagicMock()
             mock_lock.return_value.__exit__ = MagicMock(return_value=False)
-
             mock_start.return_value = MagicMock(pid=99999)
             mock_health.return_value = MagicMock(healthy=True)
 
             result = run_up()
 
-        # The corrupt PID should have been cleaned up, and the tier started fresh
+        # Assert -- corrupt PID cleaned up and tier started fresh
         pids_dir = mlx_stack_home / "pids"
         corrupt_file = pids_dir / "fast.pid"
-        # The corrupt file should have been cleaned up (removed by our fix)
-        # and a new one written by start_service mock
         assert not corrupt_file.exists() or corrupt_file.read_text() != "not-a-number"
-
-        # Should have warnings about stale PID cleanup
         assert any("stale" in w.lower() or "Cleaned up" in w for w in result.warnings)
 
     def test_corrupt_litellm_pid_cleaned_up_gracefully(self, mlx_stack_home: Path) -> None:
         """Corrupt LiteLLM PID file is cleaned up without traceback."""
-        _write_stack_yaml(mlx_stack_home)
-        # Create a corrupt LiteLLM PID file
-        _create_pid_file(mlx_stack_home, "litellm", "garbage-data")
-
+        # Arrange
+        write_stack_yaml(mlx_stack_home, make_stack_yaml(tiers=_FAST_TIER_ONLY))
+        create_pid_file(mlx_stack_home, "litellm", "garbage-data")
         litellm_config = mlx_stack_home / "litellm.yaml"
         litellm_config.write_text("model_list: []\n")
 
+        # Act -- should NOT raise UpError; corrupt PID is handled gracefully
         with (
             patch("mlx_stack.core.stack_up.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_up.ensure_dependency"),
@@ -242,14 +200,12 @@ class TestStackUpCorruptPidHandling:
         ):
             mock_lock.return_value.__enter__ = MagicMock()
             mock_lock.return_value.__exit__ = MagicMock(return_value=False)
-
             mock_start.return_value = MagicMock(pid=99999)
             mock_health.return_value = MagicMock(healthy=True)
 
-            # This should NOT raise UpError — corrupt PID is handled gracefully
             result = run_up()
 
-        # Corrupt PID cleaned up
+        # Assert
         assert any("stale" in w.lower() or "Cleaned up" in w for w in result.warnings)
 
     def test_corrupt_pid_no_traceback_via_cli(self, mlx_stack_home: Path) -> None:
@@ -258,12 +214,13 @@ class TestStackUpCorruptPidHandling:
 
         from mlx_stack.cli.main import cli
 
-        _write_stack_yaml(mlx_stack_home)
-        _create_pid_file(mlx_stack_home, "fast", "corrupt!!!")
-
+        # Arrange
+        write_stack_yaml(mlx_stack_home, make_stack_yaml(tiers=_FAST_TIER_ONLY))
+        create_pid_file(mlx_stack_home, "fast", "corrupt!!!")
         litellm_config = mlx_stack_home / "litellm.yaml"
         litellm_config.write_text("model_list: []\n")
 
+        # Act
         with (
             patch("mlx_stack.core.stack_up.acquire_lock") as mock_lock,
             patch("mlx_stack.core.stack_up.ensure_dependency"),
@@ -276,13 +233,13 @@ class TestStackUpCorruptPidHandling:
         ):
             mock_lock.return_value.__enter__ = MagicMock()
             mock_lock.return_value.__exit__ = MagicMock(return_value=False)
-
             mock_start.return_value = MagicMock(pid=99999)
             mock_health.return_value = MagicMock(healthy=True)
 
             runner = CliRunner()
             result = runner.invoke(cli, ["up"])
 
+        # Assert
         assert "Traceback" not in result.output
 
 
@@ -307,7 +264,7 @@ class TestSigkillVerification:
         mock_sleep: MagicMock,
     ) -> None:
         """Process confirmed dead after SIGKILL → confirmed=True."""
-        # Process stays alive through grace, dies after SIGKILL
+        # Arrange -- process stays alive through grace, dies after SIGKILL
         mock_alive.side_effect = [True, True, True, False]
         mock_monotonic.side_effect = [
             0.0,  # deadline = 10.0
@@ -315,7 +272,10 @@ class TestSigkillVerification:
             11.0,  # past grace → SIGKILL
         ]
 
+        # Act
         graceful, confirmed = _terminate_process(123, grace_period=10)
+
+        # Assert
         assert graceful is False
         assert confirmed is True
 
@@ -331,14 +291,17 @@ class TestSigkillVerification:
         mock_sleep: MagicMock,
     ) -> None:
         """Process still alive after SIGKILL → confirmed=False."""
-        # Process never dies (survives SIGKILL — e.g. zombie or kernel hold)
+        # Arrange -- process never dies (zombie or kernel hold)
         mock_alive.return_value = True
         mock_monotonic.side_effect = [
             0.0,  # deadline = 10.0
             11.0,  # past grace → SIGKILL
         ]
 
+        # Act
         graceful, confirmed = _terminate_process(123, grace_period=10)
+
+        # Assert
         assert graceful is False
         assert confirmed is False
 
@@ -351,13 +314,15 @@ class TestSigkillVerification:
         mlx_stack_home: Path,
     ) -> None:
         """PID file is NOT removed when process termination is not confirmed."""
+        # Arrange
         write_pid_file("stubborn", 12345)
 
+        # Act
         result = stop_service("stubborn")
 
+        # Assert
         assert result is not None
         assert result.graceful is False
-        # PID file should still exist since process wasn't confirmed dead
         pid = read_pid_file("stubborn")
         assert pid == 12345
 
@@ -370,13 +335,15 @@ class TestSigkillVerification:
         mlx_stack_home: Path,
     ) -> None:
         """PID file IS removed when process termination is confirmed."""
+        # Arrange
         write_pid_file("killed", 12345)
 
+        # Act
         result = stop_service("killed")
 
+        # Assert
         assert result is not None
         assert result.graceful is False
-        # PID file should be removed since termination was confirmed
         assert read_pid_file("killed") is None
 
     @patch("mlx_stack.core.process._terminate_process", return_value=(True, True))
@@ -388,10 +355,13 @@ class TestSigkillVerification:
         mlx_stack_home: Path,
     ) -> None:
         """PID file removed on graceful + confirmed shutdown."""
+        # Arrange
         write_pid_file("graceful", 12345)
 
+        # Act
         result = stop_service("graceful")
 
+        # Assert
         assert result is not None
         assert result.graceful is True
         assert read_pid_file("graceful") is None

@@ -7,12 +7,12 @@ files, below-threshold files, permission errors).
 
 from __future__ import annotations
 
-import gzip
 from pathlib import Path
 
 import pytest
 
 from mlx_stack.core.log_rotation import LogRotationError, rotate_log
+from tests.factories import read_gz
 
 # --------------------------------------------------------------------------- #
 # Helpers
@@ -20,7 +20,12 @@ from mlx_stack.core.log_rotation import LogRotationError, rotate_log
 
 
 def _create_log(path: Path, size_mb: float = 0, content: str | None = None) -> None:
-    """Create a log file with the given size or specific content."""
+    """Create a log file with the given size or specific content.
+
+    Unlike ``create_log_file`` from factories (which takes *logs_dir* and
+    *service* separately), this helper accepts a full *path* because the
+    rotation tests create files in arbitrary ``tmp_path`` locations.
+    """
     if content is not None:
         path.write_text(content)
     else:
@@ -30,12 +35,6 @@ def _create_log(path: Path, size_mb: float = 0, content: str | None = None) -> N
             path.write_bytes(b"x" * size_bytes)
         else:
             path.touch()
-
-
-def _read_gz(path: Path) -> bytes:
-    """Read and decompress a gzip file."""
-    with gzip.open(str(path), "rb") as f:
-        return f.read()
 
 
 # --------------------------------------------------------------------------- #
@@ -48,20 +47,20 @@ class TestBasicRotation:
 
     def test_rotates_file_exceeding_threshold(self, tmp_path: Path) -> None:
         """File above threshold is rotated: archive created, original truncated."""
+        # Arrange
         log = tmp_path / "service.log"
         _create_log(log, size_mb=2)
 
+        # Act
         result = rotate_log(log, max_size_mb=1, max_files=5)
 
+        # Assert
         assert result is True
-        # Original should be truncated to zero
         assert log.exists()
         assert log.stat().st_size == 0
-        # Archive .1.gz should exist
         archive = tmp_path / "service.log.1.gz"
         assert archive.exists()
-        # Archive content should match original content
-        data = _read_gz(archive)
+        data = read_gz(archive)
         assert len(data) == 2 * 1024 * 1024
 
     def test_returns_true_on_rotation(self, tmp_path: Path) -> None:
@@ -71,15 +70,18 @@ class TestBasicRotation:
 
     def test_archive_is_valid_gzip(self, tmp_path: Path) -> None:
         """The archive file is valid gzip that can be decompressed."""
+        # Arrange
         log = tmp_path / "service.log"
         content = "hello world\n" * 100000
         _create_log(log, content=content)
 
+        # Act
         rotate_log(log, max_size_mb=0, max_files=5)
 
+        # Assert
         archive = tmp_path / "service.log.1.gz"
         assert archive.exists()
-        decompressed = _read_gz(archive).decode("utf-8")
+        decompressed = read_gz(archive).decode("utf-8")
         assert decompressed == content
 
     def test_original_file_truncated_to_zero(self, tmp_path: Path) -> None:
@@ -119,24 +121,22 @@ class TestArchiveShifting:
 
     def test_existing_archive_shifted_up(self, tmp_path: Path) -> None:
         """Existing .1.gz is shifted to .2.gz before new .1.gz is created."""
+        # Arrange
         log = tmp_path / "service.log"
-
-        # First rotation
         _create_log(log, content="first content\n" * 100000)
         rotate_log(log, max_size_mb=0, max_files=5)
 
-        # Second rotation
+        # Act
         _create_log(log, content="second content\n" * 100000)
         rotate_log(log, max_size_mb=0, max_files=5)
 
-        # .1.gz should have second content, .2.gz should have first content
+        # Assert -- .1.gz has second content, .2.gz has first content
         archive1 = tmp_path / "service.log.1.gz"
         archive2 = tmp_path / "service.log.2.gz"
         assert archive1.exists()
         assert archive2.exists()
-
-        data1 = _read_gz(archive1).decode("utf-8")
-        data2 = _read_gz(archive2).decode("utf-8")
+        data1 = read_gz(archive1).decode("utf-8")
+        data2 = read_gz(archive2).decode("utf-8")
         assert "second content" in data1
         assert "first content" in data2
 
@@ -154,8 +154,8 @@ class TestArchiveShifting:
             assert archive.exists(), f"Archive {n} missing"
 
         # .1 = most recent (rotation 3), .4 = oldest (rotation 0)
-        data1 = _read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
-        data4 = _read_gz(tmp_path / "service.log.4.gz").decode("utf-8")
+        data1 = read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
+        data4 = read_gz(tmp_path / "service.log.4.gz").decode("utf-8")
         assert "rotation 3" in data1
         assert "rotation 0" in data4
 
@@ -169,7 +169,7 @@ class TestArchiveShifting:
         _create_log(log, content="new data\n" * 100000)
         rotate_log(log, max_size_mb=0, max_files=5)
 
-        data = _read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
+        data = read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
         assert "new data" in data
 
 
@@ -198,11 +198,11 @@ class TestMaxFilesEnforcement:
         assert not (tmp_path / "service.log.6.gz").exists()
 
         # .1 should be most recent (rotation 5)
-        data1 = _read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
+        data1 = read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
         assert "rotation 5" in data1
 
         # .5 should be oldest retained (rotation 1, since rotation 0 was deleted)
-        data5 = _read_gz(tmp_path / "service.log.5.gz").decode("utf-8")
+        data5 = read_gz(tmp_path / "service.log.5.gz").decode("utf-8")
         assert "rotation 1" in data5
 
     def test_max_files_one(self, tmp_path: Path) -> None:
@@ -217,7 +217,7 @@ class TestMaxFilesEnforcement:
         assert (tmp_path / "service.log.1.gz").exists()
         assert not (tmp_path / "service.log.2.gz").exists()
 
-        data = _read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
+        data = read_gz(tmp_path / "service.log.1.gz").decode("utf-8")
         assert "rotation 2" in data
 
     def test_max_files_exact_boundary(self, tmp_path: Path) -> None:

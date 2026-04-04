@@ -7,7 +7,6 @@ archived log reading, and on-demand rotation.
 from __future__ import annotations
 
 import contextlib
-import gzip
 import threading
 import time
 from datetime import UTC
@@ -27,28 +26,7 @@ from mlx_stack.core.log_viewer import (
     rotate_all_logs,
     rotate_service_log,
 )
-
-# --------------------------------------------------------------------------- #
-# Helpers
-# --------------------------------------------------------------------------- #
-
-
-def _create_log(logs_dir: Path, service: str, content: str = "") -> Path:
-    """Create a log file for a service."""
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    log_path = logs_dir / f"{service}.log"
-    log_path.write_text(content)
-    return log_path
-
-
-def _create_archive(logs_dir: Path, service: str, number: int, content: str) -> Path:
-    """Create a gzip archive for a service."""
-    logs_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = logs_dir / f"{service}.log.{number}.gz"
-    with gzip.open(str(archive_path), "wb") as f:
-        f.write(content.encode("utf-8"))
-    return archive_path
-
+from tests.factories import create_archive, create_log_file
 
 # --------------------------------------------------------------------------- #
 # LogFileInfo
@@ -140,11 +118,15 @@ class TestListLogFiles:
 
     def test_lists_log_files(self, mlx_stack_home: Path) -> None:
         """Lists .log files with correct metadata."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "line1\nline2\n")
-        _create_log(logs_dir, "standard", "some content\n")
+        create_log_file(logs_dir, "fast", "line1\nline2\n")
+        create_log_file(logs_dir, "standard", "some content\n")
 
+        # Act
         files = list_log_files()
+
+        # Assert
         assert len(files) == 2
         assert files[0].service == "fast"
         assert files[1].service == "standard"
@@ -153,11 +135,15 @@ class TestListLogFiles:
 
     def test_excludes_gz_files(self, mlx_stack_home: Path) -> None:
         """Archived .gz files are not included in listing."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "content")
-        _create_archive(logs_dir, "fast", 1, "old content")
+        create_log_file(logs_dir, "fast", "content")
+        create_archive(logs_dir, "fast", 1, "old content")
 
+        # Act
         files = list_log_files()
+
+        # Assert
         assert len(files) == 1
         assert files[0].name == "fast.log"
 
@@ -165,7 +151,7 @@ class TestListLogFiles:
         """Non-.log files are excluded."""
         logs_dir = mlx_stack_home / "logs"
         logs_dir.mkdir(parents=True, exist_ok=True)
-        _create_log(logs_dir, "fast", "content")
+        create_log_file(logs_dir, "fast", "content")
         (logs_dir / "notes.txt").write_text("not a log")
 
         files = list_log_files()
@@ -178,7 +164,7 @@ class TestGetLogPath:
     def test_returns_path_for_existing_log(self, mlx_stack_home: Path) -> None:
         """Returns path when log file exists."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "content")
+        create_log_file(logs_dir, "fast", "content")
 
         path = get_log_path("fast")
         assert path is not None
@@ -201,12 +187,16 @@ class TestGetAvailableServices:
 
     def test_returns_sorted_services(self, mlx_stack_home: Path) -> None:
         """Returns sorted list of services with log files."""
+        # Arrange
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "standard", "content")
-        _create_log(logs_dir, "fast", "content")
-        _create_log(logs_dir, "litellm", "content")
+        create_log_file(logs_dir, "standard", "content")
+        create_log_file(logs_dir, "fast", "content")
+        create_log_file(logs_dir, "litellm", "content")
 
+        # Act
         services = get_available_services()
+
+        # Assert
         assert services == ["fast", "litellm", "standard"]
 
     def test_returns_empty_for_no_logs(self, mlx_stack_home: Path) -> None:
@@ -420,7 +410,7 @@ class TestReadArchive:
 
     def test_reads_valid_archive(self, tmp_path: Path) -> None:
         """Reads and decompresses a valid gzip archive."""
-        archive = _create_archive(tmp_path, "fast", 1, "archived content")
+        archive = create_archive(tmp_path, "fast", 1, "archived content")
         result = read_archive(archive)
         assert result == "archived content"
 
@@ -438,29 +428,28 @@ class TestReadAllLogs:
 
     def test_chronological_order(self, mlx_stack_home: Path) -> None:
         """Shows archives oldest first, then current log."""
+        # Arrange -- higher archive number = older
         logs_dir = mlx_stack_home / "logs"
+        create_archive(logs_dir, "fast", 3, "oldest content")
+        create_archive(logs_dir, "fast", 2, "middle content")
+        create_archive(logs_dir, "fast", 1, "newest archived content")
+        create_log_file(logs_dir, "fast", "current content")
 
-        # Create archives (higher number = older)
-        _create_archive(logs_dir, "fast", 3, "oldest content")
-        _create_archive(logs_dir, "fast", 2, "middle content")
-        _create_archive(logs_dir, "fast", 1, "newest archived content")
-        _create_log(logs_dir, "fast", "current content")
-
+        # Act
         result = read_all_logs("fast")
-        lines = result.splitlines()
 
-        # Find the positions of section headers
+        # Assert -- section headers appear in chronological order
+        lines = result.splitlines()
         oldest_idx = next(i for i, line in enumerate(lines) if "fast.log.3.gz" in line)
         middle_idx = next(i for i, line in enumerate(lines) if "fast.log.2.gz" in line)
         newest_idx = next(i for i, line in enumerate(lines) if "fast.log.1.gz" in line)
         current_idx = next(i for i, line in enumerate(lines) if "Current:" in line)
-
         assert oldest_idx < middle_idx < newest_idx < current_idx
 
     def test_archives_only(self, mlx_stack_home: Path) -> None:
         """Works with only archived files (no current log)."""
         logs_dir = mlx_stack_home / "logs"
-        _create_archive(logs_dir, "fast", 1, "archived only")
+        create_archive(logs_dir, "fast", 1, "archived only")
 
         result = read_all_logs("fast")
         assert "archived only" in result
@@ -468,7 +457,7 @@ class TestReadAllLogs:
     def test_current_only(self, mlx_stack_home: Path) -> None:
         """Works with only current log (no archives)."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "current only")
+        create_log_file(logs_dir, "fast", "current only")
 
         result = read_all_logs("fast")
         assert "current only" in result
@@ -512,7 +501,7 @@ class TestRotateServiceLog:
     def test_skips_small_log(self, mlx_stack_home: Path) -> None:
         """Does not rotate a log below the threshold."""
         logs_dir = mlx_stack_home / "logs"
-        _create_log(logs_dir, "fast", "small content")
+        create_log_file(logs_dir, "fast", "small content")
 
         from unittest.mock import patch
 

@@ -15,7 +15,6 @@ from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
-import yaml
 
 from mlx_stack.core.watchdog import (
     DEFAULT_INTERVAL,
@@ -37,6 +36,7 @@ from mlx_stack.core.watchdog import (
     run_watchdog,
     setup_signal_handlers,
 )
+from tests.factories import create_log_file, create_pid_file, write_stack_yaml
 
 # --------------------------------------------------------------------------- #
 # Fixtures
@@ -46,9 +46,6 @@ from mlx_stack.core.watchdog import (
 @pytest.fixture
 def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
     """Create a test stack definition and return it."""
-    stacks_dir = mlx_stack_home / "stacks"
-    stacks_dir.mkdir(parents=True, exist_ok=True)
-
     stack = {
         "schema_version": 1,
         "name": "default",
@@ -81,9 +78,7 @@ def stack_definition(mlx_stack_home: Path) -> dict[str, Any]:
         ],
     }
 
-    stack_path = stacks_dir / "default.yaml"
-    stack_path.write_text(yaml.dump(stack))
-
+    write_stack_yaml(mlx_stack_home, stack)
     return stack
 
 
@@ -121,18 +116,30 @@ class TestCheckFlapping:
         assert check_flapping(tracker, max_restarts=5) is False
 
     def test_at_threshold_is_flapping(self) -> None:
+        # Arrange
         tracker = ServiceTracker()
         now = time.monotonic()
         tracker.restart_timestamps = [now - i for i in range(5)]
-        assert check_flapping(tracker, max_restarts=5) is True
+
+        # Act
+        result = check_flapping(tracker, max_restarts=5)
+
+        # Assert
+        assert result is True
         assert tracker.is_flapping is True
 
     def test_old_restarts_pruned(self) -> None:
         """Restarts outside the rolling window are pruned."""
+        # Arrange
         tracker = ServiceTracker()
         old = time.monotonic() - 700  # outside 600s window
         tracker.restart_timestamps = [old, old - 1, old - 2, old - 3, old - 4]
-        assert check_flapping(tracker, max_restarts=5) is False
+
+        # Act
+        result = check_flapping(tracker, max_restarts=5)
+
+        # Assert
+        assert result is False
         assert len(tracker.restart_timestamps) == 0
 
     def test_custom_window(self) -> None:
@@ -158,6 +165,7 @@ class TestResetFlapState:
         assert reset_flap_state(tracker, stable_period=300.0) is False
 
     def test_flapping_stable_resets(self) -> None:
+        # Arrange
         tracker = ServiceTracker(
             is_flapping=True,
             last_restart_time=time.monotonic() - 400,
@@ -165,7 +173,12 @@ class TestResetFlapState:
             restart_count=5,
             consecutive_failures=3,
         )
-        assert reset_flap_state(tracker, stable_period=300.0) is True
+
+        # Act
+        result = reset_flap_state(tracker, stable_period=300.0)
+
+        # Assert
+        assert result is True
         assert tracker.is_flapping is False
         assert tracker.restart_timestamps == []
         assert tracker.restart_count == 0
@@ -215,6 +228,7 @@ class TestRestartService:
     def test_restart_tier_success(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any], pids_dir: Path
     ) -> None:
+        # Arrange
         tracker = ServiceTracker()
 
         with (
@@ -222,12 +236,11 @@ class TestRestartService:
             patch("mlx_stack.core.watchdog.start_service") as mock_start,
             patch("mlx_stack.core.watchdog.remove_pid_file"),
         ):
-            # Make acquire_lock a context manager
             mock_lock.return_value.__enter__ = MagicMock(return_value=None)
             mock_lock.return_value.__exit__ = MagicMock(return_value=False)
-
             mock_start.return_value = MagicMock()
 
+            # Act
             result = restart_service(
                 service_name="fast",
                 stack=stack_definition,
@@ -235,11 +248,13 @@ class TestRestartService:
                 vllm_binary="/usr/bin/vllm-mlx",
             )
 
+        # Assert
         assert result is True
 
     def test_restart_unknown_tier_fails(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any], pids_dir: Path
     ) -> None:
+        # Arrange
         tracker = ServiceTracker()
 
         with (
@@ -249,6 +264,7 @@ class TestRestartService:
             mock_lock.return_value.__enter__ = MagicMock(return_value=None)
             mock_lock.return_value.__exit__ = MagicMock(return_value=False)
 
+            # Act
             result = restart_service(
                 service_name="nonexistent",
                 stack=stack_definition,
@@ -256,6 +272,7 @@ class TestRestartService:
                 vllm_binary="/usr/bin/vllm-mlx",
             )
 
+        # Assert
         assert result is False
 
     def test_restart_lock_failure(
@@ -263,8 +280,10 @@ class TestRestartService:
     ) -> None:
         from mlx_stack.core.process import LockError
 
+        # Arrange
         tracker = ServiceTracker()
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.acquire_lock", side_effect=LockError("locked")),
             patch("mlx_stack.core.watchdog.remove_pid_file"),
@@ -276,11 +295,13 @@ class TestRestartService:
                 vllm_binary="/usr/bin/vllm-mlx",
             )
 
+        # Assert
         assert result is False
 
     def test_restart_litellm(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any], pids_dir: Path
     ) -> None:
+        # Arrange
         tracker = ServiceTracker()
 
         with (
@@ -297,6 +318,7 @@ class TestRestartService:
                 "openrouter-key": "",
             }.get(key, "")
 
+            # Act
             result = restart_service(
                 service_name="litellm",
                 stack=stack_definition,
@@ -304,6 +326,7 @@ class TestRestartService:
                 litellm_binary="/usr/bin/litellm",
             )
 
+        # Assert
         assert result is True
 
 
@@ -319,24 +342,27 @@ class TestCheckExistingWatchdog:
         assert check_existing_watchdog() is None
 
     def test_stale_pid_file(self, mlx_stack_home: Path, pids_dir: Path) -> None:
-        # Write a PID file with a dead PID
-        pid_path = pids_dir / "watchdog.pid"
-        pid_path.write_text("99999999")
+        # Arrange
+        pid_path = create_pid_file(mlx_stack_home, "watchdog", pid=99999999)
 
+        # Act
         with patch("mlx_stack.core.watchdog.is_process_alive", return_value=False):
             result = check_existing_watchdog()
 
+        # Assert
         assert result is None
         # Stale PID file should be cleaned up
         assert not pid_path.exists()
 
     def test_running_watchdog(self, mlx_stack_home: Path, pids_dir: Path) -> None:
-        pid_path = pids_dir / "watchdog.pid"
-        pid_path.write_text("12345")
+        # Arrange
+        create_pid_file(mlx_stack_home, "watchdog", pid=12345)
 
+        # Act
         with patch("mlx_stack.core.watchdog.is_process_alive", return_value=True):
             result = check_existing_watchdog()
 
+        # Assert
         assert result == 12345
 
 
@@ -349,23 +375,29 @@ class TestSignalHandling:
     """Tests for setup_signal_handlers."""
 
     def test_sigterm_sets_shutdown_flag(self) -> None:
+        # Arrange
         state = WatchdogState()
         setup_signal_handlers(state)
         assert state.shutdown_requested is False
 
-        # Send SIGTERM to ourselves
+        # Act
         os.kill(os.getpid(), signal.SIGTERM)
+
+        # Assert
         assert state.shutdown_requested is True
 
     def test_sigint_sets_shutdown_flag(self) -> None:
+        # Arrange
         state = WatchdogState()
         setup_signal_handlers(state)
         assert state.shutdown_requested is False
 
-        # Manually call the handler (SIGINT would be caught by pytest)
+        # Act — manually call the handler (SIGINT would be caught by pytest)
         handler = signal.getsignal(signal.SIGINT)
         if callable(handler):
             handler(signal.SIGINT, None)
+
+        # Assert
         assert state.shutdown_requested is True
 
 
@@ -378,41 +410,42 @@ class TestRotateServiceLogs:
     """Tests for rotate_service_logs."""
 
     def test_no_logs_directory(self, mlx_stack_home: Path) -> None:
+        # Act
         with patch("mlx_stack.core.watchdog.get_value", return_value=50):
             count = rotate_service_logs()
+
+        # Assert
         assert count == 0
 
     def test_rotates_eligible_files(self, mlx_stack_home: Path, logs_dir: Path) -> None:
-        # Create a log file exceeding threshold
-        log_file = logs_dir / "fast.log"
-        log_file.write_bytes(b"x" * (1 * 1024 * 1024))  # 1 MB
+        # Arrange — create a log file exceeding threshold (1 MB)
+        create_log_file(logs_dir, "fast", size_mb=1)
 
+        # Act
         with patch("mlx_stack.core.watchdog.get_value") as mock_get:
             mock_get.side_effect = lambda key: {
                 "log-max-size-mb": 0,  # Will cause threshold to be 0
                 "log-max-files": 5,
             }.get(key, 50)
-
-            # rotate_log checks if size >= threshold_bytes
-            # With threshold 0 * 1024 * 1024 = 0, but file > 0, should rotate
             count = rotate_service_logs()
 
-        # Since max_size_mb=0 means threshold=0 bytes, any non-empty file rotates
-        assert count >= 0  # The actual rotation depends on implementation
+        # Assert — max_size_mb=0 means threshold=0 bytes, any non-empty file rotates
+        assert count >= 0
 
     def test_skips_non_log_files(self, mlx_stack_home: Path, logs_dir: Path) -> None:
-        # Create a non-.log file
+        # Arrange
         other_file = logs_dir / "fast.log.1.gz"
         other_file.write_bytes(b"compressed data")
 
+        # Act
         with patch("mlx_stack.core.watchdog.get_value") as mock_get:
             mock_get.side_effect = lambda key: {
                 "log-max-size-mb": 50,
                 "log-max-files": 5,
             }.get(key, 50)
-
             count = rotate_service_logs()
 
+        # Assert
         assert count == 0
 
 
@@ -427,10 +460,10 @@ class TestPollCycle:
     def test_basic_poll_no_crashes(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -456,6 +489,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -468,6 +502,7 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 0
         assert len(result.statuses) == 2
         assert state.cycle_count == 1
@@ -475,10 +510,10 @@ class TestPollCycle:
     def test_poll_with_crashed_service_triggers_restart(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -504,6 +539,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -517,6 +553,7 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 1
         assert result.restarts_succeeded == 1
         assert len(state.restart_log) == 1
@@ -527,10 +564,10 @@ class TestPollCycle:
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Stopped services (no PID file) should NOT be restarted."""
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -546,6 +583,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -559,21 +597,21 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 0
 
     def test_poll_flapping_service_not_restarted(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Flapping services should not be restarted."""
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
+
+        # Arrange
         state = WatchdogState()
-        # Pre-mark service as flapping
         state.service_trackers["fast"] = ServiceTracker(
             is_flapping=True,
             last_restart_time=time.monotonic(),
         )
-
-        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
-
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -589,6 +627,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -602,6 +641,7 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 0
         assert "fast" in result.flapping_services
 
@@ -609,15 +649,14 @@ class TestPollCycle:
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Should not restart if delay has not elapsed."""
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
+
+        # Arrange
         state = WatchdogState()
-        # Set last restart time to now (delay not elapsed yet)
         state.service_trackers["fast"] = ServiceTracker(
             last_restart_time=time.monotonic(),
             consecutive_failures=0,
         )
-
-        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
-
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -633,6 +672,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -646,16 +686,17 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 0
 
     def test_poll_with_failed_restart(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Failed restart should increment consecutive_failures."""
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -671,6 +712,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -684,6 +726,7 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 1
         assert result.restarts_succeeded == 0
         assert state.service_trackers["fast"].consecutive_failures == 1
@@ -691,12 +734,13 @@ class TestPollCycle:
     def test_poll_log_rotation_counted(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(services=[])
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=3),
@@ -709,20 +753,22 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.rotations_performed == 3
 
     def test_poll_no_stack_returns_early(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
-        state = WatchdogState()
-
         from mlx_stack.core.stack_status import StatusResult
 
+        # Arrange
+        state = WatchdogState()
         mock_status = StatusResult(
             no_stack=True,
             message="No stack configured",
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -735,20 +781,21 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert result.restarts_attempted == 0
 
     def test_poll_healthy_resets_consecutive_failures(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any]
     ) -> None:
         """Healthy service should reset consecutive_failures."""
+        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
+
+        # Arrange
         state = WatchdogState()
         state.service_trackers["fast"] = ServiceTracker(
             consecutive_failures=3,
             last_restart_time=time.monotonic() - 100,
         )
-
-        from mlx_stack.core.stack_status import ServiceHealth, ServiceStatus, StatusResult
-
         mock_status = StatusResult(
             services=[
                 ServiceStatus(
@@ -764,6 +811,7 @@ class TestPollCycle:
             ]
         )
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -776,6 +824,7 @@ class TestPollCycle:
                 restart_delay=10,
             )
 
+        # Assert
         assert state.service_trackers["fast"].consecutive_failures == 0
 
 
@@ -788,16 +837,17 @@ class TestRunWatchdog:
     """Tests for run_watchdog."""
 
     def test_no_stack_raises_error(self, mlx_stack_home: Path) -> None:
+        # Act / Assert
         with pytest.raises(WatchdogError, match="No stack configuration found"):
             run_watchdog()
 
     def test_already_running_raises_error(
         self, mlx_stack_home: Path, stack_definition: dict[str, Any], pids_dir: Path
     ) -> None:
-        # Write a watchdog PID file with a "running" process
-        pid_path = pids_dir / "watchdog.pid"
-        pid_path.write_text(str(os.getpid()))  # Current process is alive
+        # Arrange — write a watchdog PID file with a "running" process
+        create_pid_file(mlx_stack_home, "watchdog", pid=os.getpid())
 
+        # Act / Assert
         with pytest.raises(WatchdogError, match="already running"):
             run_watchdog()
 
@@ -807,15 +857,16 @@ class TestRunWatchdog:
         """Test that the watchdog loop runs and exits on shutdown."""
         from mlx_stack.core.stack_status import StatusResult
 
+        # Arrange
         mock_status = StatusResult(services=[])
         call_count = 0
 
         def status_callback(result: PollResult, state: WatchdogState) -> None:
             nonlocal call_count
             call_count += 1
-            # Set shutdown after first cycle
             state.shutdown_requested = True
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
@@ -825,9 +876,9 @@ class TestRunWatchdog:
                 status_callback=status_callback,
             )
 
+        # Assert
         assert call_count == 1
         assert state.cycle_count == 1
-        # PID file should be cleaned up
         assert not (pids_dir / "watchdog.pid").exists()
 
     def test_watchdog_cleanup_on_exit(
@@ -836,17 +887,20 @@ class TestRunWatchdog:
         """Test that watchdog cleans up PID file on exit."""
         from mlx_stack.core.stack_status import StatusResult
 
+        # Arrange
         mock_status = StatusResult(services=[])
 
         def status_callback(result: PollResult, state: WatchdogState) -> None:
             state.shutdown_requested = True
 
+        # Act
         with (
             patch("mlx_stack.core.watchdog.run_status", return_value=mock_status),
             patch("mlx_stack.core.watchdog.rotate_service_logs", return_value=0),
         ):
             run_watchdog(interval=1, status_callback=status_callback)
 
+        # Assert
         assert not (pids_dir / "watchdog.pid").exists()
 
 
@@ -859,6 +913,7 @@ class TestDaemonize:
     """Tests for daemonize (mocked)."""
 
     def test_daemonize_calls_fork_and_setsid(self, mlx_stack_home: Path) -> None:
+        # Act
         with (
             patch("os.fork", side_effect=[0, 0]) as mock_fork,
             patch("os.setsid") as mock_setsid,
@@ -869,11 +924,13 @@ class TestDaemonize:
         ):
             daemonize()
 
+        # Assert
         assert mock_fork.call_count == 2
         mock_setsid.assert_called_once()
 
     def test_daemonize_first_fork_parent_exits(self, mlx_stack_home: Path) -> None:
         """When first fork returns >0, os._exit(0) should be called."""
+        # Arrange
         exit_called = False
 
         def fake_exit(code: int) -> None:
@@ -881,6 +938,7 @@ class TestDaemonize:
             exit_called = True
             raise SystemExit(code)
 
+        # Act / Assert
         with (
             patch("os.fork", return_value=123),
             patch("os._exit", side_effect=fake_exit),
@@ -891,6 +949,7 @@ class TestDaemonize:
         assert exit_called
 
     def test_daemonize_first_fork_failure(self, mlx_stack_home: Path) -> None:
+        # Act / Assert
         with (
             patch("os.fork", side_effect=OSError("fork failed")),
             pytest.raises(WatchdogError, match="First fork failed"),
@@ -907,10 +966,13 @@ class TestRemoveWatchdogPid:
     """Tests for remove_watchdog_pid."""
 
     def test_removes_existing_pid_file(self, mlx_stack_home: Path, pids_dir: Path) -> None:
-        pid_path = pids_dir / "watchdog.pid"
-        pid_path.write_text("12345")
+        # Arrange
+        pid_path = create_pid_file(mlx_stack_home, "watchdog", pid=12345)
 
+        # Act
         remove_watchdog_pid()
+
+        # Assert
         assert not pid_path.exists()
 
     def test_no_pid_file_is_noop(self, mlx_stack_home: Path) -> None:
