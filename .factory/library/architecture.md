@@ -65,3 +65,8 @@ Data Layer (src/mlx_stack/data/)
 - `FakeServiceLayer` test double for stack_up/watchdog tests
 - Test factories in `tests/factories.py` for creating test data
 - No real HF downloads, no real hardware detection in unit tests
+
+## Operational Constraint: Service Name Safety
+
+- Service names are reused as PID/log filename stems by `core/process.py` (`pid_file` and log path construction).
+- Any dynamically generated `service_name` must be filesystem-safe (no path separators like `/`), or temp process startup can fail before health checks run.

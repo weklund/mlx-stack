@@ -1,6 +1,6 @@
 {
   "milestone": "ungate-pull",
-  "round": 1,
+  "round": 2,
   "status": "fail",
   "validatorsRun": {
     "test": {
@@ -24,25 +24,31 @@
     "passed": 0,
     "failed": 1,
     "failedFeatures": [
-      "ungate-pull-command"
+      "fix-bench-hf-repo-target-resolution"
     ]
   },
   "blockingIssues": [
     {
-      "featureId": "ungate-pull-command",
+      "featureId": "fix-bench-hf-repo-target-resolution",
       "severity": "blocking",
-      "description": "HF repo pulls with --bench pass a raw HF repo string into benchmark target resolution, but benchmark resolution accepts running tiers or catalog IDs, so arbitrary HF repo benchmarking fails."
+      "description": "Temporary benchmark instances derive service_name directly from HF repo IDs containing '/', and process PID/log paths use service_name as a filename stem. This can create invalid nested paths and prevent reliable startup for `mlx-stack bench <hf-repo>`."
     }
   ],
-  "appliedUpdates": [],
+  "appliedUpdates": [
+    {
+      "target": "library",
+      "description": "Added a filesystem-safety constraint for dynamic service names to `.factory/library/architecture.md` under 'Operational Constraint: Service Name Safety'.",
+      "sourceFeature": "fix-bench-hf-repo-target-resolution"
+    }
+  ],
   "suggestedGuidanceUpdates": [
     {
       "target": ".factory/skills/cli-worker/SKILL.md",
-      "suggestion": "Clarify how strictly TDD-first ordering is enforced in review, or explicitly allow small implementation scaffolding before test additions when documenting required evidence.",
-      "evidence": "Review for ungate-pull-command observed code edits in pull paths preceding the new HF repo tests, while the skill text says to write failing tests first.",
-      "isSystemic": false
+      "suggestion": "Clarify expected evidence and enforcement for TDD-first ordering (failing test before implementation), or explicitly document acceptable exceptions for minimal scaffolding.",
+      "evidence": "Both `ungate-pull-command` and `fix-bench-hf-repo-target-resolution` reviews observed implementation edits before test additions while the skill still mandates strict test-first sequencing.",
+      "isSystemic": true
     }
   ],
   "rejectedObservations": [],
-  "previousRound": null
+  "previousRound": ".factory/validation/ungate-pull/scrutiny/synthesis.round1.json"
 }
