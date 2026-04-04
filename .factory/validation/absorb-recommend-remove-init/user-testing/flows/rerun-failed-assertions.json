@@ -1,0 +1,50 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "rerun-failed-assertions",
+  "surface": "CLI",
+  "testedAt": "2026-04-04T21:31:17.203508+00:00",
+  "assertions": [
+    {
+      "id": "VAL-CROSS-008",
+      "status": "pass",
+      "reason": "Targeted pull --bench pytest assertion passed, confirming saved-results guidance no longer references removed commands.",
+      "evidence": [
+        "absorb-recommend-remove-init/rerun-failed-assertions/VAL-CROSS-008-pytest.txt"
+      ]
+    },
+    {
+      "id": "VAL-MODELS-010",
+      "status": "pass",
+      "reason": "Under forced HuggingFace network unreachability, models --available emitted a clear unreachable warning with no traceback; exit code 0 is acceptable per assertion criteria.",
+      "evidence": [
+        "absorb-recommend-remove-init/rerun-failed-assertions/VAL-MODELS-010-cli-network-failure.txt"
+      ]
+    }
+  ],
+  "passedAssertions": [
+    "VAL-CROSS-008",
+    "VAL-MODELS-010"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-rerun-failed uv run --project /Users/weae1504/Projects/mlx-stack pytest /Users/weae1504/Projects/mlx-stack/tests/unit/test_cli_pull.py::TestPullCLI::test_pull_bench_message_no_stale_command_refs -q --tb=short",
+      "exitCode": 0,
+      "observation": "Targeted VAL-CROSS-008 test passed."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-rerun-failed HTTP_PROXY=http://127.0.0.1:9 HTTPS_PROXY=http://127.0.0.1:9 ALL_PROXY=http://127.0.0.1:9 NO_PROXY= HF_ENDPOINT=http://127.0.0.1:9 uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --available",
+      "exitCode": 0,
+      "observation": "Output began with 'HuggingFace API unreachable, using benchmark data only' and showed available models without traceback."
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "Grep"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Retested 2 previously failed CLI assertions; both passed with no blockers."
+}

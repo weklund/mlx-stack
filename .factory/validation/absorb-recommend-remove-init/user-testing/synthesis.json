@@ -1,0 +1,35 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "round": 2,
+  "status": "pass",
+  "assertionsSummary": {
+    "total": 2,
+    "passed": 2,
+    "failed": 0,
+    "blocked": 0
+  },
+  "passedAssertions": [
+    "VAL-CROSS-008",
+    "VAL-MODELS-010"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "appliedUpdates": [
+    {
+      "target": "user-testing.md",
+      "description": "Updated absorb-recommend-remove-init validation notes to reflect the current pull --bench saved-results guidance.",
+      "source": "flow-report"
+    }
+  ],
+  "flowReports": [
+    ".factory/validation/absorb-recommend-remove-init/user-testing/flows/rerun-failed-assertions.json"
+  ],
+  "toolsUsed": [
+    "Task:user-testing-flow-validator",
+    "Execute (shell)"
+  ],
+  "frictions": [],
+  "dedupedBlockers": [],
+  "generatedAt": "2026-04-04T21:32:33.573813+00:00",
+  "previousRound": ".factory/validation/absorb-recommend-remove-init/user-testing/synthesis.round1.json"
+}

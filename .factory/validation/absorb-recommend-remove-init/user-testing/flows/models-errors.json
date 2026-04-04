@@ -1,0 +1,113 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "models-errors",
+  "surface": "CLI",
+  "testedAt": "2026-04-04T21:15:58.663147+00:00",
+  "isolation": {
+    "surface": "CLI only",
+    "home": "/tmp/mlx-utv-models-errors",
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53"
+  },
+  "assertions": [
+    {
+      "id": "VAL-MODELS-016",
+      "status": "pass",
+      "reason": "When no saved profile and hardware detection is forced to fail, CLI returns a clean HardwareError message without traceback.",
+      "evidence": [
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-016.log",
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-016-clirunner.log"
+      ]
+    },
+    {
+      "id": "VAL-MODELS-017",
+      "status": "pass",
+      "reason": "Invalid intent exits non-zero and lists valid intents (agent-fleet, balanced).",
+      "evidence": [
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-017.log"
+      ]
+    },
+    {
+      "id": "VAL-MODELS-018",
+      "status": "pass",
+      "reason": "Malformed and negative budget values are rejected with descriptive invalid-budget format guidance and non-zero exit.",
+      "evidence": [
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-018.log",
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-018-negative.log",
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-018-negative.exit"
+      ]
+    },
+    {
+      "id": "VAL-MODELS-019",
+      "status": "pass",
+      "reason": "Tiny budget (0.1gb) exits non-zero with clear \u201cNo models fit\u201d guidance.",
+      "evidence": [
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-019.log"
+      ]
+    },
+    {
+      "id": "VAL-MODELS-020",
+      "status": "pass",
+      "reason": "In a fresh HOME with no saved benchmarks/profile, --recommend still succeeds and prints a recommended stack.",
+      "evidence": [
+        "absorb-recommend-remove-init/models-errors/VAL-MODELS-020.log"
+      ]
+    }
+  ],
+  "passedAssertions": [
+    "VAL-MODELS-016",
+    "VAL-MODELS-017",
+    "VAL-MODELS-018",
+    "VAL-MODELS-019",
+    "VAL-MODELS-020"
+  ],
+  "failedAssertions": [],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run pytest tests/unit/test_cli_models.py::TestRecommendHardwareFailure::test_hardware_detection_failure -q",
+      "exitCode": 0,
+      "observation": "Targeted pytest passed for hardware detection failure handling."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run python (CliRunner + patch detect_hardware HardwareError)",
+      "exitCode": 0,
+      "observation": "Captured CLI output showing exit_code=1, error message, and has_traceback=False in evidence log."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run mlx-stack models --recommend --intent invalid_intent",
+      "exitCode": 1,
+      "observation": "Returned invalid intent error listing valid intents."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run mlx-stack models --recommend --budget abc",
+      "exitCode": 1,
+      "observation": "Returned invalid budget format error with expected format guidance."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run mlx-stack models --recommend --budget -5gb",
+      "exitCode": 1,
+      "observation": "Negative budget rejected with invalid budget guidance."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run mlx-stack models --recommend --budget 0.1gb",
+      "exitCode": 1,
+      "observation": "Returned \u201cNo models fit within the 0.1 GB budget\u201d message."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-errors uv run mlx-stack models --recommend",
+      "exitCode": 0,
+      "observation": "Displayed recommended stack successfully in fresh isolated HOME."
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "Grep",
+    "pytest",
+    "mlx-stack CLI"
+  ],
+  "frictions": [],
+  "blockers": [],
+  "summary": "Validated 5 assigned assertions (VAL-MODELS-016..020): all passed, none failed, none blocked."
+}

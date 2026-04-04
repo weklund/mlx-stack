@@ -47,3 +47,11 @@ Rationale: CLI tests are lightweight (no browser, no services). Each pytest invo
 - Prefer assertion-targeted checks first (specific pytest tests and direct CLI invocations), then add broader checks only when needed to disambiguate failures.
 - Do not edit source code while validating; only create report/evidence artifacts requested for user-testing flows.
 - If any assertion is blocked by environment/tooling, capture exact blocking command output and mark as blocked rather than guessing.
+
+## Validation Notes: absorb-recommend-remove-init
+
+- `mlx-stack models --available` currently degrades to catalog-backed fallback when HF API is unreachable and still exits `0`. To reproduce the outage path in validation, set:
+  - `HTTP_PROXY=http://127.0.0.1:9 HTTPS_PROXY=http://127.0.0.1:9 ALL_PROXY=http://127.0.0.1:9 NO_PROXY=`
+  - or `HF_ENDPOINT=http://127.0.0.1:9`
+- `mlx-stack pull <model> --bench` now prints generic saved-results scoring guidance
+  without referencing removed commands (`recommend`/`init`).

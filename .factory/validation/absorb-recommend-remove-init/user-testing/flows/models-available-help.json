@@ -1,0 +1,214 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "models-available-help",
+  "surface": "CLI",
+  "testedAt": "2026-04-04T21:16:33.740177+00:00",
+  "isolation": {
+    "home": "/tmp/mlx-utv-models-available",
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53",
+    "evidenceDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53/evidence/absorb-recommend-remove-init/models-available-help"
+  },
+  "assertions": [
+    {
+      "id": "VAL-MODELS-009",
+      "status": "pass",
+      "reason": "Live `models --available` returned 0 and displayed discovered HuggingFace models with expected columns.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/01-val-models-009-live-available.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-010",
+      "status": "fail",
+      "reason": "When forcing network failure, command printed unreachable warning but still exited 0; contract expects non-zero exit with clean error.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/02-val-models-010-network-failure-proxy.log",
+          "absorb-recommend-remove-init/models-available-help/13-val-models-010-network-failure-hf-endpoint.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-011",
+      "status": "pass",
+      "reason": "All conflicting flag combinations exited non-zero and reported mutual exclusivity errors.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/03-val-models-011-conflict-recommend-catalog.log",
+          "absorb-recommend-remove-init/models-available-help/04-val-models-011-conflict-recommend-available.log",
+          "absorb-recommend-remove-init/models-available-help/05-val-models-011-conflict-available-catalog.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-012",
+      "status": "pass",
+      "reason": "--budget/--intent/--show-all without --recommend each exited non-zero with dependency errors.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/06-val-models-012-budget-requires-recommend.log",
+          "absorb-recommend-remove-init/models-available-help/07-val-models-012-intent-requires-recommend.log",
+          "absorb-recommend-remove-init/models-available-help/08-val-models-012-show-all-requires-recommend.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-013",
+      "status": "pass",
+      "reason": "`mlx-stack recommend` returned \"No such command\" (non-zero); top-level help does not list recommend.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/09-val-models-013-recommend-command-removed.log",
+          "absorb-recommend-remove-init/models-available-help/14-main-help.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-014",
+      "status": "pass",
+      "reason": "`mlx-stack init` returned \"No such command\" (non-zero); top-level help does not list init.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/10-val-models-014-init-command-removed.log",
+          "absorb-recommend-remove-init/models-available-help/14-main-help.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-MODELS-015",
+      "status": "pass",
+      "reason": "`models --help` lists all required flags including --available and recommend-related options.",
+      "evidence": {
+        "terminalSnapshots": [
+          "absorb-recommend-remove-init/models-available-help/11-val-models-015-models-help-flags.log"
+        ],
+        "supporting": [
+          "absorb-recommend-remove-init/models-available-help/12-targeted-pytest-val-models-009-015.log"
+        ]
+      }
+    }
+  ],
+  "passedAssertions": [
+    "VAL-MODELS-009",
+    "VAL-MODELS-011",
+    "VAL-MODELS-012",
+    "VAL-MODELS-013",
+    "VAL-MODELS-014",
+    "VAL-MODELS-015"
+  ],
+  "failedAssertions": [
+    "VAL-MODELS-010"
+  ],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --available",
+      "exitCode": 0,
+      "observation": "Displayed \"Available Models\" table (112 models) with Params/Quant/Downloads/Gen t/s/Mem GB columns."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available HTTP_PROXY=http://127.0.0.1:9 HTTPS_PROXY=http://127.0.0.1:9 ALL_PROXY=http://127.0.0.1:9 NO_PROXY= uv run mlx-stack models --available",
+      "exitCode": 0,
+      "observation": "Printed \"HuggingFace API unreachable, using benchmark data only\" but still exited 0 and rendered fallback model table."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available HF_ENDPOINT=http://127.0.0.1:9 uv run mlx-stack models --available",
+      "exitCode": 0,
+      "observation": "Again printed unreachable warning and returned fallback table with exit 0."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --recommend --catalog",
+      "exitCode": 1,
+      "observation": "Error states flags are mutually exclusive."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --recommend --available",
+      "exitCode": 1,
+      "observation": "Error states flags are mutually exclusive."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --available --catalog",
+      "exitCode": 1,
+      "observation": "Error states flags are mutually exclusive."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --budget 30gb",
+      "exitCode": 1,
+      "observation": "Error: --budget can only be used with --recommend."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --intent balanced",
+      "exitCode": 1,
+      "observation": "Error: --intent can only be used with --recommend."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --show-all",
+      "exitCode": 1,
+      "observation": "Error: --show-all can only be used with --recommend."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack recommend",
+      "exitCode": 2,
+      "observation": "Error: No such command 'recommend'."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack init",
+      "exitCode": 2,
+      "observation": "Error: No such command 'init'."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack models --help",
+      "exitCode": 0,
+      "observation": "Help output includes --catalog, --recommend, --available, --budget, --intent, --show-all, --family, --tag, --tool-calling."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run mlx-stack --help",
+      "exitCode": 0,
+      "observation": "Top-level help lists current commands and does not list init/recommend."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-models-available uv run pytest -q --tb=short tests/unit/test_cli_models.py::TestModelsAvailable::test_available_shows_discovered_models tests/unit/test_cli_models.py::TestModelsAvailableNetworkFailure::test_network_failure_clean_error tests/unit/test_cli_models.py::TestMutualExclusivity tests/unit/test_cli_models.py::TestFlagDependencies tests/unit/test_cli_models.py::TestRecommendCommandRemoved::test_recommend_not_a_command tests/unit/test_cli.py::TestCLIHelp::test_help_does_not_show_removed_commands tests/unit/test_cli_models.py::TestModelsHelpNewFlags",
+      "exitCode": 0,
+      "observation": "All targeted assertion-related pytest checks passed (16 tests)."
+    }
+  ],
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "Grep",
+    "pytest"
+  ],
+  "frictions": [
+    {
+      "description": "Simulated HF outage (proxy/HF_ENDPOINT overrides) produced warning + fallback table with exit 0 rather than non-zero failure expected by contract VAL-MODELS-010.",
+      "resolved": false,
+      "resolution": "Recorded as assertion failure with logs from two independent outage simulations.",
+      "affectedAssertions": [
+        "VAL-MODELS-010"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Tested 7 assertions: 6 passed, 1 failed (VAL-MODELS-010). No assertions were blocked."
+}

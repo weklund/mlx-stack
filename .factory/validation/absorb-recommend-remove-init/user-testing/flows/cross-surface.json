@@ -1,0 +1,190 @@
+{
+  "milestone": "absorb-recommend-remove-init",
+  "groupId": "cross-surface",
+  "surface": "cli",
+  "testedAt": "2026-04-04T21:22:12.653860+00:00",
+  "isolation": {
+    "HOME": "/tmp/mlx-utv-cross-surface",
+    "repo": "/Users/weae1504/Projects/mlx-stack",
+    "missionDir": "/Users/weae1504/.factory/missions/7fc62a3d-138f-4cd2-a601-3f6d1b174b53"
+  },
+  "toolsUsed": [
+    "Execute",
+    "Read",
+    "Grep",
+    "uv run pytest",
+    "mlx-stack CLI"
+  ],
+  "assertions": [
+    {
+      "id": "VAL-CROSS-001",
+      "status": "pass",
+      "reason": "`mlx-stack --help` showed all expected post-rework commands and omitted removed commands.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-001-help.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-002",
+      "status": "pass",
+      "reason": "Bare `mlx-stack` welcome screen showed expected categories/commands and no removed commands.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-002-welcome.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-003",
+      "status": "pass",
+      "reason": "Typos for removed commands (`reccommend`, `proflie`, `inti`) did not suggest removed commands.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-003-typo-reccommend.log",
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-003-typo-proflie.log",
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-003-typo-inti.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-004",
+      "status": "pass",
+      "reason": "Typos for active commands (`statu`, `seutp`) returned `Did you mean` suggestions including `status`/`setup`.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-004-typo-statu.log",
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-004-typo-seutp.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-005",
+      "status": "pass",
+      "reason": "`mlx-stack models` empty-state guidance referenced `setup` and did not reference `init`.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-005-models-empty.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-006",
+      "status": "pass",
+      "reason": "`mlx-stack models --catalog` no-profile advisory referenced `setup` and did not reference `mlx-stack profile`.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-006-models-catalog-no-profile.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-007",
+      "status": "pass",
+      "reason": "`mlx-stack status` no-stack message referenced `setup` and did not reference `init`.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-007-status-no-stack.log"
+        ]
+      }
+    },
+    {
+      "id": "VAL-CROSS-008",
+      "status": "fail",
+      "reason": "`pull --bench` output still includes `models --recommend` in saved-results guidance.",
+      "evidence": {
+        "logs": [
+          "absorb-recommend-remove-init/cross-surface/VAL-CROSS-008-pull-bench.log"
+        ]
+      }
+    }
+  ],
+  "passedAssertions": [
+    "VAL-CROSS-001",
+    "VAL-CROSS-002",
+    "VAL-CROSS-003",
+    "VAL-CROSS-004",
+    "VAL-CROSS-005",
+    "VAL-CROSS-006",
+    "VAL-CROSS-007"
+  ],
+  "failedAssertions": [
+    "VAL-CROSS-008"
+  ],
+  "blockedAssertions": [],
+  "commandsRun": [
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack --help",
+      "exitCode": 0,
+      "observation": "Help contained expected commands/categories; removed commands absent."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack",
+      "exitCode": 0,
+      "observation": "Welcome screen showed updated categories and setup nudge."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack reccommend",
+      "exitCode": 2,
+      "observation": "Unknown command error; no suggestion for removed `recommend`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack proflie",
+      "exitCode": 2,
+      "observation": "Unknown command error; no suggestion for removed `profile`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack inti",
+      "exitCode": 2,
+      "observation": "Unknown command error; suggestion was `install`, not removed `init`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack statu",
+      "exitCode": 2,
+      "observation": "Unknown command typo suggestions included `status` and `Did you mean`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack seutp",
+      "exitCode": 2,
+      "observation": "Unknown command typo suggestions included `setup` and `Did you mean`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models",
+      "exitCode": 0,
+      "observation": "No-models guidance referenced `mlx-stack setup`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack models --catalog",
+      "exitCode": 0,
+      "observation": "No-profile advisory referenced `mlx-stack setup`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack mlx-stack status",
+      "exitCode": 0,
+      "observation": "No-stack message referenced `mlx-stack setup`."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack pytest tests/unit/test_cli.py::TestCLIHelp::test_help_does_not_show_removed_commands tests/unit/test_cli.py::TestCLIHelp::test_help_shows_categories tests/unit/test_cli.py::TestCLIHelp::test_bare_command_shows_command_categories tests/unit/test_cli.py::TestUnknownCommand::test_typo_does_not_suggest_init tests/unit/test_cli.py::TestUnknownCommand::test_typo_suggests_close_match tests/unit/test_cli_models.py::TestModelsCommand::test_no_models_message tests/unit/test_cli_models.py::TestModelsCatalogCommand::test_no_profile_message tests/unit/test_cli_status.py::TestStatusCli::test_no_stack_shows_message -q",
+      "exitCode": 0,
+      "observation": "Targeted pytest checks passed (8/8)."
+    },
+    {
+      "command": "HOME=/tmp/mlx-utv-cross-surface uv run --project /Users/weae1504/Projects/mlx-stack python (CliRunner patched harness) invoking `mlx-stack pull qwen3.5-8b --bench`",
+      "exitCode": 0,
+      "observation": "Output includes: `Results saved for use by 'models --recommend' and 'setup' scoring.`"
+    }
+  ],
+  "frictions": [
+    {
+      "description": "`pull --bench` cannot be exercised safely against live downloads in this isolated flow; used a patched CliRunner harness to validate post-benchmark messaging.",
+      "resolved": true,
+      "resolution": "Patched download/catalog/benchmark dependencies while invoking real CLI command path.",
+      "affectedAssertions": [
+        "VAL-CROSS-008"
+      ]
+    }
+  ],
+  "blockers": [],
+  "summary": "Validated 8 cross-surface CLI assertions: 7 passed, 1 failed (VAL-CROSS-008). Failure: pull --bench saved-results message still references `models --recommend`."
+}
